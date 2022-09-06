@@ -1,5 +1,7 @@
 //! Mushroom AES-OFB key stream
 
+//use crate::system::{CryptoSystem, KeyStreamError};
+
 use aes::cipher::generic_array::{
     typenum::{U112, U128, U16, U32, U48, U64, U80, U96},
     GenericArray,
@@ -36,7 +38,7 @@ impl KeyStream {
         self.data.as_slice()
     }
 
-    pub fn append(&mut self, block: &GenericArray<u8, U16>) {
+    pub fn append_block(&mut self, block: &GenericArray<u8, U16>) {
         self.data.extend_from_slice(block.as_slice());
     }
 }

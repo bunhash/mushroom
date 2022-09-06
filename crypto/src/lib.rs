@@ -3,11 +3,11 @@
 //! Handles the AES-OFB encryption used throughout Mushroom.
 
 mod error;
-mod generator;
+mod system;
 mod keystream;
 
-pub use error::CipherError;
-pub use generator::Generator;
+pub use error::KeyStreamError;
+pub use system::MushroomSystem;
 pub use keystream::KeyStream;
 
 pub fn xor<T>(data: &mut T)
@@ -19,11 +19,11 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::Generator;
+    use crate::MushroomSystem;
 
     #[test]
     fn stream_16() {
-        let gen = Generator::new([0x00; 32], [0x00; 4]);
+        let gen = MushroomSystem::new([0x00; 32], [0x00; 4]);
         let stream = gen.generate(16).unwrap();
         assert_eq!(
             stream.as_slice(),
@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     fn stream_grow_to_32() {
-        let gen = Generator::new([0x00; 32], [0x00; 4]);
+        let gen = MushroomSystem::new([0x00; 32], [0x00; 4]);
         let mut stream = gen.generate(16).unwrap();
         gen.grow(&mut stream, 32).unwrap();
         assert_eq!(
@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn stream_32_no_grow() {
-        let gen = Generator::new([0x00; 32], [0x00; 4]);
+        let gen = MushroomSystem::new([0x00; 32], [0x00; 4]);
         let mut stream = gen.generate(32).unwrap();
         assert_eq!(
             stream.as_slice(),

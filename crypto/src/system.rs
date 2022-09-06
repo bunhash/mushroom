@@ -1,6 +1,6 @@
 //! Mushroom AES-OFB key stream generator
 
-use crate::{CipherError, KeyStream};
+use crate::{KeyStream, KeyStreamError};
 
 use aes::cipher::{
     generic_array::{
@@ -11,33 +11,47 @@ use aes::cipher::{
 };
 use aes::Aes256;
 
+pub trait CryptoSystem<T> {
+    fn grow(&self, input: &GenericArray<u8, T>) -> GenericArray<u8, T>;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Generator {
+pub struct MushroomSystem {
     key: GenericArray<u8, U32>,
     iv: [u8; 4],
 }
 
-impl Generator {
+impl CryptoSystem<U16> for MushroomSystem {
+    fn ini
+    fn process(input: &GenericArray<u8, U16>) -> GenericArray<u8, U16> {
+        let cipher = Aes256::new(&self.key);
+        let mut block = input.clone();
+        cipher.encrypt_block(&mut block);
+        block
+    }
+}
+
+impl MushroomSystem {
     pub fn new(key: [u8; 32], iv: [u8; 4]) -> Self {
-        Generator {
+        MushroomSystem {
             key: GenericArray::from(key),
             iv: iv,
         }
     }
 
-    pub fn generate(&self, min_len: usize) -> Result<KeyStream, CipherError> {
+    pub fn generate(&self, min_len: usize) -> Result<KeyStream, KeyStreamError> {
         let mut ret = KeyStream::new();
         self.grow(&mut ret, min_len)?;
         Ok(ret)
     }
 
-    pub fn grow(&self, stream: &mut KeyStream, new_len: usize) -> Result<(), CipherError> {
+    pub fn grow(&self, stream: &mut KeyStream, new_len: usize) -> Result<(), KeyStreamError> {
         let current_len = stream.len();
 
         if new_len <= current_len {
             Ok(())
         } else if current_len % 16 != 0 {
-            Err(CipherError)
+            Err(KeyStreamError)
         } else {
             let cipher = Aes256::new(&self.key);
             let mut block: GenericArray<u8, U16> = match current_len {
@@ -53,7 +67,7 @@ impl Generator {
                         if let Some(val) = vals.next() {
                             last_block[i] = *val;
                         } else {
-                            return Err(CipherError);
+                            return Err(KeyStreamError);
                         }
                     }
                     GenericArray::from(last_block)
@@ -63,7 +77,7 @@ impl Generator {
             // Keep encrypting until the stream is big enough
             loop {
                 cipher.encrypt_block(&mut block);
-                stream.append(&block);
+                stream.append_block(&block);
                 if stream.len() >= new_len {
                     break;
                 }
