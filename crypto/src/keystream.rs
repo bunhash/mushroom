@@ -1,21 +1,22 @@
-use crate::{Generator, System};
-
+use crate::{Block, System};
+use aes::cipher::generic_array::ArrayLength;
 use std::slice::Iter;
 
 /// Represents a self-growing key stream
 #[derive(Clone, Debug, PartialEq)]
-pub struct KeyStream<S: System> {
-    generator: S::Gen,
+pub struct KeyStream<'a, B: ArrayLength<u8>, S: System<B>> {
+    system: &'a S,
     stream: Vec<u8>,
+    block: Block<B>,
 }
 
-impl<S: System> KeyStream<S> {
-
+impl<'a, B: ArrayLength<u8>, S: System<B>> KeyStream<'a, B, S> {
     /// Creates a new `KeyStream` given a reference to a `System`
-    pub fn new(system: &S) -> Self {
+    pub fn new(system: &'a S) -> Self {
         KeyStream {
-            generator: system.into_generator(),
+            system: system,
             stream: Vec::new(),
+            block: system.prepare(),
         }
     }
 
@@ -41,12 +42,13 @@ impl<S: System> KeyStream<S> {
 
     /// Grows the key stream to be big enough to cover `new_len`
     pub fn grow(&mut self, new_len: usize) {
+        let system = self.system;
         loop {
             if self.stream.len() >= new_len {
                 break;
             }
-            let block = self.generator.next_block();
-            self.stream.extend_from_slice(block.as_slice());
+            system.process(&mut self.block);
+            self.stream.extend_from_slice(self.block.as_slice());
         }
     }
 
