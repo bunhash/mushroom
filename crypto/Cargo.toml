@@ -10,3 +10,4 @@ crate-type = ["lib"]
 
 [dependencies]
 aes = "0.8"
+lazy_static = "1.4"
