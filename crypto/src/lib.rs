@@ -1,33 +1,47 @@
+#![warn(missing_docs)]
 //! Mushroom crypto implementation
 //!
 //! Handles the AES-OFB encryption used throughout Mushroom.
+//!
+//! # Example
+//!
+//! ```
+//! use crypto::{KeyStream, MushroomSystem, System, GMS_IV, GMS_KEY};
+//!
+//! let system = MushroomSystem::new(GMS_KEY, GMS_IV);
+//! let mut stream = KeyStream::new(&system);
+//!
+//! let mut input: Vec<u8> = Vec::from("Hello, World!".as_bytes());
+//! let control = input.clone();
+//!
+//! stream.encrypt(&mut input);
+//! stream.decrypt(&mut input);
+//!
+//! assert_eq!(input, control);
+//! ```
 
 mod generator;
 mod keystream;
 mod system;
 
+pub use aes::cipher::generic_array;
 pub use generator::{Generator, MushroomGenerator};
 pub use keystream::KeyStream;
 pub use system::{MushroomSystem, System};
 
-#[macro_use]
-extern crate lazy_static;
-
+/// The AES-256 key used in GMS
 pub static GMS_KEY: [u8; 32] = [
     0x13, 0x52, 0x2a, 0x5b, 0x08, 0x02, 0x10, 0x60, 0x06, 0x02, 0x43, 0x0f, 0xb4, 0x4b, 0x35, 0x05,
     0x1b, 0x0a, 0x5f, 0x09, 0x0f, 0x50, 0x0c, 0x1b, 0x33, 0x55, 0x01, 0x09, 0x52, 0xde, 0xc7, 0x1e,
 ];
-pub static GMS_IV: [u8; 4] = [0x4d, 0x23, 0xc7, 0x2b];
 
-lazy_static! {
-    static ref GMS_CRYPTO_SYSTEM: MushroomSystem = MushroomSystem::new(GMS_KEY, GMS_IV);
-    static ref GMS_KEY_STREAM: KeyStream<MushroomSystem> = KeyStream::new(&GMS_CRYPTO_SYSTEM);
-}
+/// The AES-256 IV used in GMS
+pub static GMS_IV: [u8; 4] = [0x4d, 0x23, 0xc7, 0x2b];
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{KeyStream, MushroomSystem, System};
+    use crate::{KeyStream, MushroomSystem, System, GMS_IV, GMS_KEY};
 
     #[test]
     fn test_system() {
@@ -144,5 +158,40 @@ mod tests {
                 0x58, 0xf3, 0x6d, 0xa6, 0x1a
             ]
         );
+    }
+
+    #[test]
+    fn gms_encrypt() {
+        let system = MushroomSystem::new(GMS_KEY, GMS_IV);
+        let mut stream = KeyStream::new(&system);
+        let mut input: Vec<u8> = Vec::from("Hello, World!".as_bytes());
+        stream.encrypt(&mut input);
+        assert_eq!(
+            input.as_slice(),
+            &[0x40, 0x50, 0xea, 0x6c, 0xd0, 0xf1, 0xa1, 0xc8, 0xb5, 0xb0, 0x03, 0xf7, 0x2a]
+        );
+    }
+
+    #[test]
+    fn gms_decrypt() {
+        let system = MushroomSystem::new(GMS_KEY, GMS_IV);
+        let mut stream = KeyStream::new(&system);
+        let mut input = Vec::from([
+            0x40, 0x50, 0xea, 0x6c, 0xd0, 0xf1, 0xa1, 0xc8, 0xb5, 0xb0, 0x03, 0xf7, 0x2a,
+        ]);
+        stream.decrypt(&mut input);
+        let test = String::from_utf8(input).unwrap();
+        assert_eq!(test, "Hello, World!");
+    }
+
+    #[test]
+    fn sanity() {
+        let system = MushroomSystem::new(GMS_KEY, GMS_IV);
+        let mut stream = KeyStream::new(&system);
+        let mut input: Vec<u8> = Vec::from("Hello, World!".as_bytes());
+        let control = input.clone();
+        stream.encrypt(&mut input);
+        stream.decrypt(&mut input);
+        assert_eq!(input, control);
     }
 }
