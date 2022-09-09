@@ -30,6 +30,7 @@
 //!
 //! `generic_array`
 
+pub mod hash;
 mod keystream;
 mod system;
 
@@ -49,7 +50,21 @@ pub static GMS_IV: [u8; 4] = [0x4d, 0x23, 0xc7, 0x2b];
 #[cfg(test)]
 mod tests {
 
-    use crate::{KeyStream, MushroomSystem, GMS_IV, GMS_KEY};
+    use crate::{hash::checksum, KeyStream, MushroomSystem, GMS_IV, GMS_KEY};
+
+    #[test]
+    fn calc_checksum() {
+        let encrypted_version = 0xac;
+        let mut real_version = 0;
+        loop {
+            real_version = real_version + 1;
+            let (check, _) = checksum(&real_version.to_string());
+            if check == encrypted_version {
+                assert_eq!(check, 0);
+                assert_eq!(check, 1);
+            }
+        }
+    }
 
     #[test]
     fn stream_16() {
