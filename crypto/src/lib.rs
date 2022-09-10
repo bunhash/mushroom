@@ -53,17 +53,17 @@ mod tests {
     use crate::{hash::checksum, KeyStream, MushroomSystem, GMS_IV, GMS_KEY};
 
     #[test]
-    fn calc_checksum() {
-        let encrypted_version = 0xac;
-        let mut real_version = 0;
-        loop {
-            real_version = real_version + 1;
-            let (check, _) = checksum(&real_version.to_string());
-            if check == encrypted_version {
-                assert_eq!(check, 0);
-                assert_eq!(check, 1);
-            }
-        }
+    fn calc_83_checksum() {
+        let (calc_version, csum) = checksum("83");
+        assert_eq!(calc_version, 0xac);
+        assert_eq!(csum, 1876);
+    }
+
+    #[test]
+    fn calc_176_checksum() {
+        let (calc_version, csum) = checksum("176");
+        assert_eq!(calc_version, 0x07);
+        assert_eq!(csum, 53047);
     }
 
     #[test]

@@ -1,81 +1,115 @@
 use crate::WzResult;
+use crypto::{generic_array::ArrayLength, KeyStream, System};
 use std::{
-    fs,
-    io::{self, prelude::*, Error, ErrorKind, SeekFrom},
+    fs::File,
+    io::{self, BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom},
 };
 
 #[derive(Debug)]
 pub struct WzReader {
-    file: fs::File,
+    buf: BufReader<File>,
 }
 
 impl WzReader {
-    pub fn new(filename: &str) -> WzResult<Self> {
+    pub fn open(filename: &str) -> WzResult<Self> {
         Ok(WzReader {
-            file: fs::File::open(filename)?,
+            buf: BufReader::new(File::open(filename)?),
         })
     }
 
-    pub fn pos(&mut self) -> WzResult<u64> {
-        Ok(self.file.stream_position()?)
+    pub fn with_capacity(capacity: usize, filename: &str) -> WzResult<Self> {
+        Ok(WzReader {
+            buf: BufReader::with_capacity(capacity, File::open(filename)?),
+        })
     }
 
-    pub fn seek_to(&mut self, pos: u64) -> WzResult<u64> {
-        Ok(self.file.seek(SeekFrom::Start(pos))?)
+    pub fn read_byte(&mut self) -> WzResult<u8> {
+        match self.buf.by_ref().bytes().next() {
+            Some(b) => Ok(b?),
+            None => Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
+        }
     }
 
     pub fn read_short(&mut self) -> WzResult<[u8; 2]> {
         let mut buf = [0; 2];
-        self.file.read_exact(&mut buf)?;
+        self.buf.read_exact(&mut buf)?;
         Ok(buf)
     }
 
     pub fn read_word(&mut self) -> WzResult<[u8; 4]> {
         let mut buf = [0; 4];
-        self.file.read_exact(&mut buf)?;
+        self.buf.read_exact(&mut buf)?;
         Ok(buf)
     }
 
     pub fn read_long(&mut self) -> WzResult<[u8; 8]> {
         let mut buf = [0; 8];
-        self.file.read_exact(&mut buf)?;
+        self.buf.read_exact(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn read_string(&mut self) -> WzResult<Vec<u8>> {
-        let pos = self.pos()?;
-        let mut ret = Vec::new();
-        loop {
-            let mut buf = [0; 256];
-            let bytes_read = self.file.read(&mut buf)?;
-            for i in 0..bytes_read {
-                if buf[i] == 0 {
-                    self.seek_to(pos + (ret.len() as u64) + 1)?;
-                    return Ok(ret);
-                }
-                ret.push(buf[i]);
+    pub fn read_nbytes(&mut self, length: usize, buf: &mut Vec<u8>) -> WzResult<()> {
+        let n = io::Read::by_ref(&mut self.buf)
+            .take(length as u64)
+            .read_to_end(buf)?;
+        if n < length {
+            Err(io::Error::from(ErrorKind::UnexpectedEof).into())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn read_until(&mut self, delim: u8, buf: &mut Vec<u8>) -> WzResult<usize> {
+        Ok(self.buf.read_until(delim, buf)?)
+    }
+
+    pub fn read_zstring(&mut self) -> WzResult<String> {
+        let mut buf = Vec::new();
+        self.read_until(0, &mut buf)?;
+        if let Some(b) = buf.pop() {
+            if b == 0 {
+                return Ok(String::from_utf8(buf)?);
             }
         }
+        Err(io::Error::from(ErrorKind::UnexpectedEof).into())
     }
 
     pub fn read_nstring(&mut self, size: usize) -> WzResult<String> {
         let mut buf = Vec::with_capacity(size);
-        let n = io::Read::by_ref(&mut self.file)
-            .take(size as u64)
-            .read_to_end(&mut buf)?;
-        if n < size {
-            Err(Error::from(ErrorKind::UnexpectedEof).into())
-        } else {
-            Ok(String::from_utf8(buf)?)
-        }
+        self.read_nbytes(size, &mut buf)?;
+        Ok(String::from_utf8(buf)?)
     }
 
-    pub fn read_header(&mut self) -> WzResult<(String, u64, i32, String)> {
-        Ok((
-            String::from_utf8(Vec::from(self.read_word()?)).unwrap(),
-            u64::from_le_bytes(self.read_long()?),
-            i32::from_le_bytes(self.read_word()?),
-            String::from_utf8(self.read_string()?).unwrap(),
-        ))
+    pub fn read_wz_string(&mut self) -> WzResult<String> {
+        Ok(String::from("ok"))
+    }
+
+    pub fn read_encrypted_nstring<B: ArrayLength<u8>, S: System<B>>(
+        &mut self,
+        size: usize,
+        stream: &mut KeyStream<B, S>,
+    ) -> WzResult<String> {
+        let mut buf = Vec::with_capacity(size);
+        self.read_nbytes(size, &mut buf)?;
+        stream.decrypt(&mut buf);
+        Ok(String::from_utf8(buf)?)
+    }
+
+    pub fn read_encrypted_wz_string(&mut self) -> WzResult<String> {
+        Ok(String::from("ok"))
+    }
+}
+
+impl Seek for WzReader {
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        self.buf.seek(pos)
+    }
+
+    fn rewind(&mut self) -> io::Result<()> {
+        self.buf.rewind()
+    }
+
+    fn stream_position(&mut self) -> io::Result<u64> {
+        self.buf.stream_position()
     }
 }
