@@ -10,6 +10,18 @@ pub struct WzReader {
     buf: BufReader<File>,
 }
 
+// WZ definitions
+impl WzReader {
+    pub fn read_wz_string(&mut self) -> WzResult<String> {
+        Ok(String::from("ok"))
+    }
+
+    pub fn read_encrypted_wz_string(&mut self) -> WzResult<String> {
+        Ok(String::from("ok"))
+    }
+}
+
+// Lower-level definitions
 impl WzReader {
     pub fn open(filename: &str) -> WzResult<Self> {
         Ok(WzReader {
@@ -80,10 +92,6 @@ impl WzReader {
         Ok(String::from_utf8(buf)?)
     }
 
-    pub fn read_wz_string(&mut self) -> WzResult<String> {
-        Ok(String::from("ok"))
-    }
-
     pub fn read_encrypted_nstring<B: ArrayLength<u8>, S: System<B>>(
         &mut self,
         size: usize,
@@ -94,12 +102,9 @@ impl WzReader {
         stream.decrypt(&mut buf);
         Ok(String::from_utf8(buf)?)
     }
-
-    pub fn read_encrypted_wz_string(&mut self) -> WzResult<String> {
-        Ok(String::from("ok"))
-    }
 }
 
+// Raising BufReader's Seek trait
 impl Seek for WzReader {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.buf.seek(pos)
