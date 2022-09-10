@@ -1,86 +1,81 @@
-use crate::{WzError, WzReader, WzResult};
-use crypto::hash::checksum;
+use crate::{WzDirectory, WzError, WzErrorType, WzHeader, WzNode, WzReader, WzResult};
+use std::io::{Seek, SeekFrom};
+use crypto::checksum;
 
 pub struct WzFile {
-    identifier: String,
-    size: u64,
-    start: i32,
-    description: String,
+    name: String,
+    header: WzHeader,
     version: u16,
+    version_checksum: u32,
+    root: WzDirectory,
 }
 
 impl WzFile {
-    pub fn new(version: u16) -> Self {
+    pub fn new(name: &str, version: u16) -> Self {
+        WzFile::with_header(name, version, WzHeader::new())
+    }
+
+    pub fn with_header(name: &str, version: u16, header: WzHeader) -> Self {
+        let (_, version_checksum) = checksum(&version.to_string());
         WzFile {
-            identifier: String::from("PKG1"),
-            size: 0,
-            start: 60,
-            description: String::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
+            name: String::from(name),
+            header: header,
             version: version,
+            version_checksum: version_checksum,
+            root: WzDirectory::new(name),
         }
     }
 
-    pub fn load(file: &mut WzReader) -> WzResult<Self> {
-        let mut wz = WzFile {
-            identifier: String::new(),
-            size: 0,
-            start: 0,
-            description: String::new(),
-            version: 0,
-        };
-
-        // Ensure the identifier is PKG1, otherwise, this isn't a WZ file
-        wz.identifier = match String::from_utf8(Vec::from(file.read_word()?)) {
-            Ok(s) => {
-                if s == "PKG1" {
-                    s
-                } else {
-                    return Err(WzError::InvalidWz);
-                }
-            }
-            _ => return Err(WzError::InvalidWz),
-        };
-
-        // Grab the size of the WZ contents
-        wz.size = u64::from_le_bytes(file.read_long()?);
-
-        // Grab the absolute starting position of the WZ contents
-        wz.start = i32::from_le_bytes(file.read_word()?);
-
-        // Grab the description/copyright
-        wz.description = file.read_zstring()?;
+    pub fn from_reader(name: &str, reader: &mut WzReader) -> WzResult<Self> {
+        let header = WzHeader::from_reader(reader)?;
 
         // Brute force the version
-        let encrypted_version = u16::from_le_bytes(file.read_short()?);
+        let encrypted_version = u16::from_le_bytes(reader.read_short()?);
         for real_version in 1..1000 {
-            let (calc_version, _) = checksum(&real_version.to_string());
+            let (calc_version, version_checksum) = checksum(&real_version.to_string());
             if calc_version == encrypted_version {
-                wz.version = real_version as u16;
+                let mut wz = WzFile {
+                    name: String::from(name),
+                    header: header,
+                    version: real_version,
+                    version_checksum: version_checksum,
+                    root: WzDirectory::new(name),
+                };
+                wz.parse_root(reader)?;
                 return Ok(wz);
             }
         }
 
         // Brute force failed
-        Err(WzError::InvalidWz)
+        Err(WzError::from(WzErrorType::InvalidWz))
     }
 
-    pub fn identifier(&self) -> &str {
-        &self.identifier
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
-    pub fn start(&self) -> i32 {
-        self.start
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
+    pub fn header(&self) -> &WzHeader {
+        &self.header
     }
 
     pub fn version(&self) -> u16 {
         self.version
+    }
+
+    pub fn version_checksum(&self) -> u32 {
+        self.version_checksum
+    }
+
+    pub fn root(&self) -> &WzDirectory {
+        &self.root
+    }
+
+    pub fn root_mut(&mut self) -> &mut WzDirectory {
+        &mut self.root
+    }
+
+    fn parse_root(&mut self, reader: &mut WzReader) -> WzResult<()> {
+        let abs_pos = reader.stream_position()?;
+        self.root.load(reader, abs_pos)
     }
 }

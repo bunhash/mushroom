@@ -1,11 +1,11 @@
-//! Mushroom hash module
+//! Mushroom utils module
 //!
 //! Handles the checksum calculations
 //!
 //! # Example
 //!
 //! ```
-//! use crypto::hash::checksum;
+//! use crypto::checksum;
 //!
 //! fn brute_force() -> (u16, u16) {
 //!     let encrypted_version = 0xac;
@@ -25,10 +25,10 @@ pub fn checksum(version: &str) -> (u16, u32) {
     for c in version.as_bytes() {
         y = (y << 5) + (*c as u32) + 1;
     }
-    let mut x = 0xFF;
-    x = x ^ (((y >> 24) & 0xFF) as u16);
-    x = x ^ (((y >> 16) & 0xFF) as u16);
-    x = x ^ (((y >> 8) & 0xFF) as u16);
-    x = x ^ ((y & 0xFF) as u16);
+    let x = 0xFF;
+    let x = x ^ (((y >> 24) & 0xFF) as u16);
+    let x = x ^ (((y >> 16) & 0xFF) as u16);
+    let x = x ^ (((y >> 8) & 0xFF) as u16);
+    let x = x ^ ((y & 0xFF) as u16);
     (x, y)
 }

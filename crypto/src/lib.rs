@@ -30,13 +30,14 @@
 //!
 //! `generic_array`
 
-pub mod hash;
 mod keystream;
 mod system;
+mod utils;
 
 pub use aes::cipher::generic_array;
 pub use keystream::KeyStream;
 pub use system::{Block, MushroomSystem, System};
+pub use utils::checksum;
 
 /// The AES-256 key used in GMS
 pub static GMS_KEY: [u8; 32] = [
@@ -50,7 +51,7 @@ pub static GMS_IV: [u8; 4] = [0x4d, 0x23, 0xc7, 0x2b];
 #[cfg(test)]
 mod tests {
 
-    use crate::{hash::checksum, KeyStream, MushroomSystem, GMS_IV, GMS_KEY};
+    use crate::{checksum, KeyStream, MushroomSystem, GMS_IV, GMS_KEY};
 
     #[test]
     fn calc_83_checksum() {
