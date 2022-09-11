@@ -7,6 +7,7 @@ mod header;
 mod node;
 mod object;
 mod reader;
+pub mod tree;
 
 pub use directory::WzDirectory;
 pub use error::{WzError, WzErrorType, WzResult};
