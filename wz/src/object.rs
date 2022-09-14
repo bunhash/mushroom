@@ -1,5 +1,46 @@
-use crate::{WzDirectory, WzError, WzErrorType, WzNode, WzReader, WzResult};
+use crate::WzDirectory;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WzObject {
+    Directory(WzDirectory),
+    /*
+    Property,
+    Canvas,
+    ShapeConvex,
+    ShapeVector,
+    Uol,
+    Sound,
+    */
+    Unparsed(WzUnparsed),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WzUnparsed {
+    pub(crate) name: String,
+    pub(crate) size: u64,
+    pub(crate) checksum: u32,
+    pub(crate) offset: u64,
+}
+
+impl WzUnparsed {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub fn checksum(&self) -> u32 {
+        self.checksum
+    }
+}
+
+/*
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum WzObjectType {
     Directory,
@@ -26,50 +67,4 @@ impl TryFrom<&str> for WzObjectType {
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WzUnparsed {
-    pub(crate) directory: bool,
-    pub(crate) name: String,
-    pub(crate) size: i32,
-    pub(crate) checksum: i32,
-    pub(crate) offset: u32,
-}
-
-impl WzNode for WzUnparsed {
-    fn is_dir(&self) -> bool {
-        self.directory
-    }
-
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn size(&self) -> Option<u64> {
-        Some(self.size as u64)
-    }
-
-    fn offset(&self) -> Option<u64> {
-        Some(self.offset as u64)
-    }
-
-    fn load(&mut self, reader: &mut WzReader, abs_pos: u64) -> WzResult<()> {
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WzObject {
-    Directory(WzDirectory),
-    /*
-    Property,
-    Canvas,
-    ShapeConvex,
-    ShapeVector,
-    Uol,
-    Sound,
-    */
-    Unparsed(WzUnparsed),
-}
-
-impl WzObject {}
+*/

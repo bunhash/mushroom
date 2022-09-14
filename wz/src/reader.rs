@@ -45,7 +45,7 @@ pub trait WzRead: Seek {
     fn read_until(&mut self, delim: u8, buf: &mut Vec<u8>) -> WzResult<usize>;
 
     /// Reads until `\0` or EOF
-    fn read_zstring(&mut self) -> WzResult<String>;
+    fn read_cstr(&mut self) -> WzResult<String>;
 }
 
 #[derive(Debug)]
@@ -115,12 +115,13 @@ impl WzRead for WzReader {
         let cur = Wrapping(self.stream_position()? as u32);
         let abs_pos = Wrapping(abs_pos as u32);
         let version_checksum = Wrapping(version_checksum);
+        let magic = Wrapping(0x581C3F6D);
 
         // Make decoding key (?)
         let encoding = cur - abs_pos;
         let encoding = encoding ^ Wrapping(u32::MAX);
         let encoding = encoding * version_checksum;
-        let encoding = encoding - Wrapping(0x581C3F6D);
+        let encoding = encoding - magic;
         let encoding = encoding.0.rotate_left(encoding.0 & 0x1F); // unwrapped
 
         // Decode offset
@@ -192,7 +193,7 @@ impl WzRead for WzReader {
         Ok(self.buf.read_until(delim, buf)?)
     }
 
-    fn read_zstring(&mut self) -> WzResult<String> {
+    fn read_cstr(&mut self) -> WzResult<String> {
         let mut buf = Vec::new();
         self.read_until(0, &mut buf)?;
         if let Some(b) = buf.pop() {
@@ -331,8 +332,8 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
         self.reader.read_until(delim, buf)
     }
 
-    fn read_zstring(&mut self) -> WzResult<String> {
-        self.reader.read_zstring()
+    fn read_cstr(&mut self) -> WzResult<String> {
+        self.reader.read_cstr()
     }
 }
 

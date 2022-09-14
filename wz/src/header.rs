@@ -1,4 +1,4 @@
-use crate::{WzError, WzErrorType, WzResult, WzRead};
+use crate::{WzError, WzErrorType, WzRead, WzResult};
 
 pub struct WzHeader {
     identifier: String,
@@ -41,7 +41,7 @@ impl WzHeader {
         let content_start = start as u64;
 
         // Grab the description/copyright
-        let description = reader.read_zstring()?;
+        let description = reader.read_cstr()?;
 
         Ok(WzHeader {
             identifier,
