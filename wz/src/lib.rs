@@ -7,24 +7,25 @@ mod header;
 mod node;
 mod object;
 mod reader;
-pub mod tree;
 
 pub use directory::WzDirectory;
 pub use error::{WzError, WzErrorType, WzResult};
 pub use file::WzFile;
 pub use header::WzHeader;
 pub use node::WzNode;
-pub use object::{WzObject, WzObjectType};
-pub use reader::WzReader;
+pub use object::{WzObject, WzObjectType, WzUnparsed};
+pub use reader::{WzEncryptedReader, WzRead, WzReader};
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{WzFile, WzNode, WzReader};
+    use crate::{WzEncryptedReader, WzFile, WzNode, WzObject, WzRead, WzReader};
+    use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
 
     #[test]
     fn open_wzfile_old() {
-        let mut reader = WzReader::open("testdata/old-base.wz").unwrap();
+        let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
+        let mut reader = WzEncryptedReader::open("testdata/old-base.wz", &system).unwrap();
         let wz = WzFile::from_reader("base.wz", &mut reader).unwrap();
         let header = wz.header();
         assert_eq!(header.identifier(), "PKG1");
@@ -37,9 +38,48 @@ mod tests {
         assert_eq!(wz.version(), 83);
 
         // Check contents
-        let root = wz.root();
-        assert_eq!(root.name(), "base.wz");
-        assert_eq!(root.len(), 3);
+        match wz.root() {
+            Some(WzObject::Directory(root)) => {
+                assert_eq!(root.name(), "base.wz");
+                assert_eq!(root.len(), 18);
+            }
+            _ => assert!(false),
+        }
+        let objects: Vec<&str> = wz
+            .iter()
+            .map(|o| match o {
+                WzObject::Unparsed(obj) => obj.name(),
+                WzObject::Directory(dir) => dir.name(),
+                _ => {
+                    assert!(false);
+                    "unreachable"
+                }
+            })
+            .collect();
+        assert_eq!(
+            objects,
+            [
+                "base.wz",
+                "smap.img",
+                "zmap.img",
+                "StandardPDD.img",
+                "UI",
+                "Effect",
+                "Sound",
+                "Map",
+                "Character",
+                "Item",
+                "TamingMob",
+                "Etc",
+                "Npc",
+                "Reactor",
+                "Skill",
+                "Morph",
+                "String",
+                "Mob",
+                "Quest"
+            ]
+        );
     }
 
     #[test]
@@ -57,8 +97,49 @@ mod tests {
         assert_eq!(wz.version(), 176);
 
         // Check contents
-        let root = wz.root();
-        assert_eq!(root.name(), "base.wz");
-        assert_eq!(root.len(), 3);
+        match wz.root() {
+            Some(WzObject::Directory(root)) => {
+                assert_eq!(root.name(), "base.wz");
+                assert_eq!(root.len(), 20);
+            }
+            _ => assert!(false),
+        }
+        let objects: Vec<&str> = wz
+            .iter()
+            .map(|o| match o {
+                WzObject::Unparsed(obj) => obj.name(),
+                WzObject::Directory(dir) => dir.name(),
+                _ => {
+                    assert!(false);
+                    "unreachable"
+                }
+            })
+            .collect();
+        assert_eq!(
+            objects,
+            [
+                "base.wz",
+                "zmap.img",
+                "StandardPDD.img",
+                "smap.img",
+                "String",
+                "TamingMob",
+                "Item",
+                "Effect",
+                "Quest",
+                "Npc",
+                "Map2",
+                "UI",
+                "Morph",
+                "Map",
+                "Sound",
+                "Mob",
+                "Skill",
+                "Reactor",
+                "Character",
+                "Mob2",
+                "Etc"
+            ]
+        );
     }
 }

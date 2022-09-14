@@ -1,4 +1,4 @@
-use crate::{WzError, WzErrorType, WzReader, WzResult};
+use crate::{WzError, WzErrorType, WzResult, WzRead};
 
 pub struct WzHeader {
     identifier: String,
@@ -17,7 +17,7 @@ impl WzHeader {
         }
     }
 
-    pub fn from_reader(reader: &mut WzReader) -> WzResult<Self> {
+    pub fn from_reader(reader: &mut dyn WzRead) -> WzResult<Self> {
         // Ensure the identifier is PKG1, otherwise, this isn't a WZ file
         let identifier = match String::from_utf8(Vec::from(reader.read_word()?)) {
             Ok(s) => {
@@ -47,7 +47,7 @@ impl WzHeader {
             identifier,
             size,
             content_start,
-            description
+            description,
         })
     }
 

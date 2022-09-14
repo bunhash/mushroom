@@ -1,12 +1,12 @@
-use crate::{WzError, WzErrorType, WzNode, WzObject, WzReader, WzResult};
+use crate::{WzError, WzErrorType, WzNode, WzObject, WzReader, WzResult, WzUnparsed};
 use std::io::{Seek, SeekFrom};
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WzDirectory {
     name: String,
     size: Option<u64>,
     offset: Option<u64>,
-    length: usize,
-    children: Vec<WzObject>,
+    children: Vec<usize>,
 }
 
 impl WzDirectory {
@@ -15,13 +15,29 @@ impl WzDirectory {
             name: String::from(name),
             size: None,
             offset: None,
-            length: 0,
             children: Vec::new(),
         }
     }
 
+    pub(crate) fn with_offset(name: &str, offset: u64) -> Self {
+        WzDirectory {
+            name: String::from(name),
+            size: None,
+            offset: Some(offset),
+            children: Vec::new(),
+        }
+    }
+
+    pub(crate) fn add_child(&mut self, child: usize, size: u64) {
+        self.children.push(child);
+        match self.size {
+            Some(s) => self.size = Some(s + size),
+            None => self.size = Some(size),
+        }
+    }
+
     pub fn len(&self) -> usize {
-        self.length
+        self.children.len()
     }
 }
 
@@ -43,6 +59,7 @@ impl WzNode for WzDirectory {
     }
 
     fn load(&mut self, reader: &mut WzReader, abs_pos: u64) -> WzResult<()> {
+        /*
         self.offset = Some(abs_pos);
         reader.seek(SeekFrom::Start(abs_pos))?;
         let length = reader.read_wz_int()?;
@@ -91,6 +108,7 @@ impl WzNode for WzDirectory {
                 _ => return Err(WzError::from(WzErrorType::InvalidType)),
             }
         }
+        */
         Ok(())
     }
 }
