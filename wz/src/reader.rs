@@ -337,7 +337,6 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
     }
 }
 
-// Raising BufReader's Seek trait
 impl<'a, B: ArrayLength<u8>, S: System<B>> Seek for WzEncryptedReader<'a, B, S> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.reader.seek(pos)

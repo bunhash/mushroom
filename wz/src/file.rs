@@ -1,4 +1,4 @@
-use crate::{WzError, WzErrorType, WzHeader, WzNode, WzNodeType, WzRead, WzResult};
+use crate::{WzError, WzErrorType, WzHeader, WzNode, WzNodeRef, WzNodeType, WzRead, WzResult};
 use crypto::checksum;
 use std::{io::SeekFrom, slice::Iter};
 
@@ -23,7 +23,7 @@ impl WzFile {
             header: header,
             version: version,
             version_checksum: version_checksum,
-            objects: vec![WzNodeType::Directory(WzNode::new(name))],
+            objects: vec![WzNodeType::Directory(WzNode::new(0, name))],
             root: 0,
         }
     }
@@ -43,6 +43,7 @@ impl WzFile {
                     version: real_version,
                     version_checksum: version_checksum,
                     objects: vec![WzNodeType::Directory(WzNode::from_reader(
+                        0,
                         name,
                         file_size,
                         0,
@@ -88,7 +89,31 @@ impl WzFile {
         self.objects.iter()
     }
 
-    pub fn get_path(&self, path: &str) -> Option<&WzNodeType> {
+    pub fn get(&self, index: WzNodeRef) -> Option<&WzNodeType> {
+        self.objects.get(index.index)
+    }
+
+    pub fn get_mut(&mut self, index: WzNodeRef) -> Option<&mut WzNodeType> {
+        self.objects.get_mut(index.index)
+    }
+
+    pub fn to_path(&self, index: WzNodeRef) -> WzResult<String> {
+        let mut path = Vec::new();
+        let mut index = index.index;
+        loop {
+            let child = match self.objects.get(index) {
+                Some(child) => child,
+                None => return Err(WzError::from(WzErrorType::InvalidPath)),
+            };
+            path.push(child.name());
+            index = match child.parent() {
+                Some(i) => i.index,
+                None => return Ok(path.into_iter().rev().collect::<Vec<&str>>().join("/")),
+            };
+        }
+    }
+
+    pub fn get_from_path(&self, path: &str) -> Option<&WzNodeType> {
         let path: Vec<&str> = path.split('/').collect();
         // Don't both if the first node isn't right
         if path[0] == self.name() {
@@ -101,7 +126,7 @@ impl WzFile {
         }
     }
 
-    pub fn get_path_mut(&mut self, path: &str) -> Option<&mut WzNodeType> {
+    pub fn get_from_path_mut(&mut self, path: &str) -> Option<&mut WzNodeType> {
         let path: Vec<&str> = path.split('/').collect();
         // Don't both if the first node isn't right
         if path[0] == self.name() {
@@ -143,9 +168,8 @@ impl WzFile {
                 }
                 // UOL
                 2 => {
-                    // TODO: Grab name from other location
                     let _ = i32::from_le_bytes(reader.read_word()?);
-                    String::from("uol")
+                    todo!("Grab name from other location")
                 }
                 // Directory
                 3 | 4 => reader.read_wz_string()?,
@@ -160,6 +184,7 @@ impl WzFile {
                 reader.read_wz_offset(self.header.content_start(), self.version_checksum)?;
             if item_type == 3 {
                 self.objects.push(WzNodeType::Directory(WzNode::from_reader(
+                    child_index,
                     &child_name,
                     child_size,
                     child_checksum,
@@ -172,6 +197,7 @@ impl WzFile {
                 }
             } else {
                 self.objects.push(WzNodeType::Image(WzNode::from_reader(
+                    child_index,
                     &child_name,
                     child_size,
                     child_checksum,
@@ -213,21 +239,21 @@ impl WzFile {
         };
 
         // Collect the index of all the children
-        let children: Vec<usize> = match self.objects.get(obj_index) {
-            Some(WzNodeType::Directory(dir)) => dir.children().map(|c| c.clone()).collect(),
+        let children: Vec<WzNodeRef> = match self.objects.get(obj_index) {
+            Some(WzNodeType::Directory(dir)) => dir.children().collect(),
             _ => return None,
         };
 
         // Search for the correct child
         let mut found = None;
         for child_index in children {
-            let name = match self.objects.get(child_index) {
+            let name = match self.objects.get(child_index.index) {
                 Some(WzNodeType::Directory(dir)) => dir.name(),
                 Some(WzNodeType::Image(img)) => img.name(),
                 None => continue,
             };
             if name == search {
-                found = Some(child_index);
+                found = Some(child_index.index);
                 break;
             }
         }

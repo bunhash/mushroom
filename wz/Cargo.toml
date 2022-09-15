@@ -9,5 +9,4 @@ path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
-thiserror = "1"
 crypto = { version = "0.1.0", path = "../crypto" }

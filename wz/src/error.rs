@@ -2,7 +2,6 @@ use std::{
     fmt, io,
     string::{FromUtf16Error, FromUtf8Error},
 };
-use thiserror::Error;
 
 pub type WzResult<T> = Result<T, WzError>;
 
@@ -10,7 +9,9 @@ pub type WzResult<T> = Result<T, WzError>;
 pub enum WzErrorType {
     InvalidWz,
     InvalidDir,
+    InvalidPath,
     InvalidType,
+    Unknown,
 }
 
 impl fmt::Display for WzErrorType {
@@ -18,31 +19,45 @@ impl fmt::Display for WzErrorType {
         match self {
             WzErrorType::InvalidWz => write!(f, "Invalid WZ file"),
             WzErrorType::InvalidDir => write!(f, "Invalid directory"),
+            WzErrorType::InvalidPath => write!(f, "Invalid node reference or corrupted tree"),
             WzErrorType::InvalidType => write!(f, "Invalid WZ object type"),
+            WzErrorType::Unknown => write!(f, "Unexpected error occurred"),
         }
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum WzError {
-    #[error("Invalid WZ file")]
     Wz(WzErrorType),
-
-    #[error("IO error: {0}")]
-    Io(#[from] io::Error),
-
-    #[error("Parse error: {0}")]
+    Io(io::Error),
     Parse(String),
-
-    #[error("UTF-8 error: {0}")]
-    Utf8(#[from] FromUtf8Error),
-
-    #[error("UTF-8 error: {0}")]
-    Utf16(#[from] FromUtf16Error),
+    Utf8(FromUtf8Error),
+    Utf16(FromUtf16Error),
 }
 
-impl From<WzErrorType> for WzError {
-    fn from(other: WzErrorType) -> Self {
-        WzError::Wz(other)
+impl fmt::Display for WzError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WzError::Wz(err) => write!(f, "Wz: {}", err),
+            WzError::Io(err) => write!(f, "Io: {}", err),
+            WzError::Parse(err) => write!(f, "Parse: {}", err),
+            WzError::Utf8(err) => write!(f, "Utf8: {}", err),
+            WzError::Utf16(err) => write!(f, "Utf16: {}", err),
+        }
     }
 }
+
+macro_rules! FromError {
+    ( $from:ty, $enum:ident ) => {
+        impl From<$from> for WzError {
+            fn from(other: $from) -> Self {
+                WzError::$enum(other)
+            }
+        }
+    };
+}
+FromError!(WzErrorType, Wz);
+FromError!(io::Error, Io);
+FromError!(String, Parse);
+FromError!(FromUtf8Error, Utf8);
+FromError!(FromUtf16Error, Utf16);
