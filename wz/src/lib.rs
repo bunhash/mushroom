@@ -6,11 +6,12 @@ mod header;
 mod node;
 //mod object;
 mod reader;
+//mod tree;
 
 pub use error::{WzError, WzErrorType, WzResult};
 pub use file::WzFile;
 pub use header::WzHeader;
-pub use node::{WzNode, WzNodeRef, WzNodeType};
+pub use node::{WzNode, WzNodeType};
 //pub use object::{WzObject, WzUnparsed};
 pub use reader::{WzEncryptedReader, WzRead, WzReader};
 
@@ -50,22 +51,13 @@ mod tests {
         let wz = open_v83("testdata/v83-base.wz", "Base");
 
         // Check the WzFile properties
-        match wz.root() {
-            Some(WzNodeType::Directory(root)) => {
-                assert_eq!(root.name(), "Base");
-                assert_eq!(root.len(), 18);
-            }
-            _ => assert!(false),
-        }
+        let root = wz.root().unwrap().get();
+        assert!(root.is_directory());
+        assert_eq!(root.name(), "Base");
+        assert_eq!(wz.arena().count(), 19);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz
-            .iter()
-            .map(|o| match o {
-                WzNodeType::Directory(dir) => dir.name(),
-                WzNodeType::Image(img) => img.name(),
-            })
-            .collect();
+        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
 
         // Assert the contents
         assert_eq!(
@@ -97,12 +89,12 @@ mod tests {
     #[test]
     fn search_v83_wz_base() {
         let wz = open_v83("testdata/v83-base.wz", "Base");
-        let object = wz.get_from_path("Base/zmap.img").unwrap();
-        match object {
-            WzNodeType::Image(img) => assert_eq!(img.name(), "zmap.img"),
-            _ => assert!(false),
-        }
-        assert_eq!(wz.to_path(object.into()).unwrap(), "Base/zmap.img");
+        let node = wz.get_from_path("Base/zmap.img").unwrap();
+        let object = node.get();
+        assert!(!object.is_directory());
+        assert_eq!(object.name(), "zmap.img");
+        let node_id = wz.get_node_id(node).unwrap();
+        assert_eq!(wz.to_path(node_id).unwrap(), "Base/zmap.img");
     }
 
     #[test]
@@ -124,22 +116,13 @@ mod tests {
         let wz = open_v83("testdata/v83-string.wz", "String");
 
         // Check the WzFile properties
-        match wz.root() {
-            Some(WzNodeType::Directory(root)) => {
-                assert_eq!(root.name(), "String");
-                assert_eq!(root.len(), 20);
-            }
-            _ => assert!(false),
-        }
+        let root = wz.root().unwrap().get();
+        assert!(root.is_directory());
+        assert_eq!(root.name(), "String");
+        assert_eq!(wz.arena().count(), 21);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz
-            .iter()
-            .map(|o| match o {
-                WzNodeType::Directory(dir) => dir.name(),
-                WzNodeType::Image(img) => img.name(),
-            })
-            .collect();
+        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
 
         // Assert the contents
         assert_eq!(
@@ -173,11 +156,12 @@ mod tests {
     #[test]
     fn search_v83_wz_string() {
         let wz = open_v83("testdata/v83-string.wz", "String");
-        let object = wz.get_from_path("String/Cash.img").unwrap();
-        match object {
-            WzNodeType::Image(img) => assert_eq!(img.name(), "Cash.img"),
-            _ => assert!(false),
-        }
+        let node = wz.get_from_path("String/Cash.img").unwrap();
+        let object = node.get();
+        assert!(!object.is_directory());
+        assert_eq!(object.name(), "Cash.img");
+        let node_id = wz.get_node_id(node).unwrap();
+        assert_eq!(wz.to_path(node_id).unwrap(), "String/Cash.img");
     }
 
     #[test]
@@ -206,22 +190,13 @@ mod tests {
         let wz = open_v172("testdata/v172-base.wz", "Base");
 
         // Check the WzFile properties
-        match wz.root() {
-            Some(WzNodeType::Directory(root)) => {
-                assert_eq!(root.name(), "Base");
-                assert_eq!(root.len(), 20);
-            }
-            _ => assert!(false),
-        }
+        let root = wz.root().unwrap().get();
+        assert!(root.is_directory());
+        assert_eq!(root.name(), "Base");
+        assert_eq!(wz.arena().count(), 21);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz
-            .iter()
-            .map(|o| match o {
-                WzNodeType::Directory(dir) => dir.name(),
-                WzNodeType::Image(img) => img.name(),
-            })
-            .collect();
+        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
 
         // Assert the contents
         assert_eq!(
@@ -255,11 +230,12 @@ mod tests {
     #[test]
     fn search_v172_wz_base() {
         let wz = open_v172("testdata/v172-base.wz", "Base");
-        let object = wz.get_from_path("Base/StandardPDD.img").unwrap();
-        match object {
-            WzNodeType::Image(img) => assert_eq!(img.name(), "StandardPDD.img"),
-            _ => assert!(false),
-        }
+        let node = wz.get_from_path("Base/StandardPDD.img").unwrap();
+        let object = node.get();
+        assert!(!object.is_directory());
+        assert_eq!(object.name(), "StandardPDD.img");
+        let node_id = wz.get_node_id(node).unwrap();
+        assert_eq!(wz.to_path(node_id).unwrap(), "Base/StandardPDD.img");
     }
 
     #[test]
@@ -281,22 +257,13 @@ mod tests {
         let wz = open_v172("testdata/v172-string.wz", "String");
 
         // Check the WzFile properties
-        match wz.root() {
-            Some(WzNodeType::Directory(root)) => {
-                assert_eq!(root.name(), "String");
-                assert_eq!(root.len(), 32);
-            }
-            _ => assert!(false),
-        }
+        let root = wz.root().unwrap().get();
+        assert!(root.is_directory());
+        assert_eq!(root.name(), "String");
+        assert_eq!(wz.arena().count(), 33);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz
-            .iter()
-            .map(|o| match o {
-                WzNodeType::Directory(dir) => dir.name(),
-                WzNodeType::Image(img) => img.name(),
-            })
-            .collect();
+        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
 
         // Assert the contents
         assert_eq!(
@@ -342,11 +309,12 @@ mod tests {
     #[test]
     fn search_v172_wz_string() {
         let wz = open_v172("testdata/v172-string.wz", "String");
-        let object = wz.get_from_path("String/TestEULA.img").unwrap();
-        match object {
-            WzNodeType::Image(img) => assert_eq!(img.name(), "TestEULA.img"),
-            _ => assert!(false),
-        }
+        let node = wz.get_from_path("String/TestEULA.img").unwrap();
+        let object = node.get();
+        assert!(!object.is_directory());
+        assert_eq!(object.name(), "TestEULA.img");
+        let node_id = wz.get_node_id(node).unwrap();
+        assert_eq!(wz.to_path(node_id).unwrap(), "String/TestEULA.img");
     }
 
     #[test]
@@ -354,14 +322,5 @@ mod tests {
         let wz = open_v172("testdata/v172-string.wz", "String");
         assert_eq!(wz.get_from_path("Fail/TestEULA.img"), None);
         assert_eq!(wz.get_from_path("String/Fail.img"), None);
-    }
-
-    #[test]
-    fn get_node_v172_wz_string() {
-        let wz = open_v172("testdata/v172-string.wz", "String");
-        match wz.root() {
-            Some(root) => assert_eq!(wz.get(root.into()).unwrap().name(), "String"),
-            None => assert!(false),
-        }
     }
 }
