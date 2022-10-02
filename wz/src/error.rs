@@ -3,14 +3,18 @@ use std::{
     string::{FromUtf16Error, FromUtf8Error},
 };
 
+/// Result used within the wz crate
 pub type WzResult<T> = Result<T, WzError>;
 
+/// Different WZ error types
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WzErrorType {
     InvalidWz,
     InvalidDir,
     InvalidPath,
     InvalidType,
+    InvalidImg,
+    InvalidProp,
     Unknown,
 }
 
@@ -21,11 +25,14 @@ impl fmt::Display for WzErrorType {
             WzErrorType::InvalidDir => write!(f, "Invalid directory"),
             WzErrorType::InvalidPath => write!(f, "Invalid node reference or corrupted tree"),
             WzErrorType::InvalidType => write!(f, "Invalid WZ object type"),
+            WzErrorType::InvalidImg => write!(f, "Invalid WZ image"),
+            WzErrorType::InvalidProp => write!(f, "Invalid WZ property"),
             WzErrorType::Unknown => write!(f, "Unexpected error occurred"),
         }
     }
 }
 
+/// Possible errors that may occur. This wraps everything into a WzError object
 #[derive(Debug)]
 pub enum WzError {
     Wz(WzErrorType),

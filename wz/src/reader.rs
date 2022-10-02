@@ -26,6 +26,9 @@ pub trait WzRead: Seek {
     /// Reads a WZ-STRING
     fn read_wz_string(&mut self) -> WzResult<String>;
 
+    /// Reads a WZ-UOL
+    fn read_wz_uol(&mut self, offset: u64) -> WzResult<String>;
+
     /// Reads a single byte
     fn read_byte(&mut self) -> WzResult<u8>;
 
@@ -48,18 +51,21 @@ pub trait WzRead: Seek {
     fn read_cstr(&mut self) -> WzResult<String>;
 }
 
+/// Reads unencrypted WZ files
 #[derive(Debug)]
 pub struct WzReader {
     buf: BufReader<File>,
 }
 
 impl WzReader {
+    /// Opens a WZ file
     pub fn open(filename: &str) -> WzResult<Self> {
         Ok(WzReader {
             buf: BufReader::new(File::open(filename)?),
         })
     }
 
+    /// Opens a WZ file with an initial buffer capacity
     pub fn with_capacity(capacity: usize, filename: &str) -> WzResult<Self> {
         Ok(WzReader {
             buf: BufReader::with_capacity(capacity, File::open(filename)?),
@@ -152,6 +158,22 @@ impl WzRead for WzReader {
         })
     }
 
+    fn read_wz_uol(&mut self, offset: u64) -> WzResult<String> {
+        let key = self.read_byte()?;
+        Ok(match key {
+            0 | 0x73 => self.read_wz_string()?,
+            1 | 0x1b => {
+                let str_offset = offset + (u32::from_le_bytes(self.read_word()?) as u64);
+                let cur_pos = self.stream_position()?;
+                self.seek(SeekFrom::Start(str_offset))?;
+                let name = self.read_wz_string()?;
+                self.seek(SeekFrom::Start(cur_pos))?;
+                name
+            }
+            _ => return Err(WzError::Parse(String::from("Invalid uol key"))),
+        })
+    }
+
     fn read_byte(&mut self) -> WzResult<u8> {
         match self.buf.by_ref().bytes().next() {
             Some(b) => Ok(b?),
@@ -220,6 +242,7 @@ impl Seek for WzReader {
     }
 }
 
+/// Reads encrypted WZ files
 #[derive(Debug)]
 pub struct WzEncryptedReader<'a, B: ArrayLength<u8>, S: System<B>> {
     reader: WzReader,
@@ -227,6 +250,7 @@ pub struct WzEncryptedReader<'a, B: ArrayLength<u8>, S: System<B>> {
 }
 
 impl<'a, B: ArrayLength<u8>, S: System<B>> WzEncryptedReader<'a, B, S> {
+    /// Opens a WZ file with a key stream to decrypt WZ-STRINGs
     pub fn open(filename: &str, system: &'a S) -> WzResult<Self> {
         Ok(WzEncryptedReader {
             reader: WzReader::open(filename)?,
@@ -234,6 +258,8 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzEncryptedReader<'a, B, S> {
         })
     }
 
+    /// Opens a WZ file with a key stream to decrypt WZ-STRINGs and a buffer with an initial
+    /// capacity
     pub fn with_capacity(capacity: usize, filename: &str, system: &'a S) -> WzResult<Self> {
         Ok(WzEncryptedReader {
             reader: WzReader::with_capacity(capacity, filename)?,
@@ -305,6 +331,22 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
             String::from_utf8(self.read_ascii(length as usize)?)?
         } else {
             String::from_utf16(&self.read_unicode(length as usize)?)?
+        })
+    }
+
+    fn read_wz_uol(&mut self, offset: u64) -> WzResult<String> {
+        let key = self.read_byte()?;
+        Ok(match key {
+            0 | 0x73 => self.read_wz_string()?,
+            1 | 0x1b => {
+                let str_offset = offset + (u32::from_le_bytes(self.read_word()?) as u64);
+                let cur_pos = self.stream_position()?;
+                self.seek(SeekFrom::Start(str_offset))?;
+                let name = self.read_wz_string()?;
+                self.seek(SeekFrom::Start(cur_pos))?;
+                name
+            }
+            _ => return Err(WzError::Parse(String::from("Invalid uol key"))),
         })
     }
 

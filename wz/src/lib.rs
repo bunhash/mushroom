@@ -1,18 +1,63 @@
 //! Wz handling library
+//!
+//! Example
+//! ```
+//! use wz::{WzEncryptedReader, WzFile, WzNodeType, WzReader};
+//! use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
+//!
+//! let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
+//! let mut reader = WzEncryptedReader::open("testdata/v83-base.wz", &system).unwrap();
+//! let wz = WzFile::from_reader("Base", &mut reader).unwrap();
+//!
+//! // Check the WzFile properties
+//! let root = wz.root().unwrap().get();
+//! assert!(root.is_directory());
+//! assert_eq!(root.name(), "Base");
+//! assert_eq!(wz.arena().count(), 19);
+//!
+//! // Cycle through all of the contents
+//! let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+//! assert_eq!(
+//!     objects,
+//!     [
+//!         "Base",
+//!         "smap.img",
+//!         "zmap.img",
+//!         "StandardPDD.img",
+//!         "UI",
+//!         "Effect",
+//!         "Sound",
+//!         "Map",
+//!         "Character",
+//!         "Item",
+//!         "TamingMob",
+//!         "Etc",
+//!         "Npc",
+//!         "Reactor",
+//!         "Skill",
+//!         "Morph",
+//!         "String",
+//!         "Mob",
+//!         "Quest"
+//!     ]
+//! );
+//! ```
 
 mod error;
 mod file;
 mod header;
+mod image;
 mod node;
-//mod object;
+mod object;
 mod reader;
-//mod tree;
 
 pub use error::{WzError, WzErrorType, WzResult};
 pub use file::WzFile;
 pub use header::WzHeader;
+pub use image::WzImage;
+pub use indextree;
 pub use node::{WzNode, WzNodeType};
-//pub use object::{WzObject, WzUnparsed};
+pub use object::{WzObject, WzProperty};
 pub use reader::{WzEncryptedReader, WzRead, WzReader};
 
 #[cfg(test)]

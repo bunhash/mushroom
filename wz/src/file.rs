@@ -3,6 +3,7 @@ use crypto::checksum;
 use indextree::{Ancestors, Arena, Children, Node, NodeId, Traverse};
 use std::{io::SeekFrom, slice::Iter};
 
+/// A structure representing a WZ file
 pub struct WzFile {
     name: String,
     header: WzHeader,
@@ -13,10 +14,13 @@ pub struct WzFile {
 }
 
 impl WzFile {
+    /// Creates an empty WzFile with the provided name and version
     pub fn new(name: &str, version: u16) -> Self {
         WzFile::with_header(name, version, WzHeader::new())
     }
 
+    /// Creates an empty WzFile with the provided header. The size specified in the header will be
+    /// overwritten.
     pub fn with_header(name: &str, version: u16, header: WzHeader) -> Self {
         let (_, version_checksum) = checksum(&version.to_string());
         let mut arena = Arena::new();
@@ -31,6 +35,7 @@ impl WzFile {
         }
     }
 
+    /// Reads from a WZ file
     pub fn from_reader(name: &str, reader: &mut dyn WzRead) -> WzResult<Self> {
         let header = WzHeader::from_reader(reader)?;
         let file_size = header.size();
@@ -65,54 +70,68 @@ impl WzFile {
         Err(WzError::from(WzErrorType::InvalidWz))
     }
 
+    /// Returns the name of the WzFile
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the header of the WzFile
     pub fn header(&self) -> &WzHeader {
         &self.header
     }
 
+    /// Returns the version of the WzFile
     pub fn version(&self) -> u16 {
         self.version
     }
 
+    /// Returns the version checksum of the WzFile
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
     }
 
+    /// Returns an immutable Arena of the WZ content
     pub fn arena(&self) -> &Arena<WzNode> {
         &self.arena
     }
 
+    /// Returns a reference to the root directory of the WZ file
     pub fn root(&self) -> Option<&Node<WzNode>> {
         self.get(self.root)
     }
 
+    /// Returns a mutable reference to the root directory of the WZ file
     pub fn root_mut(&mut self) -> Option<&mut Node<WzNode>> {
         self.get_mut(self.root)
     }
 
+    /// Returns an iterator of the WZ content. The order of the data is not guaranteed. It is also
+    /// possible some of the content has been detached from the WZ file structure.
     pub fn iter(&self) -> impl Iterator<Item = &Node<WzNode>> {
         self.arena.iter()
     }
 
+    /// Traverses the WZ content depth-first
     pub fn traverse(&self) -> Traverse<'_, WzNode> {
         self.root.traverse(&self.arena)
     }
 
+    /// Returns a Node of the WZ tree structure given the NodeId
     pub fn get(&self, index: NodeId) -> Option<&Node<WzNode>> {
         self.arena.get(index)
     }
 
+    /// Returns a mutable Node of the WZ tree structure given the NodeId
     pub fn get_mut(&mut self, index: NodeId) -> Option<&mut Node<WzNode>> {
         self.arena.get_mut(index)
     }
 
+    /// Given a Node, returns the NodeId
     pub fn get_node_id(&self, object: &Node<WzNode>) -> Option<NodeId> {
         self.arena.get_node_id(object)
     }
 
+    /// Return the directory path of the NodeId
     pub fn to_path(&self, index: NodeId) -> WzResult<String> {
         let ancestors: Vec<NodeId> = index.ancestors(&self.arena).collect();
         let path: Vec<&str> = ancestors
@@ -123,6 +142,7 @@ impl WzFile {
         Ok(path.join("/"))
     }
 
+    /// Return a Node given the directory path
     pub fn get_from_path(&self, path: &str) -> Option<&Node<WzNode>> {
         let path: Vec<&str> = path.split('/').collect();
         // Don't bother if the first node isn't right
@@ -136,6 +156,7 @@ impl WzFile {
         }
     }
 
+    /// Return a mutable Node given the directory path
     pub fn get_from_path_mut(&mut self, path: &str) -> Option<&mut Node<WzNode>> {
         let path: Vec<&str> = path.split('/').collect();
         // Don't both if the first node isn't right
@@ -158,6 +179,7 @@ impl WzFile {
             _ => return Err(WzError::from(WzErrorType::InvalidDir)),
         };
         if !node.get().is_directory() {
+            // The NodeId references an Image
             return Err(WzError::from(WzErrorType::InvalidDir));
         }
 
@@ -187,7 +209,7 @@ impl WzFile {
                     let _ = i32::from_le_bytes(reader.read_word()?);
                     todo!("Grab name from other location")
                 }
-                // Directory
+                // Directory or Image
                 3 | 4 => reader.read_wz_string()?,
                 _ => {
                     return Err(WzError::from(WzErrorType::InvalidType));
@@ -201,6 +223,7 @@ impl WzFile {
                 match item_type {
                     3 => WzNodeType::Directory,
                     4 => WzNodeType::Image,
+                    // Should not happen
                     _ => return Err(WzError::from(WzErrorType::Unknown)),
                 },
                 &child_name,
@@ -216,7 +239,7 @@ impl WzFile {
         Ok(())
     }
 
-    // Searches the tree recursively and returns Option<usize> of the index it finds
+    // Searches the tree recursively and returns Option<NodeId> of the index it finds
     fn get_path_internal(
         &self,
         path: &Vec<&str>,
@@ -242,39 +265,9 @@ impl WzFile {
                 found = Some(c);
             }
         }
-
-        // Return
         match found {
             Some(next_index) => self.get_path_internal(path, search_index + 1, next_index),
             None => None,
         }
-
-        /*
-        // Collect the index of all the children
-        let children: Vec<WzNodeRef> = match self.objects.get(obj_index) {
-        Some(WzNodeType::Directory(dir)) => dir.children().collect(),
-        _ => return None,
-        };
-
-        // Search for the correct child
-        let mut found = None;
-        for child_index in children {
-        let name = match self.objects.get(child_index.index) {
-        Some(WzNodeType::Directory(dir)) => dir.name(),
-        Some(WzNodeType::Image(img)) => img.name(),
-        None => continue,
-        };
-        if name == search {
-        found = Some(child_index.index);
-        break;
-        }
-        }
-
-        // Return if found or not
-        match found {
-        Some(i) => self.get_path_internal(path, search_index + 1, i),
-        None => None,
-        }
-        */
     }
 }
