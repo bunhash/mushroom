@@ -1,7 +1,7 @@
 use crate::{WzError, WzErrorType, WzHeader, WzNode, WzNodeType, WzRead, WzResult};
 use crypto::checksum;
 use indextree::{Ancestors, Arena, Children, Node, NodeId, Traverse};
-use std::{io::SeekFrom, slice::Iter};
+use std::io::SeekFrom;
 
 /// A structure representing a WZ file
 pub struct WzFile {

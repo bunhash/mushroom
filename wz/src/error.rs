@@ -14,6 +14,7 @@ pub enum WzErrorType {
     InvalidPath,
     InvalidType,
     InvalidImg,
+    InvalidImgObj,
     InvalidProp,
     Unknown,
 }
@@ -26,6 +27,7 @@ impl fmt::Display for WzErrorType {
             WzErrorType::InvalidPath => write!(f, "Invalid node reference or corrupted tree"),
             WzErrorType::InvalidType => write!(f, "Invalid WZ object type"),
             WzErrorType::InvalidImg => write!(f, "Invalid WZ image"),
+            WzErrorType::InvalidImgObj => write!(f, "Invalid WZ image object"),
             WzErrorType::InvalidProp => write!(f, "Invalid WZ property"),
             WzErrorType::Unknown => write!(f, "Unexpected error occurred"),
         }

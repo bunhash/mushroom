@@ -1,10 +1,6 @@
-use crate::{WzError, WzErrorType, WzHeader, WzNode, WzObject, WzProperty, WzRead, WzResult};
+use crate::{WzError, WzErrorType, WzNode, WzObject, WzProperty, WzRead, WzResult};
 use indextree::{Ancestors, Arena, Children, Node, NodeId, Traverse};
 use std::{convert::TryFrom, io::SeekFrom, slice::Iter};
-
-const LUA: u8 = 0x1;
-const WITHOUT_OFFSET: u8 = 0x73;
-const WITH_OFFSET: u8 = 0x1B;
 
 /// A structure representing a WZ image
 pub struct WzImage {
@@ -43,25 +39,9 @@ impl WzImage {
             };
             reader.seek(SeekFrom::Start(offset))?;
 
-            // Read the header byte
-            let header = reader.read_byte()?;
-            match header {
-                LUA => {}
-                WITHOUT_OFFSET => {
-                    let prop = reader.read_wz_string()?;
-                    let val = u16::from_le_bytes(reader.read_short()?);
-                    if prop != "Property" || val != 0 {
-                        return Err(WzError::from(WzErrorType::InvalidImg));
-                    }
-                }
-                _ => return Err(WzError::from(WzErrorType::InvalidImg)),
-            }
-
-            // Load the properties
-            let num_properties = reader.read_wz_int()?;
-            for i in 0..num_properties {
-                let obj = self.load_property(offset, reader)?;
-            }
+            let name = self.name.clone();
+            let type_name = reader.read_wz_uol(offset)?;
+            self.load_object(&name, &type_name, offset, reader)?;
 
             // Mark parsed
             self.loaded = true;
@@ -108,46 +88,73 @@ impl WzImage {
 }
 
 impl WzImage {
-    fn load_property(&mut self, offset: u64, reader: &mut dyn WzRead) -> WzResult<WzObject> {
-        let name = reader.read_wz_uol(offset)?;
-        let prop_type = reader.read_byte()?;
-        Ok(match prop_type {
-            0 => WzObject::Property(WzProperty::Null),
-            2 | 11 => {
-                let val = i16::from_le_bytes(reader.read_short()?);
-                WzObject::Property(WzProperty::Short(val))
-            }
-            3 | 19 => {
-                let val = reader.read_wz_int()?;
-                WzObject::Property(WzProperty::Int(val))
-            }
-            20 => {
-                let val = reader.read_wz_long()?;
-                WzObject::Property(WzProperty::Long(val))
-            }
-            4 => {
-                let t = reader.read_byte()?;
-                WzObject::Property(WzProperty::Float(match t {
-                    0 => 0.0,
-                    0x80 => f32::from_le_bytes(reader.read_word()?),
-                    _ => return Err(WzError::from(WzErrorType::InvalidProp)),
-                }))
-            }
-            5 => {
-                let val = f64::from_le_bytes(reader.read_long()?);
-                WzObject::Property(WzProperty::Double(val))
-            }
-            8 => {
-                let val = reader.read_wz_uol(offset)?;
-                WzObject::Property(WzProperty::String(val))
-            }
-            9 => self.load_extended_property(reader)?,
-            _ => return Err(WzError::from(WzErrorType::InvalidProp)),
-        })
+    fn load_object(
+        &mut self,
+        name: &str,
+        type_name: &str,
+        offset: u64,
+        reader: &mut dyn WzRead,
+    ) -> WzResult<()> {
+        match type_name {
+            "Property" => self.load_property(offset, reader)?,
+            "Canvas" => {}
+            "Shape2D#Convex2D" => {}
+            "Shape2D#Vector2D" => {}
+            "UOL" => {}
+            "Sound_DX8" => {}
+            _ => return Err(WzError::from(WzErrorType::InvalidImgObj)),
+        }
+        Ok(())
     }
 
-    fn load_extended_property(&mut self, reader: &mut dyn WzRead) -> WzResult<WzObject> {
-        Ok(WzObject::Property(WzProperty::Extended))
+    fn load_property(&mut self, offset: u64, reader: &mut dyn WzRead) -> WzResult<()> {
+        let _ = reader.read_short()?; // ???
+        let num_properties = reader.read_wz_int()?;
+
+        for i in 0..num_properties {
+            let name = reader.read_wz_uol(offset)?;
+            let prop_type = reader.read_byte()?;
+            match prop_type {
+                0 => {
+                    let _obj = WzObject::Property(WzProperty::Null);
+                }
+                2 | 11 => {
+                    let val = i16::from_le_bytes(reader.read_short()?);
+                    let _obj = WzObject::Property(WzProperty::Short(val));
+                }
+                3 | 19 => {
+                    let val = reader.read_wz_int()?;
+                    let _obj = WzObject::Property(WzProperty::Int(val));
+                }
+                20 => {
+                    let val = reader.read_wz_long()?;
+                    let _obj = WzObject::Property(WzProperty::Long(val));
+                }
+                4 => {
+                    let t = reader.read_byte()?;
+                    let _obj = WzObject::Property(WzProperty::Float(match t {
+                        0 => 0.0,
+                        0x80 => f32::from_le_bytes(reader.read_word()?),
+                        _ => return Err(WzError::from(WzErrorType::InvalidProp)),
+                    }));
+                }
+                5 => {
+                    let val = f64::from_le_bytes(reader.read_long()?);
+                    let _obj = WzObject::Property(WzProperty::Double(val));
+                }
+                8 => {
+                    let val = reader.read_wz_uol(offset)?;
+                    let _obj = WzObject::Property(WzProperty::String(val));
+                }
+                9 => {
+                    let _size = i32::from_le_bytes(reader.read_word()?);
+                    let type_name = reader.read_wz_uol(offset)?;
+                    self.load_object(&name, &type_name, offset, reader)?
+                }
+                _ => return Err(WzError::from(WzErrorType::InvalidProp)),
+            }
+        }
+        Ok(())
     }
 }
 
