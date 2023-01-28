@@ -63,7 +63,7 @@ pub use reader::{WzEncryptedReader, WzRead, WzReader};
 #[cfg(test)]
 mod tests {
 
-    use crate::{WzEncryptedReader, WzFile, WzNodeType, WzReader};
+    use crate::{WzEncryptedReader, WzFile, WzImage, WzNodeType, WzReader};
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
 
     fn open_v83(filename: &str, name: &str) -> WzFile {
@@ -72,9 +72,20 @@ mod tests {
         WzFile::from_reader(name, &mut reader).unwrap()
     }
 
+    fn open_v83_img(filename: &str, name: &str) -> WzImage {
+        let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
+        let mut reader = WzEncryptedReader::open(filename, &system).unwrap();
+        WzImage::from_reader(name, &mut reader).unwrap()
+    }
+
     fn open_v172(filename: &str, name: &str) -> WzFile {
         let mut reader = WzReader::open(filename).unwrap();
         WzFile::from_reader(name, &mut reader).unwrap()
+    }
+
+    fn open_v172_img(filename: &str, name: &str) -> WzImage {
+        let mut reader = WzReader::open(filename).unwrap();
+        WzImage::from_reader(name, &mut reader).unwrap()
     }
 
     #[test]
@@ -367,5 +378,25 @@ mod tests {
         let wz = open_v172("testdata/v172-string.wz", "String");
         assert_eq!(wz.get_from_path("Fail/TestEULA.img"), None);
         assert_eq!(wz.get_from_path("String/Fail.img"), None);
+    }
+
+    #[test]
+    fn open_v83_img_weapon() {
+        let img = open_v83_img("testdata/v83-weapon.img", "Weapon");
+    }
+
+    #[test]
+    fn open_v83_img_tamingmob() {
+        let img = open_v83_img("testdata/v83-tamingmob.img", "TamingMob");
+    }
+
+    #[test]
+    fn open_v172_img_weapon() {
+        let img = open_v172_img("testdata/v172-weapon.img", "Weapon");
+    }
+
+    #[test]
+    fn open_v172_img_tamingmob() {
+        let img = open_v172_img("testdata/v172-tamingmob.img", "TamingMob");
     }
 }
