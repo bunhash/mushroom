@@ -57,13 +57,16 @@ pub use header::WzHeader;
 pub use image::WzImage;
 pub use indextree;
 pub use node::{WzNode, WzNodeType};
-pub use object::{WzObject, WzProperty};
+pub use object::{WzObject, WzObjectValue, WzProperty};
 pub use reader::{WzEncryptedReader, WzRead, WzReader};
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{WzEncryptedReader, WzFile, WzImage, WzNodeType, WzReader};
+    use crate::{
+        WzEncryptedReader, WzFile, WzImage, WzObjectValue, WzProperty,
+        WzReader,
+    };
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
 
     fn open_v83(filename: &str, name: &str) -> WzFile {
@@ -383,20 +386,167 @@ mod tests {
     #[test]
     fn open_v83_img_weapon() {
         let img = open_v83_img("testdata/v83-weapon.img", "Weapon");
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "Weapon");
+        assert_eq!(img.arena().count(), 177);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "Weapon",
+                "info",
+                "icon",
+                "iconRaw",
+                "islot",
+                "vslot",
+                "walk",
+                "stand",
+                "attack",
+                "afterImage"
+            ]
+        );
     }
 
     #[test]
     fn open_v83_img_tamingmob() {
         let img = open_v83_img("testdata/v83-tamingmob.img", "TamingMob");
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "TamingMob");
+        assert_eq!(img.arena().count(), 110);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "TamingMob",
+                "info",
+                "icon",
+                "iconRaw",
+                "islot",
+                "vslot",
+                "reqJob",
+                "reqLevel",
+                "tuc",
+                "tamingMob"
+            ]
+        );
+    }
+
+    #[test]
+    fn open_v83_wz_string_cash() {
+        let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
+        let mut reader = WzEncryptedReader::open("testdata/v83-string.wz", &system).unwrap();
+        let wz = WzFile::from_reader("String", &mut reader).unwrap();
+        let node = wz.get_from_path("String/Cash.img").unwrap();
+        let mut img = WzImage::try_from(node.get()).unwrap();
+        img.load(&mut reader).unwrap();
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "Cash.img");
+        assert_eq!(img.arena().count(), 1505);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "Cash.img", "5010000", "name", "desc", "5010001", "name", "desc", "5010002",
+                "name", "desc"
+            ]
+        );
     }
 
     #[test]
     fn open_v172_img_weapon() {
         let img = open_v172_img("testdata/v172-weapon.img", "Weapon");
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "Weapon");
+        assert_eq!(img.arena().count(), 265);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "Weapon",
+                "info",
+                "icon",
+                "iconRaw",
+                "islot",
+                "vslot",
+                "walk",
+                "stand",
+                "attack",
+                "afterImage"
+            ]
+        );
     }
 
     #[test]
     fn open_v172_img_tamingmob() {
         let img = open_v172_img("testdata/v172-tamingmob.img", "TamingMob");
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "TamingMob");
+        assert_eq!(img.arena().count(), 110);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "TamingMob",
+                "info",
+                "icon",
+                "iconRaw",
+                "islot",
+                "vslot",
+                "reqJob",
+                "reqLevel",
+                "tuc",
+                "tamingMob"
+            ]
+        );
+    }
+
+    #[test]
+    fn open_v172_wz_string_cash() {
+        let mut reader = WzReader::open("testdata/v172-string.wz").unwrap();
+        let wz = WzFile::from_reader("String", &mut reader).unwrap();
+        let node = wz.get_from_path("String/Cash.img").unwrap();
+        let mut img = WzImage::try_from(node.get()).unwrap();
+        img.load(&mut reader).unwrap();
+        let root = img.root().unwrap().get();
+        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
+        assert_eq!(root.name(), "Cash.img");
+        assert_eq!(img.arena().count(), 6998);
+
+        // Cycle through all of the contents
+        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+
+        // Assert the contents
+        assert_eq!(
+            objects[0..10],
+            [
+                "Cash.img", "5010000", "name", "desc", "5010001", "name", "desc", "5010002",
+                "name", "desc"
+            ]
+        );
     }
 }

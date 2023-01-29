@@ -1,6 +1,6 @@
-use crate::{WzError, WzErrorType, WzNode, WzObject, WzProperty, WzRead, WzResult};
-use indextree::{Ancestors, Arena, Children, Node, NodeId, Traverse};
-use std::{convert::TryFrom, io::SeekFrom, slice::Iter};
+use crate::{WzError, WzErrorType, WzNode, WzObject, WzObjectValue, WzProperty, WzRead, WzResult};
+use indextree::{Arena, Node, NodeId, Traverse};
+use std::{convert::TryFrom, io::SeekFrom};
 
 /// A structure representing a WZ image
 pub struct WzImage {
@@ -17,7 +17,10 @@ impl WzImage {
     /// Creates an empty WzFile with the provided name and version
     pub fn new(name: &str) -> Self {
         let mut arena = Arena::new();
-        let root = arena.new_node(WzObject::Directory);
+        let root = arena.new_node(WzObject::new(
+            name,
+            WzObjectValue::Property(WzProperty::Variant),
+        ));
         WzImage {
             name: String::from(name),
             size: 0,
@@ -42,9 +45,7 @@ impl WzImage {
             // Go to offset
             reader.seek(SeekFrom::Start(self.offset))?;
 
-            let name = self.name.clone();
-            let type_name = reader.read_wz_uol(self.offset)?;
-            self.load_object(&name, &type_name, self.offset, reader)?;
+            self.load_object(self.root, self.offset, reader)?;
 
             // Mark parsed
             self.loaded = true;
@@ -56,7 +57,10 @@ impl WzImage {
     pub fn unload(&mut self) -> WzResult<()> {
         if self.loaded {
             let mut arena = Arena::new();
-            let root = arena.new_node(WzObject::Directory);
+            let root = arena.new_node(WzObject::new(
+                self.name.as_str(),
+                WzObjectValue::Property(WzProperty::Variant),
+            ));
             self.arena = arena;
             self.root = root;
             self.loaded = false;
@@ -88,18 +92,54 @@ impl WzImage {
     pub fn arena(&self) -> &Arena<WzObject> {
         &self.arena
     }
+
+    /// Returns True if the image has been loaded
+    pub fn is_loaded(&self) -> bool {
+        self.loaded
+    }
+
+    /// Returns a reference to the root "Variant" of the WZ image
+    pub fn root(&self) -> Option<&Node<WzObject>> {
+        self.get(self.root)
+    }
+
+    /// Returns a mutable reference to the root "Variant" of the WZ image
+    pub fn root_mut(&mut self) -> Option<&mut Node<WzObject>> {
+        self.get_mut(self.root)
+    }
+
+    /// Returns an iterator of the WZ content. The order of the data is not guaranteed. It is also
+    /// possible some of the content has been detached from the WZ image structure.
+    pub fn iter(&self) -> impl Iterator<Item = &Node<WzObject>> {
+        self.arena.iter()
+    }
+
+    /// Traverses the WZ content depth-first
+    pub fn traverse(&self) -> Traverse<'_, WzObject> {
+        self.root.traverse(&self.arena)
+    }
+
+    /// Returns a Node of the WZ tree structure given the NodeId
+    pub fn get(&self, index: NodeId) -> Option<&Node<WzObject>> {
+        self.arena.get(index)
+    }
+
+    /// Returns a mutable Node of the WZ tree structure given the NodeId
+    pub fn get_mut(&mut self, index: NodeId) -> Option<&mut Node<WzObject>> {
+        self.arena.get_mut(index)
+    }
+
+    /// Given a Node, returns the NodeId
+    pub fn get_node_id(&self, object: &Node<WzObject>) -> Option<NodeId> {
+        self.arena.get_node_id(object)
+    }
 }
 
 impl WzImage {
-    fn load_object(
-        &mut self,
-        name: &str,
-        type_name: &str,
-        offset: u64,
-        reader: &mut dyn WzRead,
-    ) -> WzResult<()> {
-        match type_name {
-            "Property" => self.load_property(offset, reader)?,
+    fn load_object(&mut self, index: NodeId, offset: u64, reader: &mut dyn WzRead) -> WzResult<()> {
+        let type_name = reader.read_wz_uol(self.offset)?;
+        match type_name.as_str() {
+            "Property" => self.load_property(index, offset, reader)?,
             "Canvas" => {}
             "Shape2D#Convex2D" => {}
             "Shape2D#Vector2D" => {}
@@ -110,57 +150,64 @@ impl WzImage {
         Ok(())
     }
 
-    fn load_property(&mut self, offset: u64, reader: &mut dyn WzRead) -> WzResult<()> {
+    fn load_property(
+        &mut self,
+        index: NodeId,
+        offset: u64,
+        reader: &mut dyn WzRead,
+    ) -> WzResult<()> {
         let _ = reader.read_short()?; // ???
         let num_properties = reader.read_wz_int()?;
-        println!("{:?}", num_properties);
 
-        for i in 0..num_properties {
+        for _ in 0..num_properties {
             let name = reader.read_wz_uol(offset)?;
+            println!("{}", name);
             let prop_type = reader.read_byte()?;
-            match prop_type {
-                0 => {
-                    let _obj = WzObject::Property(WzProperty::Null);
-                }
+            let prop = match prop_type {
+                0 => WzProperty::Null,
                 2 | 11 => {
                     let val = i16::from_le_bytes(reader.read_short()?);
-                    let _obj = WzObject::Property(WzProperty::Short(val));
+                    WzProperty::Short(val)
                 }
                 3 | 19 => {
                     let val = reader.read_wz_int()?;
-                    let _obj = WzObject::Property(WzProperty::Int(val));
+                    WzProperty::Int(val)
                 }
                 20 => {
                     let val = reader.read_wz_long()?;
-                    let _obj = WzObject::Property(WzProperty::Long(val));
+                    WzProperty::Long(val)
                 }
                 4 => {
                     let t = reader.read_byte()?;
-                    let _obj = WzObject::Property(WzProperty::Float(match t {
+                    WzProperty::Float(match t {
                         0x80 => f32::from_le_bytes(reader.read_word()?),
                         _ => 0.0,
-                    }));
+                    })
                 }
                 5 => {
                     let val = f64::from_le_bytes(reader.read_long()?);
-                    let _obj = WzObject::Property(WzProperty::Double(val));
+                    WzProperty::Double(val)
                 }
                 8 => {
                     let val = reader.read_wz_uol(offset)?;
-                    let _obj = WzObject::Property(WzProperty::String(val));
+                    WzProperty::String(val)
                 }
-                9 => {
-                    let size = u32::from_le_bytes(reader.read_word()?) as u64;
-                    let block_end = reader.stream_position()? + size;
-                    let type_name = reader.read_wz_uol(offset)?;
-                    let _obj = self.load_object(&name, &type_name, offset, reader)?;
-                    if reader.stream_position()? != block_end {
-                        reader.seek(SeekFrom::Start(block_end))?;
-                    }
-                }
-                _ => {
-                    println!("{:?}", prop_type);
-                    return Err(WzError::from(WzErrorType::InvalidProp));
+                9 => WzProperty::Variant,
+                _ => return Err(WzError::from(WzErrorType::InvalidProp)),
+            };
+
+            let child_index = self
+                .arena
+                .new_node(WzObject::new(name.as_str(), WzObjectValue::Property(prop)));
+            index.append(child_index, &mut self.arena);
+
+            if prop_type == 9 {
+                // Variant
+                let size = u32::from_le_bytes(reader.read_word()?) as u64;
+                let block_end = reader.stream_position()? + size;
+                self.load_object(child_index, offset, reader)?;
+                if reader.stream_position()? != block_end {
+                    reader.seek(SeekFrom::Start(block_end))?;
                 }
             }
         }
@@ -176,7 +223,38 @@ impl TryFrom<WzNode> for WzImage {
             return Err(WzError::from(WzErrorType::InvalidImg));
         }
         let mut arena = Arena::new();
-        let root = arena.new_node(WzObject::Directory);
+        let root = arena.new_node(WzObject::new(
+            value.name(),
+            WzObjectValue::Property(WzProperty::Variant),
+        ));
+        let offset = match value.offset() {
+            Some(o) => o,
+            None => return Err(WzError::from(WzErrorType::InvalidImg)),
+        };
+        Ok(WzImage {
+            name: String::from(value.name()),
+            size: value.size(),
+            checksum: value.checksum(),
+            offset: offset,
+            arena: arena,
+            root: root,
+            loaded: false,
+        })
+    }
+}
+
+impl TryFrom<&WzNode> for WzImage {
+    type Error = WzError;
+
+    fn try_from(value: &WzNode) -> Result<Self, Self::Error> {
+        if !value.is_image() {
+            return Err(WzError::from(WzErrorType::InvalidImg));
+        }
+        let mut arena = Arena::new();
+        let root = arena.new_node(WzObject::new(
+            value.name(),
+            WzObjectValue::Property(WzProperty::Variant),
+        ));
         let offset = match value.offset() {
             Some(o) => o,
             None => return Err(WzError::from(WzErrorType::InvalidImg)),

@@ -77,10 +77,18 @@ impl WzRead for WzReader {
     fn read_ascii(&mut self, length: usize) -> WzResult<Vec<u8>> {
         let mut buf = Vec::with_capacity(length);
         self.read_nbytes(length, &mut buf)?;
-        for i in 0..buf.len() {
-            buf[i] = buf[i] ^ (0xaa + i as u8);
-        }
-        Ok(buf)
+        let mut mask = 0xaa;
+        Ok(buf
+            .iter()
+            .map(|b| {
+                let c = b ^ mask;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
+                c
+            })
+            .collect())
     }
 
     fn read_unicode(&mut self, length: usize) -> WzResult<Vec<u16>> {
@@ -93,7 +101,10 @@ impl WzRead for WzReader {
                 let wchar = (c[1] as u16) << 8;
                 let wchar = wchar | (c[0] as u16);
                 let wchar = wchar ^ mask;
-                mask = mask + 1;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
                 wchar
             })
             .collect())
@@ -142,6 +153,7 @@ impl WzRead for WzReader {
         let length = match check {
             i8::MAX => i32::from_le_bytes(self.read_word()?),
             i8::MIN => i32::from_le_bytes(self.read_word()?),
+            0 => return Ok(String::from("")),
             _ => (check as i32).wrapping_abs(),
         };
 
@@ -152,9 +164,9 @@ impl WzRead for WzReader {
 
         // Return the proper string
         Ok(if check < 0 {
-            String::from_utf8(self.read_ascii(length as usize)?)?
+            String::from_utf8_lossy(self.read_ascii(length as usize)?.as_slice()).to_string()
         } else {
-            String::from_utf16(&self.read_unicode(length as usize)?)?
+            String::from_utf16_lossy(&self.read_unicode(length as usize)?.as_slice()).to_string()
         })
     }
 
@@ -220,7 +232,7 @@ impl WzRead for WzReader {
         self.read_until(0, &mut buf)?;
         if let Some(b) = buf.pop() {
             if b == 0 {
-                return Ok(String::from_utf8(buf)?);
+                return Ok(String::from_utf8_lossy(buf.as_slice()).to_string());
             }
         }
         Err(io::Error::from(ErrorKind::UnexpectedEof).into())
@@ -278,7 +290,10 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
             .iter()
             .map(|b| {
                 let c = b ^ mask;
-                mask = mask + 1;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
                 c
             })
             .collect())
@@ -295,7 +310,10 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
                 let wchar = (c[1] as u16) << 8;
                 let wchar = wchar | (c[0] as u16);
                 let wchar = wchar ^ mask;
-                mask = mask + 1;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
                 wchar
             })
             .collect())
@@ -318,6 +336,7 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
         let length = match check {
             i8::MAX => i32::from_le_bytes(self.read_word()?),
             i8::MIN => i32::from_le_bytes(self.read_word()?),
+            0 => return Ok(String::from("")),
             _ => (check as i32).wrapping_abs(),
         };
 
@@ -328,9 +347,9 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> WzRead for WzEncryptedReader<'a, B, S
 
         // Return the proper string
         Ok(if check < 0 {
-            String::from_utf8(self.read_ascii(length as usize)?)?
+            String::from_utf8_lossy(self.read_ascii(length as usize)?.as_slice()).to_string()
         } else {
-            String::from_utf16(&self.read_unicode(length as usize)?)?
+            String::from_utf16_lossy(&self.read_unicode(length as usize)?.as_slice()).to_string()
         })
     }
 
