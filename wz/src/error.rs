@@ -1,7 +1,4 @@
-use std::{
-    fmt, io,
-    string::{FromUtf16Error, FromUtf8Error},
-};
+use std::{fmt, io};
 
 /// Result used within the wz crate
 pub type WzResult<T> = Result<T, WzError>;
@@ -40,8 +37,6 @@ pub enum WzError {
     Wz(WzErrorType),
     Io(io::Error),
     Parse(String),
-    Utf8(FromUtf8Error),
-    Utf16(FromUtf16Error),
 }
 
 impl fmt::Display for WzError {
@@ -50,8 +45,6 @@ impl fmt::Display for WzError {
             WzError::Wz(err) => write!(f, "Wz: {}", err),
             WzError::Io(err) => write!(f, "Io: {}", err),
             WzError::Parse(err) => write!(f, "Parse: {}", err),
-            WzError::Utf8(err) => write!(f, "Utf8: {}", err),
-            WzError::Utf16(err) => write!(f, "Utf16: {}", err),
         }
     }
 }
@@ -68,5 +61,3 @@ macro_rules! FromError {
 FromError!(WzErrorType, Wz);
 FromError!(io::Error, Io);
 FromError!(String, Parse);
-FromError!(FromUtf8Error, Utf8);
-FromError!(FromUtf16Error, Utf16);
