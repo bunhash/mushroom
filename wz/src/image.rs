@@ -1,5 +1,7 @@
-use crate::{WzError, WzErrorType, WzNode, WzObject, WzObjectValue, WzProperty, WzRead, WzResult};
-use indextree::{Arena, Node, NodeId, Traverse};
+use crate::{
+    tree::{Arena, Node, NodeId, Traverse},
+    WzError, WzErrorType, WzNode, WzObject, WzObjectValue, WzProperty, WzRead, WzResult,
+};
 use std::{convert::TryFrom, io::SeekFrom};
 
 /// A structure representing a WZ image
@@ -163,46 +165,15 @@ impl WzImage {
             let name = reader.read_wz_uol(offset)?;
             println!("{}", name);
             let prop_type = reader.read_byte()?;
-            let prop = match prop_type {
-                0 => WzProperty::Null,
-                2 | 11 => {
-                    let val = i16::from_le_bytes(reader.read_short()?);
-                    WzProperty::Short(val)
-                }
-                3 | 19 => {
-                    let val = reader.read_wz_int()?;
-                    WzProperty::Int(val)
-                }
-                20 => {
-                    let val = reader.read_wz_long()?;
-                    WzProperty::Long(val)
-                }
-                4 => {
-                    let t = reader.read_byte()?;
-                    WzProperty::Float(match t {
-                        0x80 => f32::from_le_bytes(reader.read_word()?),
-                        _ => 0.0,
-                    })
-                }
-                5 => {
-                    let val = f64::from_le_bytes(reader.read_long()?);
-                    WzProperty::Double(val)
-                }
-                8 => {
-                    let val = reader.read_wz_uol(offset)?;
-                    WzProperty::String(val)
-                }
-                9 => WzProperty::Variant,
-                _ => return Err(WzError::from(WzErrorType::InvalidProp)),
-            };
+            let prop = WzProperty::from_reader(prop_type, offset, reader)?;
 
             let child_index = self
                 .arena
                 .new_node(WzObject::new(name.as_str(), WzObjectValue::Property(prop)));
             index.append(child_index, &mut self.arena);
 
+            // Variant
             if prop_type == 9 {
-                // Variant
                 let size = u32::from_le_bytes(reader.read_word()?) as u64;
                 let block_end = reader.stream_position()? + size;
                 self.load_object(child_index, offset, reader)?;
@@ -211,6 +182,10 @@ impl WzImage {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn load_canvas(&mut self, index: NodeId, offset: u64, reader: &mut dyn WzRead) -> WzResult<()> {
         Ok(())
     }
 }

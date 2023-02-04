@@ -1,23 +1,13 @@
+use crate::{WzCanvas, WzProperty, WzSound, WzVector};
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum WzObjectValue {
     Property(WzProperty),
-    Canvas,
+    Canvas(WzCanvas),
     ShapeConvex,
-    ShapeVector,
-    Uol,
-    Sound,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum WzProperty {
-    Null,
-    Short(i16),
-    Int(i32),
-    Float(f32),
-    Double(f64),
-    String(String),
-    Variant,
-    Long(i64),
+    ShapeVector(WzVector),
+    Uol(String),
+    Sound(WzSound),
 }
 
 #[derive(Clone, Debug, PartialEq)]

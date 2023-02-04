@@ -43,30 +43,35 @@
 //! );
 //! ```
 
+mod canvas;
 mod error;
 mod file;
 mod header;
 mod image;
 mod node;
 mod object;
+mod property;
 mod reader;
+mod sound;
+pub mod tree;
+mod vector;
 
+pub use canvas::WzCanvas;
 pub use error::{WzError, WzErrorType, WzResult};
 pub use file::WzFile;
 pub use header::WzHeader;
 pub use image::WzImage;
-pub use indextree;
 pub use node::{WzNode, WzNodeType};
-pub use object::{WzObject, WzObjectValue, WzProperty};
+pub use object::{WzObject, WzObjectValue};
+pub use property::WzProperty;
 pub use reader::{WzEncryptedReader, WzRead, WzReader};
+pub use sound::WzSound;
+pub use vector::WzVector;
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        WzEncryptedReader, WzFile, WzImage, WzObjectValue, WzProperty,
-        WzReader,
-    };
+    use crate::{WzEncryptedReader, WzFile, WzImage, WzObjectValue, WzProperty, WzReader};
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
 
     fn open_v83(filename: &str, name: &str) -> WzFile {
@@ -465,6 +470,8 @@ mod tests {
                 "name", "desc"
             ]
         );
+
+        img.unload().unwrap();
     }
 
     #[test]
@@ -548,5 +555,7 @@ mod tests {
                 "name", "desc"
             ]
         );
+
+        img.unload().unwrap();
     }
 }

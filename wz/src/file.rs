@@ -1,6 +1,8 @@
-use crate::{WzError, WzErrorType, WzHeader, WzNode, WzNodeType, WzRead, WzResult};
+use crate::{
+    tree::{Arena, Node, NodeId, Traverse},
+    WzError, WzErrorType, WzHeader, WzNode, WzNodeType, WzRead, WzResult,
+};
 use crypto::checksum;
-use indextree::{Arena, Node, NodeId, Traverse};
 use std::io::SeekFrom;
 
 /// A structure representing a WZ file
