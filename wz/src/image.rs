@@ -1,12 +1,9 @@
-use crate::{
-    tree::{Arena, Node, NodeId, Traverse},
-    WzError, WzErrorType, WzNode, WzObject, WzObjectValue, WzProperty, WzRead, WzResult,
-};
-use std::{convert::TryFrom, io::SeekFrom};
+use crate::{WzError, WzErrorType, WzNode, WzObject, WzProperty, WzRead, WzResult};
+use std::io::SeekFrom;
+use tree::{Arena, Node, NodeError, NodeId, Traverse};
 
 /// A structure representing a WZ image
 pub struct WzImage {
-    name: String,
     size: u64,
     checksum: Option<u32>,
     offset: u64,
@@ -19,12 +16,8 @@ impl WzImage {
     /// Creates an empty WzFile with the provided name and version
     pub fn new(name: &str) -> Self {
         let mut arena = Arena::new();
-        let root = arena.new_node(WzObject::new(
-            name,
-            WzObjectValue::Property(WzProperty::Variant),
-        ));
+        let root = arena.new_node(String::from(name), WzObject::Property(WzProperty::Variant));
         WzImage {
-            name: String::from(name),
             size: 0,
             checksum: None,
             offset: 0,
@@ -39,6 +32,27 @@ impl WzImage {
         let mut img = WzImage::new(name);
         img.load(reader)?;
         Ok(img)
+    }
+
+    /// Creates an Image from a WzNode
+    pub fn from_node(name: &str, node: &WzNode) -> WzResult<Self> {
+        if !node.is_image() {
+            return Err(WzError::from(WzErrorType::InvalidImg));
+        }
+        let mut arena = Arena::new();
+        let root = arena.new_node(String::from(name), WzObject::Property(WzProperty::Variant));
+        let offset = match node.offset() {
+            Some(o) => o,
+            None => return Err(WzError::from(WzErrorType::InvalidImg)),
+        };
+        Ok(WzImage {
+            size: node.size(),
+            checksum: node.checksum(),
+            offset: offset,
+            arena: arena,
+            root: root,
+            loaded: false,
+        })
     }
 
     /// Loads an image
@@ -58,21 +72,17 @@ impl WzImage {
     /// Unloads an image
     pub fn unload(&mut self) -> WzResult<()> {
         if self.loaded {
+            let name = match self.root.name(&self.arena) {
+                Some(n) => n,
+                None => return Err(WzError::from(NodeError::NotNamed)),
+            };
             let mut arena = Arena::new();
-            let root = arena.new_node(WzObject::new(
-                self.name.as_str(),
-                WzObjectValue::Property(WzProperty::Variant),
-            ));
+            let root = arena.new_node(String::from(name), WzObject::Property(WzProperty::Variant));
             self.arena = arena;
             self.root = root;
             self.loaded = false;
         }
         Ok(())
-    }
-
-    /// Returns the name of the WzImage
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     /// Returns the size of the WzImage
@@ -101,6 +111,16 @@ impl WzImage {
     }
 
     /// Returns a reference to the root "Variant" of the WZ image
+    pub fn root_id(&self) -> NodeId {
+        self.root
+    }
+
+    /// Returns a reference to the root "Variant" of the WZ image
+    pub fn root_name(&self) -> Option<&str> {
+        self.root.name(&self.arena)
+    }
+
+    /// Returns a reference to the root "Variant" of the WZ image
     pub fn root(&self) -> Option<&Node<WzObject>> {
         self.get(self.root)
     }
@@ -110,15 +130,9 @@ impl WzImage {
         self.get_mut(self.root)
     }
 
-    /// Returns an iterator of the WZ content. The order of the data is not guaranteed. It is also
-    /// possible some of the content has been detached from the WZ image structure.
-    pub fn iter(&self) -> impl Iterator<Item = &Node<WzObject>> {
-        self.arena.iter()
-    }
-
     /// Traverses the WZ content depth-first
     pub fn traverse(&self) -> Traverse<'_, WzObject> {
-        self.root.traverse(&self.arena)
+        self.root.depth_first(&self.arena)
     }
 
     /// Returns a Node of the WZ tree structure given the NodeId
@@ -163,14 +177,11 @@ impl WzImage {
 
         for _ in 0..num_properties {
             let name = reader.read_wz_uol(offset)?;
-            println!("{}", name);
             let prop_type = reader.read_byte()?;
             let prop = WzProperty::from_reader(prop_type, offset, reader)?;
 
-            let child_index = self
-                .arena
-                .new_node(WzObject::new(name.as_str(), WzObjectValue::Property(prop)));
-            index.append(child_index, &mut self.arena);
+            let child_index = self.arena.new_node(name, WzObject::Property(prop));
+            index.insert(child_index, &mut self.arena);
 
             // Variant
             if prop_type == 9 {
@@ -187,61 +198,5 @@ impl WzImage {
 
     fn load_canvas(&mut self, index: NodeId, offset: u64, reader: &mut dyn WzRead) -> WzResult<()> {
         Ok(())
-    }
-}
-
-impl TryFrom<WzNode> for WzImage {
-    type Error = WzError;
-
-    fn try_from(value: WzNode) -> Result<Self, Self::Error> {
-        if !value.is_image() {
-            return Err(WzError::from(WzErrorType::InvalidImg));
-        }
-        let mut arena = Arena::new();
-        let root = arena.new_node(WzObject::new(
-            value.name(),
-            WzObjectValue::Property(WzProperty::Variant),
-        ));
-        let offset = match value.offset() {
-            Some(o) => o,
-            None => return Err(WzError::from(WzErrorType::InvalidImg)),
-        };
-        Ok(WzImage {
-            name: String::from(value.name()),
-            size: value.size(),
-            checksum: value.checksum(),
-            offset: offset,
-            arena: arena,
-            root: root,
-            loaded: false,
-        })
-    }
-}
-
-impl TryFrom<&WzNode> for WzImage {
-    type Error = WzError;
-
-    fn try_from(value: &WzNode) -> Result<Self, Self::Error> {
-        if !value.is_image() {
-            return Err(WzError::from(WzErrorType::InvalidImg));
-        }
-        let mut arena = Arena::new();
-        let root = arena.new_node(WzObject::new(
-            value.name(),
-            WzObjectValue::Property(WzProperty::Variant),
-        ));
-        let offset = match value.offset() {
-            Some(o) => o,
-            None => return Err(WzError::from(WzErrorType::InvalidImg)),
-        };
-        Ok(WzImage {
-            name: String::from(value.name()),
-            size: value.size(),
-            checksum: value.checksum(),
-            offset: offset,
-            arena: arena,
-            root: root,
-            loaded: false,
-        })
     }
 }

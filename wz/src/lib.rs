@@ -10,35 +10,39 @@
 //! let wz = WzFile::from_reader("Base", &mut reader).unwrap();
 //!
 //! // Check the WzFile properties
-//! let root = wz.root().unwrap().get();
+//! let root = wz.root().unwrap().get().unwrap();
 //! assert!(root.is_directory());
-//! assert_eq!(root.name(), "Base");
+//! assert_eq!(wz.root_name(), Some("Base"));
 //! assert_eq!(wz.arena().count(), 19);
 //!
 //! // Cycle through all of the contents
-//! let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+//! let mut objects: Vec<&str> = wz
+//!     .root_id()
+//!     .children(wz.arena())
+//!     .map(|s| s.as_str())
+//!     .collect();
+//! objects.sort();
 //! assert_eq!(
 //!     objects,
 //!     [
-//!         "Base",
-//!         "smap.img",
-//!         "zmap.img",
-//!         "StandardPDD.img",
-//!         "UI",
-//!         "Effect",
-//!         "Sound",
-//!         "Map",
 //!         "Character",
-//!         "Item",
-//!         "TamingMob",
+//!         "Effect",
 //!         "Etc",
+//!         "Item",
+//!         "Map",
+//!         "Mob",
+//!         "Morph",
 //!         "Npc",
+//!         "Quest",
 //!         "Reactor",
 //!         "Skill",
-//!         "Morph",
+//!         "Sound",
+//!         "StandardPDD.img",
 //!         "String",
-//!         "Mob",
-//!         "Quest"
+//!         "TamingMob",
+//!         "UI",
+//!         "smap.img",
+//!         "zmap.img"
 //!     ]
 //! );
 //! ```
@@ -53,7 +57,6 @@ mod object;
 mod property;
 mod reader;
 mod sound;
-pub mod tree;
 mod vector;
 
 pub use canvas::WzCanvas;
@@ -62,7 +65,7 @@ pub use file::WzFile;
 pub use header::WzHeader;
 pub use image::WzImage;
 pub use node::{WzNode, WzNodeType};
-pub use object::{WzObject, WzObjectValue};
+pub use object::WzObject;
 pub use property::WzProperty;
 pub use reader::{WzEncryptedReader, WzRead, WzReader};
 pub use sound::WzSound;
@@ -71,7 +74,7 @@ pub use vector::WzVector;
 #[cfg(test)]
 mod tests {
 
-    use crate::{WzEncryptedReader, WzFile, WzImage, WzObjectValue, WzProperty, WzReader};
+    use crate::{WzEncryptedReader, WzFile, WzImage, WzObject, WzProperty, WzReader};
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
 
     fn open_v83(filename: &str, name: &str) -> WzFile {
@@ -115,37 +118,41 @@ mod tests {
         let wz = open_v83("testdata/v83-base.wz", "Base");
 
         // Check the WzFile properties
-        let root = wz.root().unwrap().get();
+        let root = wz.root().unwrap().get().unwrap();
         assert!(root.is_directory());
-        assert_eq!(root.name(), "Base");
+        assert_eq!(wz.root_name(), Some("Base"));
         assert_eq!(wz.arena().count(), 19);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = wz
+            .root_id()
+            .children(wz.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects,
             [
-                "Base",
-                "smap.img",
-                "zmap.img",
-                "StandardPDD.img",
-                "UI",
-                "Effect",
-                "Sound",
-                "Map",
                 "Character",
-                "Item",
-                "TamingMob",
+                "Effect",
                 "Etc",
+                "Item",
+                "Map",
+                "Mob",
+                "Morph",
                 "Npc",
+                "Quest",
                 "Reactor",
                 "Skill",
-                "Morph",
+                "Sound",
+                "StandardPDD.img",
                 "String",
-                "Mob",
-                "Quest"
+                "TamingMob",
+                "UI",
+                "smap.img",
+                "zmap.img"
             ]
         );
     }
@@ -154,9 +161,8 @@ mod tests {
     fn search_v83_wz_base() {
         let wz = open_v83("testdata/v83-base.wz", "Base");
         let node = wz.get_from_path("Base/zmap.img").unwrap();
-        let object = node.get();
+        let object = node.get().unwrap();
         assert!(!object.is_directory());
-        assert_eq!(object.name(), "zmap.img");
         let node_id = wz.get_node_id(node).unwrap();
         assert_eq!(wz.to_path(node_id).unwrap(), "Base/zmap.img");
     }
@@ -180,39 +186,43 @@ mod tests {
         let wz = open_v83("testdata/v83-string.wz", "String");
 
         // Check the WzFile properties
-        let root = wz.root().unwrap().get();
+        let root = wz.root().unwrap().get().unwrap();
         assert!(root.is_directory());
-        assert_eq!(root.name(), "String");
+        assert_eq!(wz.root_name(), Some("String"));
         assert_eq!(wz.arena().count(), 21);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = wz
+            .root_id()
+            .children(wz.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects,
             [
-                "String",
-                "GuestEULA.img",
-                "NameChange.img",
-                "Skill.img",
-                "GLcloneC.img",
-                "Mob.img",
-                "TestEULA.img",
-                "Map.img",
-                "TransferWorld.img",
-                "ToolTipHelp.img",
-                "EULA.img",
-                "PetDialog.img",
-                "TrialEULA.img",
-                "Npc.img",
-                "MonsterBook.img",
                 "Cash.img",
-                "Ins.img",
-                "Pet.img",
-                "Eqp.img",
                 "Consume.img",
-                "Etc.img"
+                "EULA.img",
+                "Eqp.img",
+                "Etc.img",
+                "GLcloneC.img",
+                "GuestEULA.img",
+                "Ins.img",
+                "Map.img",
+                "Mob.img",
+                "MonsterBook.img",
+                "NameChange.img",
+                "Npc.img",
+                "Pet.img",
+                "PetDialog.img",
+                "Skill.img",
+                "TestEULA.img",
+                "ToolTipHelp.img",
+                "TransferWorld.img",
+                "TrialEULA.img"
             ]
         );
     }
@@ -221,9 +231,8 @@ mod tests {
     fn search_v83_wz_string() {
         let wz = open_v83("testdata/v83-string.wz", "String");
         let node = wz.get_from_path("String/Cash.img").unwrap();
-        let object = node.get();
+        let object = node.get().unwrap();
         assert!(!object.is_directory());
-        assert_eq!(object.name(), "Cash.img");
         let node_id = wz.get_node_id(node).unwrap();
         assert_eq!(wz.to_path(node_id).unwrap(), "String/Cash.img");
     }
@@ -254,39 +263,43 @@ mod tests {
         let wz = open_v172("testdata/v172-base.wz", "Base");
 
         // Check the WzFile properties
-        let root = wz.root().unwrap().get();
+        let root = wz.root().unwrap().get().unwrap();
         assert!(root.is_directory());
-        assert_eq!(root.name(), "Base");
+        assert_eq!(wz.root_name(), Some("Base"));
         assert_eq!(wz.arena().count(), 21);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = wz
+            .root_id()
+            .children(wz.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects,
             [
-                "Base",
-                "zmap.img",
+                "Character",
+                "Effect",
+                "Etc",
+                "Item",
+                "Map",
+                "Map2",
+                "Mob",
+                "Mob2",
+                "Morph",
+                "Npc",
+                "Quest",
+                "Reactor",
+                "Skill",
+                "Sound",
                 "StandardPDD.img",
-                "smap.img",
                 "String",
                 "TamingMob",
-                "Item",
-                "Effect",
-                "Quest",
-                "Npc",
-                "Map2",
                 "UI",
-                "Morph",
-                "Map",
-                "Sound",
-                "Mob",
-                "Skill",
-                "Reactor",
-                "Character",
-                "Mob2",
-                "Etc"
+                "smap.img",
+                "zmap.img"
             ]
         );
     }
@@ -295,9 +308,8 @@ mod tests {
     fn search_v172_wz_base() {
         let wz = open_v172("testdata/v172-base.wz", "Base");
         let node = wz.get_from_path("Base/StandardPDD.img").unwrap();
-        let object = node.get();
+        let object = node.get().unwrap();
         assert!(!object.is_directory());
-        assert_eq!(object.name(), "StandardPDD.img");
         let node_id = wz.get_node_id(node).unwrap();
         assert_eq!(wz.to_path(node_id).unwrap(), "Base/StandardPDD.img");
     }
@@ -321,51 +333,55 @@ mod tests {
         let wz = open_v172("testdata/v172-string.wz", "String");
 
         // Check the WzFile properties
-        let root = wz.root().unwrap().get();
+        let root = wz.root().unwrap().get().unwrap();
         assert!(root.is_directory());
-        assert_eq!(root.name(), "String");
+        assert_eq!(wz.root_name(), Some("String"));
         assert_eq!(wz.arena().count(), 33);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = wz.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = wz
+            .root_id()
+            .children(wz.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects,
             [
-                "String",
-                "Ins.img",
-                "MonsterBook.img",
-                "Npc.img",
-                "EULA.img",
-                "Mob.img",
-                "WorldMap.img",
-                "Map.img",
-                "StarplanetGuide.img",
-                "TrialEULA.img",
-                "CommandGuide.img",
-                "AdventureLogbook.img",
-                "GLcloneC.img",
-                "GL_Award.img",
-                "Familiar.img",
-                "PetDialog.img",
-                "UI.img",
-                "Cash.img",
-                "Etc.img",
-                "FreudEvent.img",
-                "NameChange.img",
-                "Skill.img",
-                "TransferWorld.img",
-                "Pet.img",
-                "CashItemSearch.img",
-                "mirrorDungeon.img",
-                "TestEULA.img",
-                "MonString.img",
-                "GuestEULA.img",
                 "11thEvent.img",
-                "ToolTipHelp.img",
+                "AdventureLogbook.img",
+                "Cash.img",
+                "CashItemSearch.img",
+                "CommandGuide.img",
                 "Consume.img",
-                "Eqp.img"
+                "EULA.img",
+                "Eqp.img",
+                "Etc.img",
+                "Familiar.img",
+                "FreudEvent.img",
+                "GL_Award.img",
+                "GLcloneC.img",
+                "GuestEULA.img",
+                "Ins.img",
+                "Map.img",
+                "Mob.img",
+                "MonString.img",
+                "MonsterBook.img",
+                "NameChange.img",
+                "Npc.img",
+                "Pet.img",
+                "PetDialog.img",
+                "Skill.img",
+                "StarplanetGuide.img",
+                "TestEULA.img",
+                "ToolTipHelp.img",
+                "TransferWorld.img",
+                "TrialEULA.img",
+                "UI.img",
+                "WorldMap.img",
+                "mirrorDungeon.img"
             ]
         );
     }
@@ -374,9 +390,8 @@ mod tests {
     fn search_v172_wz_string() {
         let wz = open_v172("testdata/v172-string.wz", "String");
         let node = wz.get_from_path("String/TestEULA.img").unwrap();
-        let object = node.get();
+        let object = node.get().unwrap();
         assert!(!object.is_directory());
-        assert_eq!(object.name(), "TestEULA.img");
         let node_id = wz.get_node_id(node).unwrap();
         assert_eq!(wz.to_path(node_id).unwrap(), "String/TestEULA.img");
     }
@@ -391,28 +406,33 @@ mod tests {
     #[test]
     fn open_v83_img_weapon() {
         let img = open_v83_img("testdata/v83-weapon.img", "Weapon");
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "Weapon");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("Weapon"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 177);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "Weapon",
+                "alert",
+                "fly",
+                "heal",
                 "info",
-                "icon",
-                "iconRaw",
-                "islot",
-                "vslot",
-                "walk",
-                "stand",
-                "attack",
-                "afterImage"
+                "jump",
+                "prone",
+                "proneStab",
+                "stabO1",
+                "stabO2",
+                "stabOF"
             ]
         );
     }
@@ -420,28 +440,25 @@ mod tests {
     #[test]
     fn open_v83_img_tamingmob() {
         let img = open_v83_img("testdata/v83-tamingmob.img", "TamingMob");
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "TamingMob");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("TamingMob"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 110);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "TamingMob",
-                "info",
-                "icon",
-                "iconRaw",
-                "islot",
-                "vslot",
-                "reqJob",
-                "reqLevel",
-                "tuc",
-                "tamingMob"
+                "fly", "info", "jump", "ladder", "prone", "rope", "stand1", "stand2", "tired",
+                "walk1"
             ]
         );
     }
@@ -452,22 +469,27 @@ mod tests {
         let mut reader = WzEncryptedReader::open("testdata/v83-string.wz", &system).unwrap();
         let wz = WzFile::from_reader("String", &mut reader).unwrap();
         let node = wz.get_from_path("String/Cash.img").unwrap();
-        let mut img = WzImage::try_from(node.get()).unwrap();
+        let mut img = WzImage::from_node("Cash.img", node.get().unwrap()).unwrap();
         img.load(&mut reader).unwrap();
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "Cash.img");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("Cash.img"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 1505);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "Cash.img", "5010000", "name", "desc", "5010001", "name", "desc", "5010002",
-                "name", "desc"
+                "5010000", "5010001", "5010002", "5010003", "5010004", "5010005", "5010006",
+                "5010007", "5010008", "5010009"
             ]
         );
 
@@ -477,28 +499,33 @@ mod tests {
     #[test]
     fn open_v172_img_weapon() {
         let img = open_v172_img("testdata/v172-weapon.img", "Weapon");
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "Weapon");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("Weapon"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 265);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "Weapon",
+                "alert",
+                "fly",
+                "heal",
                 "info",
-                "icon",
-                "iconRaw",
-                "islot",
-                "vslot",
-                "walk",
-                "stand",
-                "attack",
-                "afterImage"
+                "jump",
+                "prone",
+                "proneStab",
+                "shoot1",
+                "shootF",
+                "stabO1"
             ]
         );
     }
@@ -506,28 +533,25 @@ mod tests {
     #[test]
     fn open_v172_img_tamingmob() {
         let img = open_v172_img("testdata/v172-tamingmob.img", "TamingMob");
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "TamingMob");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("TamingMob"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 110);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "TamingMob",
-                "info",
-                "icon",
-                "iconRaw",
-                "islot",
-                "vslot",
-                "reqJob",
-                "reqLevel",
-                "tuc",
-                "tamingMob"
+                "fly", "info", "jump", "ladder", "prone", "rope", "stand1", "stand2", "tired",
+                "walk1"
             ]
         );
     }
@@ -537,22 +561,27 @@ mod tests {
         let mut reader = WzReader::open("testdata/v172-string.wz").unwrap();
         let wz = WzFile::from_reader("String", &mut reader).unwrap();
         let node = wz.get_from_path("String/Cash.img").unwrap();
-        let mut img = WzImage::try_from(node.get()).unwrap();
+        let mut img = WzImage::from_node("Cash.img", node.get().unwrap()).unwrap();
         img.load(&mut reader).unwrap();
-        let root = img.root().unwrap().get();
-        assert_eq!(root.value(), &WzObjectValue::Property(WzProperty::Variant));
-        assert_eq!(root.name(), "Cash.img");
+        let root = img.root().unwrap().get().unwrap();
+        assert_eq!(img.root_name(), Some("Cash.img"));
+        assert_eq!(root, &WzObject::Property(WzProperty::Variant));
         assert_eq!(img.arena().count(), 6998);
 
         // Cycle through all of the contents
-        let objects: Vec<&str> = img.iter().map(|o| o.get().name()).collect();
+        let mut objects: Vec<&str> = img
+            .root_id()
+            .children(img.arena())
+            .map(|s| s.as_str())
+            .collect();
+        objects.sort();
 
         // Assert the contents
         assert_eq!(
             objects[0..10],
             [
-                "Cash.img", "5010000", "name", "desc", "5010001", "name", "desc", "5010002",
-                "name", "desc"
+                "5010000", "5010001", "5010002", "5010003", "5010004", "5010005", "5010006",
+                "5010007", "5010008", "5010009"
             ]
         );
 

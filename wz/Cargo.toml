@@ -9,5 +9,5 @@ path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
-indextree = "4.5.0"
+tree = { version = "0.1.0", path = "../tree" }
 crypto = { version = "0.1.0", path = "../crypto" }

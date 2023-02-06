@@ -1,6 +1,8 @@
 use crate::{node::NodeData, Ancestors, Arena, NodeError, NodeResult, Traverse, TraverseType};
-use std::collections::hash_map::{Iter, Keys};
-use std::fmt;
+use std::{
+    collections::hash_map::{Iter, Keys},
+    fmt,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// ID used to represent the node in the Arena
@@ -36,9 +38,11 @@ impl NodeId {
 
     /// Inserts the node as a child
     pub fn insert<T>(self, id: NodeId, arena: &mut Arena<T>) -> NodeResult<()> {
-        // TODO: Add more insert constraints
         if self.is_removed(arena) || id.is_removed(arena) {
             return Err(NodeError::Removed);
+        }
+        if !arena[id].parent.is_none() || !arena[id].children.is_empty() {
+            return Err(NodeError::InUse);
         }
         let name = match id.name(arena) {
             Some(n) => String::from(n),
@@ -78,22 +82,108 @@ impl NodeId {
         arena[self].iter()
     }
 
-    /// Iterator that traverses the ancestors
+    /// Iterator that traverses the ancestors (including itself)
+    ///
+    /// Example:
+    /// ```
+    /// use tree::Arena;
+    ///
+    /// let mut arena = Arena::new();
+    /// let root = arena.new_node(String::from("root"), 1);
+    /// let child1 = arena.new_node(String::from("child1"), 4);
+    /// root.insert(child1, &mut arena);
+    /// let child2 = arena.new_node(String::from("child2"), 3);
+    /// root.insert(child2, &mut arena);
+    /// let descendent1 = arena.new_node(String::from("descendent1"), 8);
+    /// child1.insert(descendent1, &mut arena);
+    ///
+    /// let ancestors: Vec<&str> = descendent1
+    ///     .ancestors(&arena)
+    ///     .map(|(name, _)| name.unwrap())
+    ///     .collect();
+    /// assert_eq!(["descendent1", "child1", "root"], ancestors[..]);
+    /// ```
     pub fn ancestors<'a, T>(self, arena: &'a Arena<T>) -> Ancestors<'a, T> {
         Ancestors::new(arena, self)
     }
 
-    /// Iterator that traverses the ancestors
+    /// Iterator that traverses the descendents (including itself) depth-first
+    ///
+    /// Example:
+    /// ```
+    /// use tree::Arena;
+    ///
+    /// let mut arena = Arena::new();
+    /// let root = arena.new_node(String::from("root"), 1);
+    /// let child1 = arena.new_node(String::from("child1"), 4);
+    /// root.insert(child1, &mut arena);
+    /// let child2 = arena.new_node(String::from("child2"), 3);
+    /// root.insert(child2, &mut arena);
+    /// let descendent1 = arena.new_node(String::from("descendent1"), 8);
+    /// child1.insert(descendent1, &mut arena);
+    ///
+    /// for (name, descendent) in root.descendents(&arena) {
+    ///     println!(
+    ///         "{}: {}",
+    ///         name.unwrap(),
+    ///         *arena.get(descendent).unwrap().get().unwrap()
+    ///     );
+    /// }
+    /// ```
     pub fn descendents<'a, T>(self, arena: &'a Arena<T>) -> Traverse<'a, T> {
         Traverse::new(arena, self, TraverseType::DepthFirst)
     }
 
-    /// Iterator that traverses the (sub)arena breadth-first
+    /// Iterator that traverses the descendents (including itself) breadth-first
+    ///
+    /// Example:
+    /// ```
+    /// use tree::Arena;
+    ///
+    /// let mut arena = Arena::new();
+    /// let root = arena.new_node(String::from("root"), 1);
+    /// let child1 = arena.new_node(String::from("child1"), 4);
+    /// root.insert(child1, &mut arena);
+    /// let child2 = arena.new_node(String::from("child2"), 3);
+    /// root.insert(child2, &mut arena);
+    /// let descendent1 = arena.new_node(String::from("descendent1"), 8);
+    /// child1.insert(descendent1, &mut arena);
+    ///
+    /// for (name, descendent) in root.breadth_first(&arena) {
+    ///     println!(
+    ///         "{}: {}",
+    ///         name.unwrap(),
+    ///         *arena.get(descendent).unwrap().get().unwrap()
+    ///     );
+    /// }
+    /// ```
     pub fn breadth_first<'a, T>(self, arena: &'a Arena<T>) -> Traverse<'a, T> {
         Traverse::new(arena, self, TraverseType::BreadthFirst)
     }
 
-    /// Iterator that traverses the (sub)arena depth-first
+    /// Iterator that traverses the descendents (including itself) depth-first
+    ///
+    /// Example:
+    /// ```
+    /// use tree::Arena;
+    ///
+    /// let mut arena = Arena::new();
+    /// let root = arena.new_node(String::from("root"), 1);
+    /// let child1 = arena.new_node(String::from("child1"), 4);
+    /// root.insert(child1, &mut arena);
+    /// let child2 = arena.new_node(String::from("child2"), 3);
+    /// root.insert(child2, &mut arena);
+    /// let descendent1 = arena.new_node(String::from("descendent1"), 8);
+    /// child1.insert(descendent1, &mut arena);
+    ///
+    /// for (name, descendent) in root.depth_first(&arena) {
+    ///     println!(
+    ///         "{}: {}",
+    ///         name.unwrap(),
+    ///         *arena.get(descendent).unwrap().get().unwrap()
+    ///     );
+    /// }
+    /// ```
     pub fn depth_first<'a, T>(self, arena: &'a Arena<T>) -> Traverse<'a, T> {
         Traverse::new(arena, self, TraverseType::DepthFirst)
     }

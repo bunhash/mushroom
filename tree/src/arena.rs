@@ -124,6 +124,11 @@ impl<T> Arena<T> {
         Some(NodeId::from_usize(index))
     }
 
+    /// Return an iterator over the nodes
+    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
+        self.nodes.iter()
+    }
+
     /// Clears the arena
     pub fn clear(&mut self) {
         self.nodes.clear();

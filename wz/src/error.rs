@@ -1,4 +1,5 @@
 use std::{fmt, io};
+use tree::NodeError;
 
 /// Result used within the wz crate
 pub type WzResult<T> = Result<T, WzError>;
@@ -37,6 +38,7 @@ pub enum WzError {
     Wz(WzErrorType),
     Io(io::Error),
     Parse(String),
+    Tree(NodeError),
 }
 
 impl fmt::Display for WzError {
@@ -45,6 +47,7 @@ impl fmt::Display for WzError {
             WzError::Wz(err) => write!(f, "Wz: {}", err),
             WzError::Io(err) => write!(f, "Io: {}", err),
             WzError::Parse(err) => write!(f, "Parse: {}", err),
+            WzError::Tree(err) => write!(f, "Tree: {}", err),
         }
     }
 }
@@ -61,3 +64,4 @@ macro_rules! FromError {
 FromError!(WzErrorType, Wz);
 FromError!(io::Error, Io);
 FromError!(String, Parse);
+FromError!(NodeError, Tree);

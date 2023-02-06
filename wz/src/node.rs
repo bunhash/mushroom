@@ -15,7 +15,6 @@ pub enum WzNodeType {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WzNode {
     node_type: WzNodeType,
-    name: String,
     size: u64,
     checksum: Option<u32>,
     offset: Option<u64>,
@@ -30,11 +29,6 @@ impl WzNode {
     /// Returns true if the WzNode is an image
     pub fn is_image(&self) -> bool {
         self.node_type == WzNodeType::Image
-    }
-
-    /// Returns the name of the WzNode
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     /// Returns the size of the WzNode
@@ -54,10 +48,9 @@ impl WzNode {
 }
 
 impl WzNode {
-    pub(crate) fn new(node_type: WzNodeType, name: &str) -> Self {
+    pub(crate) fn new(node_type: WzNodeType) -> Self {
         WzNode {
             node_type: node_type,
-            name: String::from(name),
             size: 0,
             checksum: None,
             offset: None,
@@ -66,14 +59,12 @@ impl WzNode {
 
     pub(crate) fn from_reader(
         node_type: WzNodeType,
-        name: &str,
         size: u64,
         checksum: u32,
         offset: u64,
         ) -> Self {
         WzNode {
             node_type: node_type,
-            name: String::from(name),
             size: size,
             offset: Some(offset),
             checksum: Some(checksum),
