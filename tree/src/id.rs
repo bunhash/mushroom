@@ -1,4 +1,8 @@
-use crate::{node::NodeData, Ancestors, Arena, NodeError, NodeResult, Traverse, TraverseType};
+use crate::{
+    error::{Error, Result},
+    node::NodeData,
+    Ancestors, Arena, Traverse, TraverseType,
+};
 use std::{
     collections::hash_map::{Iter, Keys},
     fmt,
@@ -37,16 +41,16 @@ impl NodeId {
     }
 
     /// Inserts the node as a child
-    pub fn insert<T>(self, id: NodeId, arena: &mut Arena<T>) -> NodeResult<()> {
+    pub fn insert<T>(self, id: NodeId, arena: &mut Arena<T>) -> Result<()> {
         if self.is_removed(arena) || id.is_removed(arena) {
-            return Err(NodeError::Removed);
+            return Err(Error::Removed);
         }
         if !arena[id].parent.is_none() || !arena[id].children.is_empty() {
-            return Err(NodeError::InUse);
+            return Err(Error::InUse);
         }
         let name = match id.name(arena) {
             Some(n) => String::from(n),
-            None => return Err(NodeError::NotNamed),
+            None => return Err(Error::NotNamed),
         };
         if let Some(old_child) = self.get_child(&name, arena) {
             old_child.remove(arena);

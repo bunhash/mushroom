@@ -1,4 +1,7 @@
-use crate::{NodeError, NodeId, NodeResult};
+use crate::{
+    error::{Error, Result},
+    NodeId,
+};
 use std::collections::{
     hash_map::{Iter, Keys},
     HashMap,
@@ -44,18 +47,18 @@ impl<T> Node<T> {
     }
 
     /// Returns a reference to the node data
-    pub fn get(&self) -> NodeResult<&T> {
+    pub fn get(&self) -> Result<&T> {
         match self.data {
             NodeData::Data(ref data) => Ok(data),
-            _ => Err(NodeError::Removed),
+            _ => Err(Error::Removed),
         }
     }
 
     /// Returns a mutable reference to the node data
-    pub fn get_mut(&mut self) -> NodeResult<&mut T> {
+    pub fn get_mut(&mut self) -> Result<&mut T> {
         match self.data {
             NodeData::Data(ref mut data) => Ok(data),
-            _ => Err(NodeError::Removed),
+            _ => Err(Error::Removed),
         }
     }
 
