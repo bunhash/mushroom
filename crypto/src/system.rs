@@ -43,7 +43,10 @@ pub type Block<B> = GenericArray<u8, B>;
 /// let mut block = system.prepare();
 /// system.process(&mut block);
 /// ```
-pub trait System<B: ArrayLength<u8>> {
+pub trait System<B>
+where
+    B: ArrayLength<u8>,
+{
     /// Prepares the initial input into the `System`
     fn prepare(&self) -> Block<B>;
 

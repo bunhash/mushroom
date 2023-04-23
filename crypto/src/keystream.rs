@@ -4,13 +4,21 @@ use std::slice::Iter;
 
 /// Represents a self-growing key stream
 #[derive(Clone, Debug, PartialEq)]
-pub struct KeyStream<'a, B: ArrayLength<u8>, S: System<B>> {
+pub struct KeyStream<'a, B, S>
+where
+    B: ArrayLength<u8>,
+    S: System<B>,
+{
     system: &'a S,
     stream: Vec<u8>,
     block: Block<B>,
 }
 
-impl<'a, B: ArrayLength<u8>, S: System<B>> KeyStream<'a, B, S> {
+impl<'a, B, S> KeyStream<'a, B, S>
+where
+    B: ArrayLength<u8>,
+    S: System<B>,
+{
     /// Creates a new `KeyStream` given a reference to a `System`
     pub fn new(system: &'a S) -> Self {
         KeyStream {
@@ -62,12 +70,12 @@ impl<'a, B: ArrayLength<u8>, S: System<B>> KeyStream<'a, B, S> {
         }
     }
 
-    /// Same functionality as `xor`
+    /// Encrypts the vector with the key stream
     pub fn encrypt(&mut self, input: &mut Vec<u8>) {
         self.xor(input);
     }
 
-    /// Same functionality as `xor`
+    /// Decrypts the vector with the key stream
     pub fn decrypt(&mut self, input: &mut Vec<u8>) {
         self.xor(input);
     }

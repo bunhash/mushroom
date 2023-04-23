@@ -1,0 +1,93 @@
+//! WZ Reader
+
+use crate::{error::Result, Metadata};
+use std::io::SeekFrom;
+
+mod encrypted;
+mod unencrypted;
+
+pub use self::{encrypted::EncryptedWzReader, unencrypted::WzReader};
+
+/// Trait for reading WZ files
+pub trait Reader: Sized {
+    /// Returns the metadata of the WZ file
+    fn metadata(&self) -> &Metadata;
+
+    /// Get the position within the input
+    fn position(&mut self) -> Result<u64>;
+
+    /// Seek to position
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+
+    /// Read into the buffer. Raises the underlying Read trait
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+
+    /// Attempts to read data borrowed from the buffer and updates the cursor position
+    fn read_slice(&mut self, len: usize) -> Result<&[u8]>;
+
+    /// Some versions of WZ files have encrypted strings. This function is used internally to
+    /// decrypt them. If the version of WZ file you are reading does not need to decrypt strings,
+    /// this function does not need to be implemented.
+    fn decrypt(&mut self, _bytes: &mut Vec<u8>) {}
+
+    /// Attemps to copy data from the buffer into the provided buffer
+    fn read_into(&mut self, buf: &mut [u8]) -> Result<()> {
+        let data = self.read_slice(buf.len())?;
+        buf.copy_from_slice(data);
+        Ok(())
+    }
+
+    /// Reads a single byte and updates the cursor position
+    fn read_byte(&mut self) -> Result<u8> {
+        let mut buf = [0];
+        self.read_into(&mut buf)?;
+        Ok(buf[0])
+    }
+
+    /// Attempts to read input into a byte vecotr
+    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
+        let mut data = vec![0u8; len];
+        self.read_into(&mut data)?;
+        Ok(data)
+    }
+
+    /// Reads a string as if it were utf8. This function does not do UTF-8 conversion but will read
+    /// the amount of bytes required to convert to utf8.
+    fn read_utf8_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
+        let mut buf = self.read_vec(len)?;
+        self.decrypt(&mut buf);
+        let mut mask = 0xaa;
+        Ok(buf
+            .iter()
+            .map(|b| {
+                let c = b ^ mask;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
+                c
+            })
+            .collect())
+    }
+
+    /// Reads a string as if it were unicode (or wchar). This function does not do unicode
+    /// conversion but will read the amount of bytes required to convert to unicode.
+    fn read_unicode_bytes(&mut self, len: usize) -> Result<Vec<u16>> {
+        let mut buf = self.read_vec(len * 2)?;
+        self.decrypt(&mut buf);
+        let mut mask: u16 = 0xaaaa;
+        Ok(buf
+            .chunks(2)
+            .map(|c| {
+                let wchar = (c[1] as u16) << 8;
+                let wchar = wchar | (c[0] as u16);
+                let wchar = wchar ^ mask;
+                mask = match mask.checked_add(1) {
+                    Some(v) => v,
+                    None => 0,
+                };
+                wchar
+            })
+            .collect())
+    }
+}
