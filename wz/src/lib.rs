@@ -6,6 +6,7 @@ mod macros;
 mod map;
 mod metadata;
 mod reader;
+mod writer;
 
 pub mod error;
 pub mod package;

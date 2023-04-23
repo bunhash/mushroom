@@ -72,8 +72,7 @@ pub trait Reader: Sized {
         Ok(buf
             .chunks(2)
             .map(|c| {
-                let wchar = (c[1] as u16) << 8;
-                let wchar = wchar | (c[0] as u16);
+                let wchar = u16::from_le_bytes([c[0], c[1]]);
                 let wchar = wchar ^ mask;
                 mask = match mask.checked_add(1) {
                     Some(v) => v,

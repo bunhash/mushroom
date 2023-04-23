@@ -2,9 +2,9 @@
 
 use crate::{error::Result, Reader};
 
-/// Trait for decoding objects that do not require metadata
+/// Trait for decoding objects
 pub trait Decode {
-    /// Decodes objects without file metadata
+    /// Decodes objects
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
         R: Reader,
