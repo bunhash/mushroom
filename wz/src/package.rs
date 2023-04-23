@@ -2,7 +2,8 @@
 
 use crate::{
     error::{Error, Result},
-    Decode, Reader, WzInt, WzOffset, WzString,
+    types::{WzInt, WzOffset, WzString},
+    Decode, Reader,
 };
 
 /// Possible `Content` types found in a `Package`
@@ -17,8 +18,8 @@ pub enum Content {
     /// Package or directory
     Package(ContentInfo),
 
-    /// Object - treat as a binary blob
-    Object(ContentInfo),
+    /// Image -- treat as a binary blob
+    Image(ContentInfo),
 }
 
 impl Decode for Content {
@@ -29,12 +30,12 @@ impl Decode for Content {
         match reader.read_byte()? {
             1 => {
                 let mut data = [0u8; 10];
-                reader.read_into(&mut data)?;
+                reader.read_exact(&mut data)?;
                 Ok(Content::Unknown(data))
             }
             2 => Ok(Content::Uol(i32::decode(reader)?)),
             3 => Ok(Content::Package(ContentInfo::decode(reader)?)),
-            4 => Ok(Content::Object(ContentInfo::decode(reader)?)),
+            4 => Ok(Content::Image(ContentInfo::decode(reader)?)),
             _ => Err(Error::InvalidContentType),
         }
     }
@@ -102,7 +103,10 @@ impl Decode for Package {
 #[cfg(test)]
 mod tests {
 
-    use crate::{Content, Decode, EncryptedWzReader, Package, WzReader};
+    use crate::{
+        package::{Content, Package},
+        Decode, EncryptedWzReader, WzReader,
+    };
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
     use std::fs::File;
 
@@ -120,7 +124,7 @@ mod tests {
             .iter()
             .map(|c| match c {
                 Content::Package(o) => o.name.as_ref(),
-                Content::Object(o) => o.name.as_ref(),
+                Content::Image(o) => o.name.as_ref(),
                 e => panic!("{:?}", e),
             })
             .collect::<Vec<&str>>();
@@ -160,7 +164,7 @@ mod tests {
             .iter()
             .map(|c| match c {
                 Content::Package(o) => o.name.as_ref(),
-                Content::Object(o) => o.name.as_ref(),
+                Content::Image(o) => o.name.as_ref(),
                 e => panic!("{:?}", e),
             })
             .collect::<Vec<&str>>();

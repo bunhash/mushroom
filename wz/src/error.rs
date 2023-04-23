@@ -9,8 +9,8 @@ pub enum Error {
     OffsetMissingParameters,
     InvalidContentType,
     InvalidLength(i32),
-    SliceTooBig(usize),
     Io(std::io::ErrorKind),
+    Tree(tree::error::Error),
     Utf8(std::string::FromUtf8Error),
     Unicode(std::string::FromUtf16Error),
 }
@@ -27,7 +27,7 @@ impl std::fmt::Display for Error {
             Error::InvalidContentType => write!(f, "Package ContentType is invalid"),
             Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
             Error::Io(kind) => write!(f, "IO: {}", kind),
-            Error::SliceTooBig(s) => write!(f, "Slice too big: `{}`", s),
+            Error::Tree(e) => write!(f, "Tree: {}", e),
             Error::Utf8(e) => write!(f, "UTF-8: {}", e),
             Error::Unicode(e) => write!(f, "Unicode: {}", e),
         }
@@ -37,6 +37,12 @@ impl std::fmt::Display for Error {
 impl From<std::io::Error> for Error {
     fn from(other: std::io::Error) -> Self {
         Error::Io(other.kind())
+    }
+}
+
+impl From<tree::error::Error> for Error {
+    fn from(other: tree::error::Error) -> Self {
+        Error::Tree(other)
     }
 }
 

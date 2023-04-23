@@ -22,32 +22,25 @@ pub trait Reader: Sized {
     /// Read into the buffer. Raises the underlying Read trait
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
 
-    /// Attempts to read data borrowed from the buffer and updates the cursor position
-    fn read_slice(&mut self, len: usize) -> Result<&[u8]>;
+    /// Read exact into buffer. Raises the underlying Read trait
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()>;
 
     /// Some versions of WZ files have encrypted strings. This function is used internally to
     /// decrypt them. If the version of WZ file you are reading does not need to decrypt strings,
     /// this function does not need to be implemented.
     fn decrypt(&mut self, _bytes: &mut Vec<u8>) {}
 
-    /// Attemps to copy data from the buffer into the provided buffer
-    fn read_into(&mut self, buf: &mut [u8]) -> Result<()> {
-        let data = self.read_slice(buf.len())?;
-        buf.copy_from_slice(data);
-        Ok(())
-    }
-
     /// Reads a single byte and updates the cursor position
     fn read_byte(&mut self) -> Result<u8> {
         let mut buf = [0];
-        self.read_into(&mut buf)?;
+        self.read_exact(&mut buf)?;
         Ok(buf[0])
     }
 
     /// Attempts to read input into a byte vecotr
     fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
         let mut data = vec![0u8; len];
-        self.read_into(&mut data)?;
+        self.read_exact(&mut data)?;
         Ok(data)
     }
 

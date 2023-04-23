@@ -2,7 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    CString,
+    types::CString,
 };
 use crypto::checksum;
 use std::io::Read;
@@ -24,6 +24,9 @@ pub struct Metadata {
     /// Description of the WZ package. Should be "Package file v1.0 Copyright 2002 Wizet, ZMS"
     pub description: CString,
 
+    /// Version of the WZ file
+    pub version: u16,
+
     /// Checksum of the WZ file version. The computation of this is defined in the [`crypto`]
     /// package.
     pub version_checksum: u32,
@@ -31,13 +34,14 @@ pub struct Metadata {
 
 impl Metadata {
     /// Creates new metadata with default values.
-    pub fn new(version: &str) -> Self {
-        let (_, version_checksum) = checksum(version);
+    pub fn new(version: u16) -> Self {
+        let (_, version_checksum) = checksum(&version.to_string());
         Self {
             identifier: [0x50, 0x4b, 0x47, 0x31],
             size: 0,
             absolute_position: 60,
             description: CString::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
+            version,
             version_checksum,
         }
     }
@@ -78,7 +82,7 @@ impl Metadata {
         let mut encrypted_version = [0u8; 2];
         buf.read_exact(&mut encrypted_version)?;
         let encrypted_version = u16::from_le_bytes(encrypted_version);
-        let version_checksum = Metadata::bruteforce_version(encrypted_version)?;
+        let (version, version_checksum) = Metadata::bruteforce_version(encrypted_version)?;
 
         // Cast the absolute position
         let absolute_position = absolute_position as u32;
@@ -88,15 +92,16 @@ impl Metadata {
             size,
             absolute_position,
             description,
+            version,
             version_checksum,
         })
     }
 
-    pub(crate) fn bruteforce_version(encrypted_version: u16) -> Result<u32> {
+    pub(crate) fn bruteforce_version(encrypted_version: u16) -> Result<(u16, u32)> {
         for version in 1..1000 {
             let (calc_version, version_checksum) = checksum(&version.to_string());
             if calc_version == encrypted_version {
-                return Ok(version_checksum);
+                return Ok((version, version_checksum));
             }
         }
         Err(Error::BruteForceChecksum)
@@ -110,7 +115,7 @@ mod tests {
     use std::fs::File;
 
     #[test]
-    fn read_v83_metadata() {
+    fn v83_metadata() {
         let reader = WzReader::new(File::open("testdata/v83-base.wz").expect("error opening file"))
             .expect("error making reader");
         let metadata = reader.metadata();
@@ -125,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn read_v172_metadata() {
+    fn v172_metadata() {
         let reader =
             WzReader::new(File::open("testdata/v172-base.wz").expect("error opening file"))
                 .expect("error making reader");

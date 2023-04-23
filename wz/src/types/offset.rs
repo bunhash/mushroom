@@ -1,11 +1,13 @@
 //! WZ Offset Structure
 
-use crate::{error::Result, Decode, Reader};
+use crate::{error::Result, impl_primitive, Decode, Reader};
 use core::num::Wrapping;
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzOffset(u32);
+
+impl_primitive!(WzOffset, u32);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information
