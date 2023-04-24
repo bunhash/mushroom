@@ -2,7 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    {Decode, Reader},
+    {Decode, Encode, Reader, Writer},
 };
 use core::ops::{Deref, DerefMut};
 
@@ -101,6 +101,16 @@ impl Decode for CString {
     }
 }
 
+impl Encode for CString {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(self.as_bytes())?;
+        writer.write_byte(0)
+    }
+}
+
 /// Defines a WZ-STRING structure and how to encode/decode it
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzString(String);
@@ -131,5 +141,45 @@ impl Decode for WzString {
             // Unicode
             String::from_utf16(reader.read_unicode_bytes(length as usize)?.as_slice())?
         }))
+    }
+}
+
+impl Encode for WzString {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        let length = self.0.len() as i32;
+
+        // If length is 0 just write 0 and be done with it
+        if length == 0 {
+            return writer.write_byte(0);
+        }
+
+        // If everything is ASCII, encode as UTF-8, else Unicode
+        if self.0.is_ascii() {
+            // Write the length
+            // length CAN equal i8::MAX here as the 2s compliment is not i8::MIN
+            if length > (i8::MAX as i32) {
+                writer.write_byte(i8::MIN as u8)?;
+                length.encode(writer)?;
+            } else {
+                writer.write_byte((-length) as u8)?;
+            }
+            // Write the string
+            writer.write_utf8_bytes(self.as_bytes())
+        } else {
+            // Write the length
+            // If lenth is equal to i8::MAX it will be treated as a long-length marker
+            if length >= (i8::MAX as i32) {
+                writer.write_byte(i8::MAX as u8)?;
+                length.encode(writer)?;
+            } else {
+                writer.write_byte(length as u8)?;
+            }
+            // Write the string
+            let bytes = self.encode_utf16().collect::<Vec<u16>>();
+            writer.write_unicode_bytes(&bytes)
+        }
     }
 }

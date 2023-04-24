@@ -1,58 +1,69 @@
 #[macro_export]
-macro_rules! impl_primitive {
+macro_rules! impl_deref {
     ($lhs:ty, $rhs:ty ) => {
-        impl From<$rhs> for $lhs {
-            fn from(other: $rhs) -> Self {
-                Self(other)
-            }
-        }
-
-        impl core::ops::Deref for $lhs {
+        impl Deref for $lhs {
             type Target = $rhs;
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
 
-        impl core::ops::DerefMut for $lhs {
+        impl DerefMut for $lhs {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_primitive {
+    ($lhs:ty, $expected:ty, $rhs:ty ) => {
+        impl From<$rhs> for $lhs {
+            fn from(other: $rhs) -> Self {
+                Self(other as $expected)
+            }
+        }
+
+        impl From<$lhs> for $rhs {
+            fn from(other: $lhs) -> Self {
+                other.0 as $rhs
             }
         }
 
         impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
-                PartialEq::eq(&self.0, other)
+                PartialEq::eq(&Into::<$rhs>::into(*self), other)
             }
             #[inline]
             fn ne(&self, other: &$rhs) -> bool {
-                PartialEq::ne(&self.0, other)
+                PartialEq::ne(&Into::<$rhs>::into(*self), other)
             }
         }
 
         impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
-                PartialEq::eq(self, &other.0)
+                PartialEq::eq(self, &Into::<$rhs>::into(*other))
             }
             #[inline]
             fn ne(&self, other: &$lhs) -> bool {
-                PartialEq::ne(self, &other.0)
+                PartialEq::ne(self, &Into::<$rhs>::into(*other))
             }
         }
 
         impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<core::cmp::Ordering> {
-                PartialOrd::partial_cmp(&self.0, other)
+                PartialOrd::partial_cmp(&Into::<$rhs>::into(*self), other)
             }
         }
 
         impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<core::cmp::Ordering> {
-                PartialOrd::partial_cmp(self, &other.0)
+                PartialOrd::partial_cmp(self, &Into::<$rhs>::into(*other))
             }
         }
     };

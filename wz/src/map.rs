@@ -33,13 +33,13 @@ impl WzMap {
                 let child = arena.new_node(format!("{:x?}", bytes), content.clone());
                 parent.insert(child, arena)?;
             }
-            Content::Uol(loc) => {
+            Content::Uol(loc, _) => {
                 let child = arena.new_node(format!("UOL#{}", loc), content.clone());
                 parent.insert(child, arena)?;
             }
-            Content::Package(info) => {
+            Content::Package(name, info) => {
                 // Add the directory under parent
-                let child = arena.new_node(String::from(info.name.as_ref()), content.clone());
+                let child = arena.new_node(String::from(name.as_ref()), content.clone());
                 parent.insert(child, arena)?;
 
                 // Seek to the offset and parse it
@@ -52,9 +52,9 @@ impl WzMap {
                     WzMap::recursive_decode(arena, child, &content, reader)?;
                 }
             }
-            Content::Image(info) => {
+            Content::Image(name, _) => {
                 // Add the image under parent
-                let child = arena.new_node(String::from(info.name.as_ref()), content.clone());
+                let child = arena.new_node(String::from(name.as_ref()), content.clone());
                 parent.insert(child, arena)?;
             }
         }
@@ -76,12 +76,14 @@ impl Decode for WzMap {
         let mut arena = Arena::new();
         let root = arena.new_node(
             String::from(""),
-            Content::Package(ContentInfo {
-                name: WzString::from(""),
-                size: WzInt::from((reader.metadata().size - 2) as i32),
-                checksum: WzInt::from(0),
-                offset: WzOffset::from(reader.metadata().absolute_position + 2),
-            }),
+            Content::Package(
+                WzString::from(""),
+                ContentInfo {
+                    size: WzInt::from((reader.metadata().size - 2) as i32),
+                    checksum: WzInt::from(0),
+                    offset: WzOffset::from((reader.metadata().absolute_position + 2) as u32),
+                },
+            ),
         );
 
         // Decode root directory
@@ -109,7 +111,7 @@ mod tests {
     #[test]
     fn v83_contents() {
         let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
-        let mut reader = EncryptedWzReader::new(
+        let mut reader = EncryptedWzReader::from_reader(
             File::open("testdata/v83-base.wz").expect("error opening file"),
             &system,
         )
@@ -151,8 +153,8 @@ mod tests {
     #[test]
     fn v172_contents() {
         let mut reader =
-            WzReader::new(File::open("testdata/v172-base.wz").expect("error opening file"))
-                .expect("error making reader");
+            WzReader::from_reader(File::open("testdata/v172-base.wz").expect("error opening file"))
+                .expect("error making reader file");
 
         let map = WzMap::decode(&mut reader).expect("error decoding");
         let mut names = map

@@ -12,14 +12,14 @@ pub enum Content {
     /// I don't know what this is...
     Unknown([u8; 10]),
 
-    /// UOL pointing to a different location
-    Uol(i32),
+    /// Points to a different location
+    Uol(i32, ContentInfo),
 
-    /// Package or directory
-    Package(ContentInfo),
+    /// Package
+    Package(WzString, ContentInfo),
 
-    /// Image -- treat as a binary blob
-    Image(ContentInfo),
+    /// Image
+    Image(WzString, ContentInfo),
 }
 
 impl Decode for Content {
@@ -33,9 +33,21 @@ impl Decode for Content {
                 reader.read_exact(&mut data)?;
                 Ok(Content::Unknown(data))
             }
-            2 => Ok(Content::Uol(i32::decode(reader)?)),
-            3 => Ok(Content::Package(ContentInfo::decode(reader)?)),
-            4 => Ok(Content::Image(ContentInfo::decode(reader)?)),
+            2 => {
+                let offset = i32::decode(reader)?;
+                let info = ContentInfo::decode(reader)?;
+                Ok(Content::Uol(offset, info))
+            }
+            3 => {
+                let name = WzString::decode(reader)?;
+                let info = ContentInfo::decode(reader)?;
+                Ok(Content::Package(name, info))
+            }
+            4 => {
+                let name = WzString::decode(reader)?;
+                let info = ContentInfo::decode(reader)?;
+                Ok(Content::Image(name, info))
+            }
             _ => Err(Error::InvalidContentType),
         }
     }
@@ -44,9 +56,6 @@ impl Decode for Content {
 /// Info describing the known `Content`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentInfo {
-    /// Name of the `Content`
-    pub name: WzString,
-
     /// Size of the `Content`
     pub size: WzInt,
 
@@ -62,12 +71,10 @@ impl Decode for ContentInfo {
     where
         R: Reader,
     {
-        let name = WzString::decode(reader)?;
         let size = WzInt::decode(reader)?;
         let checksum = WzInt::decode(reader)?;
         let offset = WzOffset::decode(reader)?;
         Ok(Self {
-            name,
             size,
             checksum,
             offset,
@@ -88,7 +95,7 @@ impl Decode for Package {
         R: Reader,
     {
         let num_entries = WzInt::decode(reader)?;
-        if num_entries < 0 {
+        if num_entries.is_negative() {
             return Err(Error::InvalidPackage);
         }
         let num_entries = *num_entries as usize;
@@ -113,7 +120,7 @@ mod tests {
     #[test]
     fn v83_package() {
         let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
-        let mut reader = EncryptedWzReader::new(
+        let mut reader = EncryptedWzReader::from_reader(
             File::open("testdata/v83-base.wz").expect("error opening file"),
             &system,
         )
@@ -123,11 +130,12 @@ mod tests {
             .contents
             .iter()
             .map(|c| match c {
-                Content::Package(o) => o.name.as_ref(),
-                Content::Image(o) => o.name.as_ref(),
+                Content::Uol(off, _) => format!("Offset#{:X?}", off),
+                Content::Package(name, _) => String::from(name.as_ref()),
+                Content::Image(name, _) => String::from(name.as_ref()),
                 e => panic!("{:?}", e),
             })
-            .collect::<Vec<&str>>();
+            .collect::<Vec<String>>();
         assert_eq!(
             &contents,
             &[
@@ -156,18 +164,19 @@ mod tests {
     #[test]
     fn v172_package() {
         let mut reader =
-            WzReader::new(File::open("testdata/v172-base.wz").expect("error opening file"))
-                .expect("error making reader");
+            WzReader::from_reader(File::open("testdata/v172-base.wz").expect("error opening file"))
+                .expect("error making reader file");
         let package = Package::decode(&mut reader).expect("error parsing package");
         let contents = package
             .contents
             .iter()
             .map(|c| match c {
-                Content::Package(o) => o.name.as_ref(),
-                Content::Image(o) => o.name.as_ref(),
+                Content::Uol(off, _) => format!("Offset#{:X?}", off),
+                Content::Package(name, _) => String::from(name.as_ref()),
+                Content::Image(name, _) => String::from(name.as_ref()),
                 e => panic!("{:?}", e),
             })
-            .collect::<Vec<&str>>();
+            .collect::<Vec<String>>();
         assert_eq!(
             &contents,
             &[

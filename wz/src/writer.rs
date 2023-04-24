@@ -14,10 +14,10 @@ pub trait Writer: Sized {
     /// Seek to position
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 
-    /// Write the buffer. Raises the underlying [`Write`] trait
+    /// Write the buffer. Raises the underlying `Write` trait
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
-    /// Write all of the buffer. Raises the underlying [`Write`] trait
+    /// Write all of the buffer. Raises the underlying `Write` trait
     fn write_all(&mut self, buf: &[u8]) -> Result<()>;
 
     /// Some versions of WZ files have encrypted strings. This function is used internally to
@@ -32,7 +32,7 @@ pub trait Writer: Sized {
 
     /// Writes a UTF-8 string. This function does not do UTF-8 conversion but will write the proper
     /// WZ encoding of the bytes.
-    fn write_utf8_bytes(&mut self, bytes: &Vec<u8>) -> Result<()> {
+    fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         let mut mask = 0xaa;
         let mut buf = bytes
             .iter()
@@ -51,7 +51,7 @@ pub trait Writer: Sized {
 
     /// Writes a unicode string. This function does not do Unicode conversion but will write the
     /// proper WZ encoding of the bytes.
-    fn read_unicode_bytes(&mut self, bytes: &Vec<u16>) -> Result<()> {
+    fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<()> {
         let mut mask: u16 = 0xaaaa;
         let mut buf = bytes
             .iter()

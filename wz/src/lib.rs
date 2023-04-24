@@ -2,7 +2,7 @@
 #![doc = include_str!("../README.md")]
 
 mod decode;
-mod macros;
+mod encode;
 mod map;
 mod metadata;
 mod reader;
@@ -13,6 +13,8 @@ pub mod package;
 pub mod types;
 
 pub use decode::Decode;
+pub use encode::Encode;
 pub use map::WzMap;
 pub use metadata::Metadata;
 pub use reader::{EncryptedWzReader, Reader, WzReader};
+pub use writer::Writer;

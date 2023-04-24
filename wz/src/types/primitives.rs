@@ -1,9 +1,6 @@
 //! Primitive WZ Formats
 
-use crate::{
-    error::Result,
-    impl_primitive, {Decode, Reader},
-};
+use crate::{error::Result, Decode, Encode, Reader, Writer};
 
 impl Decode for i8 {
     fn decode<R>(reader: &mut R) -> Result<Self>
@@ -11,6 +8,15 @@ impl Decode for i8 {
         R: Reader,
     {
         Ok(reader.read_byte()? as i8)
+    }
+}
+
+impl Encode for i8 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_byte(*self as u8)
     }
 }
 
@@ -25,6 +31,15 @@ impl Decode for i16 {
     }
 }
 
+impl Encode for i16 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
+    }
+}
+
 impl Decode for i32 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
@@ -33,6 +48,15 @@ impl Decode for i32 {
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf)?;
         Ok(i32::from_le_bytes(buf))
+    }
+}
+
+impl Encode for i32 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
     }
 }
 
@@ -47,12 +71,30 @@ impl Decode for i64 {
     }
 }
 
+impl Encode for i64 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
+    }
+}
+
 impl Decode for u8 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
         R: Reader,
     {
         reader.read_byte()
+    }
+}
+
+impl Encode for u8 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_byte(*self)
     }
 }
 
@@ -67,6 +109,15 @@ impl Decode for u16 {
     }
 }
 
+impl Encode for u16 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
+    }
+}
+
 impl Decode for u32 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
@@ -78,6 +129,15 @@ impl Decode for u32 {
     }
 }
 
+impl Encode for u32 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
+    }
+}
+
 impl Decode for u64 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
@@ -86,6 +146,15 @@ impl Decode for u64 {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
         Ok(u64::from_le_bytes(buf))
+    }
+}
+
+impl Encode for u64 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_all(&self.to_le_bytes())
     }
 }
 
@@ -105,6 +174,16 @@ impl Decode for f32 {
     }
 }
 
+impl Encode for f32 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+    {
+        writer.write_byte(0x80)?;
+        writer.write_all(&self.to_le_bytes())
+    }
+}
+
 impl Decode for f64 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
@@ -116,40 +195,11 @@ impl Decode for f64 {
     }
 }
 
-/// Defines a WZ-INT structure and how to encode/decode it
-#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct WzInt(i32);
-
-impl_primitive!(WzInt, i32);
-
-impl Decode for WzInt {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+impl Encode for f64 {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        R: Reader,
+        W: Writer,
     {
-        let check = i8::decode(reader)?;
-        Ok(Self(match check {
-            i8::MIN => i32::decode(reader)?,
-            _ => check as i32,
-        }))
-    }
-}
-
-/// Defines a WZ-LONG structure and how to encode/decode it
-#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct WzLong(i64);
-
-impl_primitive!(WzLong, i64);
-
-impl Decode for WzLong {
-    fn decode<R>(reader: &mut R) -> Result<Self>
-    where
-        R: Reader,
-    {
-        let check = i8::decode(reader)?;
-        Ok(Self(match check {
-            i8::MIN => i64::decode(reader)?,
-            _ => check as i64,
-        }))
+        writer.write_all(&self.to_le_bytes())
     }
 }

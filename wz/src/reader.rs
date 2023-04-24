@@ -19,10 +19,10 @@ pub trait Reader: Sized {
     /// Seek to position
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 
-    /// Read into the buffer. Raises the underlying Read trait
+    /// Read into the buffer. Raises the underlying `Read` trait
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
 
-    /// Read exact into buffer. Raises the underlying Read trait
+    /// Read exact into buffer. Raises the underlying `Read` trait
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()>;
 
     /// Some versions of WZ files have encrypted strings. This function is used internally to

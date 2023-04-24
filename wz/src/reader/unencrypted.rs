@@ -1,27 +1,41 @@
 //! WZ File Reader
 
 use crate::{error::Result, Metadata, Reader};
-use std::{
-    fs::File,
-    io::{BufReader, Read, Seek, SeekFrom},
-};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 
 /// Reads WZ files with unencrypted strings
-pub struct WzReader {
-    buf: BufReader<File>,
+pub struct WzReader<R>
+where
+    R: Read + Seek,
+{
+    buf: BufReader<R>,
     metadata: Metadata,
 }
 
-impl WzReader {
+impl<R> WzReader<R>
+where
+    R: Read + Seek,
+{
     /// Creates a [`WzReader`] that does not need string decryption
-    pub fn new(file: File) -> Result<Self> {
-        let mut buf = BufReader::new(file);
-        let metadata = Metadata::from_reader(&mut buf)?;
-        Ok(Self { buf, metadata })
+    pub fn new(reader: R, metadata: Metadata) -> Self {
+        Self {
+            buf: BufReader::new(reader),
+            metadata,
+        }
+    }
+
+    /// Creates a [`WzReader`] from a file
+    pub fn from_reader(reader: R) -> Result<Self> {
+        let mut reader = reader;
+        let metadata = Metadata::from_reader(&mut reader)?;
+        Ok(Self::new(reader, metadata))
     }
 }
 
-impl Reader for WzReader {
+impl<R> Reader for WzReader<R>
+where
+    R: Read + Seek,
+{
     fn metadata(&self) -> &Metadata {
         &self.metadata
     }

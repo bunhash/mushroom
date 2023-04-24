@@ -5,7 +5,10 @@ use crate::{
     types::CString,
 };
 use crypto::checksum;
-use std::io::Read;
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+};
 
 /// Metadata of the WZ file
 pub struct Metadata {
@@ -18,8 +21,8 @@ pub struct Metadata {
     /// Position of where the content starts. However, this technically points to the version
     /// checksum which isn't very useful for me. So you should add 2 to get to the top-level
     /// `Package`. However, this value is important for calculating offsets so it isn't modified
-    /// here.
-    pub absolute_position: u32,
+    /// here. The actual value used for WZ files is signed but it probably shouldn't be.
+    pub absolute_position: i32,
 
     /// Description of the WZ package. Should be "Package file v1.0 Copyright 2002 Wizet, ZMS"
     pub description: CString,
@@ -46,6 +49,11 @@ impl Metadata {
         }
     }
 
+    pub fn from_file(filename: &str) -> Result<Metadata> {
+        let mut reader = BufReader::new(File::open(filename)?);
+        Metadata::from_reader(&mut reader)
+    }
+
     /// Reads the metadata at the beginning of the WZ file
     pub(crate) fn from_reader<R>(buf: &mut R) -> Result<Metadata>
     where
@@ -58,6 +66,9 @@ impl Metadata {
         // Read the identifier
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
+        if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
+            return Err(Error::InvalidWzFile);
+        }
 
         // Read the size
         let mut size = [0u8; 8];
@@ -67,10 +78,13 @@ impl Metadata {
         // Read the absolute position
         let mut absolute_position = [0u8; 4];
         absolute_position.copy_from_slice(&data[12..16]);
-        let absolute_position = u32::from_le_bytes(absolute_position) as usize;
+        let absolute_position = i32::from_le_bytes(absolute_position);
+        if absolute_position.is_negative() {
+            return Err(Error::InvalidWzFile);
+        }
 
         // Read the description
-        let mut description = vec![0u8; absolute_position - 17];
+        let mut description = vec![0u8; (absolute_position as usize) - 17];
         buf.read_exact(&mut description)?;
         let description = CString::from(String::from_utf8(description)?);
 
@@ -83,9 +97,6 @@ impl Metadata {
         buf.read_exact(&mut encrypted_version)?;
         let encrypted_version = u16::from_le_bytes(encrypted_version);
         let (version, version_checksum) = Metadata::bruteforce_version(encrypted_version)?;
-
-        // Cast the absolute position
-        let absolute_position = absolute_position as u32;
 
         Ok(Metadata {
             identifier,
@@ -111,14 +122,11 @@ impl Metadata {
 #[cfg(test)]
 mod tests {
 
-    use crate::{Reader, WzReader};
-    use std::fs::File;
+    use crate::Metadata;
 
     #[test]
     fn v83_metadata() {
-        let reader = WzReader::new(File::open("testdata/v83-base.wz").expect("error opening file"))
-            .expect("error making reader");
-        let metadata = reader.metadata();
+        let metadata = Metadata::from_file("testdata/v83-base.wz").expect("error reading metadata");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6480);
         assert_eq!(metadata.absolute_position, 60);
@@ -126,15 +134,14 @@ mod tests {
             &metadata.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
+        assert_eq!(metadata.version, 83);
         assert_eq!(metadata.version_checksum, 1876);
     }
 
     #[test]
     fn v172_metadata() {
-        let reader =
-            WzReader::new(File::open("testdata/v172-base.wz").expect("error opening file"))
-                .expect("error making reader");
-        let metadata = reader.metadata();
+        let metadata =
+            Metadata::from_file("testdata/v172-base.wz").expect("error reading metadata");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6705);
         assert_eq!(metadata.absolute_position, 60);
@@ -142,6 +149,7 @@ mod tests {
             &metadata.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
+        assert_eq!(metadata.version, 176);
         assert_eq!(metadata.version_checksum, 53047);
     }
 }

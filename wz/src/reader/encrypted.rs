@@ -2,41 +2,46 @@
 
 use crate::{error::Result, Metadata, Reader};
 use crypto::{generic_array::ArrayLength, KeyStream, System};
-use std::{
-    fs::File,
-    io::{BufReader, Read, Seek, SeekFrom},
-};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 
 /// Reads WZ files with unencrypted strings
-pub struct EncryptedWzReader<'a, B, S>
+pub struct EncryptedWzReader<'a, R, B, S>
 where
+    R: Read + Seek,
     B: ArrayLength<u8>,
     S: System<B>,
 {
-    buf: BufReader<File>,
+    buf: BufReader<R>,
     metadata: Metadata,
     stream: KeyStream<'a, B, S>,
 }
 
-impl<'a, B, S> EncryptedWzReader<'a, B, S>
+impl<'a, R, B, S> EncryptedWzReader<'a, R, B, S>
 where
+    R: Read + Seek,
     B: ArrayLength<u8>,
     S: System<B>,
 {
-    /// Creates a [`WzReader`] that does not need string decryption
-    pub fn new(file: File, system: &'a S) -> Result<Self> {
-        let mut buf = BufReader::new(file);
-        let metadata = Metadata::from_reader(&mut buf)?;
-        Ok(Self {
-            buf,
+    /// Creates an [`EncryptedWzReader`] that handles string decryption
+    pub fn new(reader: R, metadata: Metadata, system: &'a S) -> Self {
+        Self {
+            buf: BufReader::new(reader),
             metadata,
             stream: KeyStream::new(system),
-        })
+        }
+    }
+
+    /// Creates an [`EncryptedWzReader`] from a file
+    pub fn from_reader(reader: R, system: &'a S) -> Result<Self> {
+        let mut reader = reader;
+        let metadata = Metadata::from_reader(&mut reader)?;
+        Ok(Self::new(reader, metadata, system))
     }
 }
 
-impl<'a, B, S> Reader for EncryptedWzReader<'a, B, S>
+impl<'a, R, B, S> Reader for EncryptedWzReader<'a, R, B, S>
 where
+    R: Read + Seek,
     B: ArrayLength<u8>,
     S: System<B>,
 {
