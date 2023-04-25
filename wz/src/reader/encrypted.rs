@@ -5,7 +5,7 @@ use crypto::{generic_array::ArrayLength, KeyStream, System};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 
 /// Reads WZ files with unencrypted strings
-pub struct EncryptedWzReader<'a, R, B, S>
+pub struct EncryptedReader<'a, R, B, S>
 where
     R: Read + Seek,
     B: ArrayLength<u8>,
@@ -16,13 +16,13 @@ where
     stream: KeyStream<'a, B, S>,
 }
 
-impl<'a, R, B, S> EncryptedWzReader<'a, R, B, S>
+impl<'a, R, B, S> EncryptedReader<'a, R, B, S>
 where
     R: Read + Seek,
     B: ArrayLength<u8>,
     S: System<B>,
 {
-    /// Creates an [`EncryptedWzReader`] that handles string decryption
+    /// Creates an [`EncryptedReader`] that handles string decryption
     pub fn new(reader: R, metadata: Metadata, system: &'a S) -> Self {
         Self {
             buf: BufReader::new(reader),
@@ -31,15 +31,15 @@ where
         }
     }
 
-    /// Creates an [`EncryptedWzReader`] from a file
-    pub fn from_reader(reader: R, system: &'a S) -> Result<Self> {
+    /// Creates an [`EncryptedReader`] from a file
+    pub fn from_reader(name: &str, reader: R, system: &'a S) -> Result<Self> {
         let mut reader = reader;
-        let metadata = Metadata::from_reader(&mut reader)?;
+        let metadata = Metadata::from_reader(name, &mut reader)?;
         Ok(Self::new(reader, metadata, system))
     }
 }
 
-impl<'a, R, B, S> Reader for EncryptedWzReader<'a, R, B, S>
+impl<'a, R, B, S> Reader for EncryptedReader<'a, R, B, S>
 where
     R: Read + Seek,
     B: ArrayLength<u8>,

@@ -12,7 +12,7 @@ pub use crate::{
     arena::Arena,
     id::NodeId,
     node::Node,
-    traverse::{Ancestors, Traverse, TraverseType},
+    traverse::{Ancestors, Traverse, TraverseType, TraverseUri},
 };
 
 #[cfg(test)]

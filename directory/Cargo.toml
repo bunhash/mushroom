@@ -1,13 +1,11 @@
 [package]
-name = "wz"
+name = "directory"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "wz"
+name = "direcotry"
 path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
-indextree = { version = "4.6.0" }
-crypto = { version = "0.1.0", path = "../crypto" }

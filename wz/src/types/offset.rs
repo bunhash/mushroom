@@ -87,6 +87,11 @@ impl Decode for WzOffset {
 }
 
 impl Encode for WzOffset {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        4
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,

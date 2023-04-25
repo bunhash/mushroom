@@ -27,6 +27,15 @@ impl Decode for WzInt {
 }
 
 impl Encode for WzInt {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
+            5
+        } else {
+            1
+        }
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -64,6 +73,15 @@ impl Decode for WzLong {
 }
 
 impl Encode for WzLong {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
+            9
+        } else {
+            1
+        }
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -82,7 +100,7 @@ mod tests {
 
     use crate::{
         types::{WzInt, WzLong},
-        Decode, Metadata, WzReader,
+        Decode, Encode, Metadata, UnencryptedReader,
     };
     use std::io::Cursor;
 
@@ -114,17 +132,21 @@ mod tests {
     #[test]
     fn decode_wz_int() {
         let short_notation = vec![0x72];
-        let mut reader = WzReader::new(Cursor::new(short_notation), Metadata::new(0));
+        let size = short_notation.len() as u64;
+        let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new("", 0));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 0x72);
+        assert_eq!(wz_int.encode_size(), size);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0];
-        let mut reader = WzReader::new(Cursor::new(long_notation), Metadata::new(0));
+        let size = long_notation.len() as u64;
+        let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new("", 0));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 257);
+        assert_eq!(wz_int.encode_size(), size);
 
         let failure = vec![(i8::MIN as u8), 1, 1];
-        let mut reader = WzReader::new(Cursor::new(failure), Metadata::new(0));
+        let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new("", 0));
         match WzInt::decode(&mut reader) {
             Ok(val) => panic!("WzInt got {}", *val),
             Err(_) => {}
@@ -159,17 +181,21 @@ mod tests {
     #[test]
     fn decode_wz_long() {
         let short_notation = vec![0x72];
-        let mut reader = WzReader::new(Cursor::new(short_notation), Metadata::new(0));
-        let wz_int = WzLong::decode(&mut reader).expect("error reading from cursor");
-        assert_eq!(wz_int, 0x72);
+        let size = short_notation.len() as u64;
+        let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new("", 0));
+        let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
+        assert_eq!(wz_long, 0x72);
+        assert_eq!(wz_long.encode_size(), size);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
-        let mut reader = WzReader::new(Cursor::new(long_notation), Metadata::new(0));
-        let wz_int = WzLong::decode(&mut reader).expect("error reading from cursor");
-        assert_eq!(wz_int, 257);
+        let size = long_notation.len() as u64;
+        let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new("", 0));
+        let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
+        assert_eq!(wz_long, 257);
+        assert_eq!(wz_long.encode_size(), size);
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
-        let mut reader = WzReader::new(Cursor::new(failure), Metadata::new(0));
+        let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new("", 0));
         match WzLong::decode(&mut reader) {
             Ok(val) => panic!("WzLong got {}", *val),
             Err(_) => {}

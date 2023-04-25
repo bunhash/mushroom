@@ -1,7 +1,7 @@
 //! WZ String Formats
 
 use crate::{
-    error::{Error, Result},
+    error::{PackageError, Result},
     {Decode, Encode, Reader, Writer},
 };
 use core::ops::{Deref, DerefMut};
@@ -102,6 +102,11 @@ impl Decode for CString {
 }
 
 impl Encode for CString {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        self.0.len() as u64 + 1
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -132,7 +137,7 @@ impl Decode for WzString {
         };
         // Sanity check
         if length <= 0 {
-            return Err(Error::InvalidLength(length));
+            return Err(PackageError::InvalidLength(length).into());
         }
         Ok(Self(if check < 0 {
             // UTF-8
@@ -145,6 +150,28 @@ impl Decode for WzString {
 }
 
 impl Encode for WzString {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        let length = self.0.len() as i32;
+        if length == 0 {
+            1
+        } else {
+            if self.0.is_ascii() {
+                if length > (i8::MAX as i32) {
+                    5 + (length as u64)
+                } else {
+                    1 + (length as u64)
+                }
+            } else {
+                if length >= (i8::MAX as i32) {
+                    5 + (length as u64 * 2)
+                } else {
+                    1 + (length as u64 * 2)
+                }
+            }
+        }
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,

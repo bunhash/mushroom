@@ -4,7 +4,7 @@ use crate::{error::Result, Metadata, Reader};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 
 /// Reads WZ files with unencrypted strings
-pub struct WzReader<R>
+pub struct UnencryptedReader<R>
 where
     R: Read + Seek,
 {
@@ -12,11 +12,11 @@ where
     metadata: Metadata,
 }
 
-impl<R> WzReader<R>
+impl<R> UnencryptedReader<R>
 where
     R: Read + Seek,
 {
-    /// Creates a [`WzReader`] that does not need string decryption
+    /// Creates a [`UnencryptedReader`] that does not need string decryption
     pub fn new(reader: R, metadata: Metadata) -> Self {
         Self {
             buf: BufReader::new(reader),
@@ -24,15 +24,15 @@ where
         }
     }
 
-    /// Creates a [`WzReader`] from a file
-    pub fn from_reader(reader: R) -> Result<Self> {
+    /// Creates a [`UnencryptedReader`] from a file
+    pub fn from_reader(name: &str, reader: R) -> Result<Self> {
         let mut reader = reader;
-        let metadata = Metadata::from_reader(&mut reader)?;
+        let metadata = Metadata::from_reader(name, &mut reader)?;
         Ok(Self::new(reader, metadata))
     }
 }
 
-impl<R> Reader for WzReader<R>
+impl<R> Reader for UnencryptedReader<R>
 where
     R: Read + Seek,
 {

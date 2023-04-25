@@ -6,7 +6,7 @@ use std::io::SeekFrom;
 mod encrypted;
 mod unencrypted;
 
-pub use self::{encrypted::EncryptedWzReader, unencrypted::WzReader};
+pub use self::{encrypted::EncryptedReader, unencrypted::UnencryptedReader};
 
 /// Trait for reading WZ files
 pub trait Reader: Sized {
@@ -29,6 +29,20 @@ pub trait Reader: Sized {
     /// decrypt them. If the version of WZ file you are reading does not need to decrypt strings,
     /// this function does not need to be implemented.
     fn decrypt(&mut self, _bytes: &mut Vec<u8>) {}
+
+    /// Seek to start
+    fn seek_to_start(&mut self) -> Result<u64> {
+        self.seek(SeekFrom::Start(
+            self.metadata().absolute_position as u64 + 2,
+        ))
+    }
+
+    /// Seek from absolute position
+    fn seek_from_start(&mut self, offset: u64) -> Result<u64> {
+        self.seek(SeekFrom::Start(
+            self.metadata().absolute_position as u64 + offset,
+        ))
+    }
 
     /// Reads a single byte and updates the cursor position
     fn read_byte(&mut self) -> Result<u8> {

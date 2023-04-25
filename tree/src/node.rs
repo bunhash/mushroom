@@ -85,7 +85,7 @@ impl<T> Node<T> {
         self.children.keys()
     }
 
-    /// Returns an iterator over the children keys
+    /// Returns an iterator over the children
     pub fn iter(&self) -> Iter<'_, String, NodeId> {
         self.children.iter()
     }

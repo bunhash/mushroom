@@ -12,6 +12,11 @@ impl Decode for i8 {
 }
 
 impl Encode for i8 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        1
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -32,6 +37,11 @@ impl Decode for i16 {
 }
 
 impl Encode for i16 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        2
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -52,6 +62,11 @@ impl Decode for i32 {
 }
 
 impl Encode for i32 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        4
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -72,6 +87,11 @@ impl Decode for i64 {
 }
 
 impl Encode for i64 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        8
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -90,6 +110,11 @@ impl Decode for u8 {
 }
 
 impl Encode for u8 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        1
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -110,6 +135,11 @@ impl Decode for u16 {
 }
 
 impl Encode for u16 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        2
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -130,6 +160,11 @@ impl Decode for u32 {
 }
 
 impl Encode for u32 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        4
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -150,6 +185,11 @@ impl Decode for u64 {
 }
 
 impl Encode for u64 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        8
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -175,12 +215,25 @@ impl Decode for f32 {
 }
 
 impl Encode for f32 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        if *self as u32 == 0 {
+            1
+        } else {
+            5
+        }
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
     {
-        writer.write_byte(0x80)?;
-        writer.write_all(&self.to_le_bytes())
+        if *self as u32 == 0 {
+            writer.write_byte(0)
+        } else {
+            writer.write_byte(0x80)?;
+            writer.write_all(&self.to_le_bytes())
+        }
     }
 }
 
@@ -196,6 +249,11 @@ impl Decode for f64 {
 }
 
 impl Encode for f64 {
+    #[inline]
+    fn encode_size(&self) -> u64 {
+        8
+    }
+
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,

@@ -103,7 +103,7 @@ impl NodeId {
     ///
     /// let ancestors: Vec<&str> = descendent1
     ///     .ancestors(&arena)
-    ///     .map(|(name, _)| name.unwrap())
+    ///     .map(|(name, _)| name)
     ///     .collect();
     /// assert_eq!(["descendent1", "child1", "root"], ancestors[..]);
     /// ```
@@ -129,7 +129,7 @@ impl NodeId {
     /// for (name, descendent) in root.descendents(&arena) {
     ///     println!(
     ///         "{}: {}",
-    ///         name.unwrap(),
+    ///         name,
     ///         *arena.get(descendent).unwrap().get().unwrap()
     ///     );
     /// }
@@ -156,7 +156,7 @@ impl NodeId {
     /// for (name, descendent) in root.breadth_first(&arena) {
     ///     println!(
     ///         "{}: {}",
-    ///         name.unwrap(),
+    ///         name,
     ///         *arena.get(descendent).unwrap().get().unwrap()
     ///     );
     /// }
@@ -183,7 +183,7 @@ impl NodeId {
     /// for (name, descendent) in root.depth_first(&arena) {
     ///     println!(
     ///         "{}: {}",
-    ///         name.unwrap(),
+    ///         name,
     ///         *arena.get(descendent).unwrap().get().unwrap()
     ///     );
     /// }
