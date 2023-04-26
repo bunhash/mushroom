@@ -9,8 +9,10 @@ mod node;
 
 pub mod error;
 
-pub use cursor::Cursor;
+pub use cursor::{Cursor, CursorMut};
 pub use node::MapNode;
+
+use error::Error;
 
 pub struct Map<T> {
     arena: Arena<MapNode<T>>,
@@ -18,14 +20,51 @@ pub struct Map<T> {
 }
 
 impl<T> Map<T> {
+    /// Creates a new map.
     pub fn new(name: WzString, data: T) -> Self {
         let mut arena = Arena::new();
         let root = arena.new_node(MapNode::new(name, data));
         Self { arena, root }
     }
 
-    pub fn cursor<'a>(&'a mut self) -> Cursor<'a, T> {
-        Cursor::new(self.root, &mut self.arena)
+    /// Creates a cursor inside the root that cannot modify the map
+    pub fn cursor<'a>(&'a self) -> Cursor<'a, T> {
+        Cursor::new(self.root, &self.arena)
+    }
+
+    /// Creates a mutable cursor inside the root that can modify the map
+    pub fn cursor_mut<'a>(&'a mut self) -> CursorMut<'a, T> {
+        CursorMut::new(self.root, &mut self.arena)
+    }
+
+    /// Gets the data at the uri path
+    pub fn get<'n>(&self, uri: &'n [&str]) -> Result<&T, Error<'n>> {
+        Ok(&self
+            .arena
+            .get(self.get_id(uri)?)
+            .expect("get() node should exist")
+            .get()
+            .data)
+    }
+
+    /// Gets the mutable data at the uri path
+    pub fn get_mut<'n>(&self, uri: &'n [&str]) -> Result<&T, Error<'n>> {
+        Ok(&self
+            .arena
+            .get(self.get_id(uri)?)
+            .expect("get_mut() node should exist")
+            .get()
+            .data)
+    }
+
+    // *** PRIVATES *** //
+
+    fn get_id<'n>(&self, uri: &'n [&str]) -> Result<NodeId, Error<'n>> {
+        let mut cursor = self.cursor();
+        for name in uri {
+            cursor.move_to(name)?;
+        }
+        Ok(cursor.position())
     }
 }
 
@@ -37,9 +76,39 @@ mod tests {
     #[test]
     fn make_map() {
         let mut map = Map::new(WzString::from("root"), 100);
-        let cursor = map.cursor();
+        let cursor = map.cursor_mut();
         let children: &[&str] = &[];
         assert_eq!(&cursor.list(), children);
+    }
+
+    #[test]
+    fn get_uri() {
+        let mut map = Map::new(WzString::from("n1"), 100);
+        // arena ownership moves to cursor in the next line.
+        let mut cursor = map.cursor_mut();
+        cursor
+            .create(WzString::from("n1_1"), 150)
+            .expect("error creating n1_1")
+            .move_to("n1_1")
+            .expect("error moving into n1_1")
+            .create(WzString::from("n1_1_1"), 155)
+            .expect("error creating n1_1_1")
+            .create(WzString::from("n1_1_2"), 175)
+            .expect("error creating n1_1_1")
+            .move_to("n1_1_1")
+            .expect("error moving into n1_1_1")
+            .create(WzString::from("n1_1_1_1"), 255)
+            .expect("error creating n1_1_1_1")
+            .move_to("n1_1_1_1")
+            .expect("error moving into n1_1_1_1");
+        assert_eq!(&cursor.pwd(), &["n1", "n1_1", "n1_1_1", "n1_1_1_1"]);
+        // `cursor` dies here--arena ownership moves back to map in the next line.
+        assert_eq!(
+            *map.get(&["n1_1", "n1_1_1", "n1_1_1_1"])
+                .expect("error getting uri"),
+            255
+        );
+        assert!(map.get(&["n1_1", "fail"]).is_err());
     }
 }
 
