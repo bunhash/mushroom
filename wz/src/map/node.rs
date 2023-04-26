@@ -2,13 +2,19 @@
 
 use crate::types::WzString;
 
+/// Internal node structure
+#[derive(Debug)]
 pub struct MapNode<T> {
-    pub name: WzString,
-    pub data: T,
+    /// Name of the node
+    pub(crate) name: WzString,
+
+    /// Data of the node
+    pub(crate) data: T,
 }
 
 impl<T> MapNode<T> {
-    pub fn new(name: WzString, data: T) -> Self {
+    /// Creates a new node with the provided name and data
+    pub(crate) fn new(name: WzString, data: T) -> Self {
         Self { name, data }
     }
 }

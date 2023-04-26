@@ -1,24 +1,18 @@
 /// Package Errors
 
 #[derive(Debug)]
-pub enum PackageError {
-    BruteForceChecksum,
+pub enum Error {
     InvalidPackage,
     InvalidContentType(u8),
     DirectoryNameError(String),
 }
 
-impl std::fmt::Display for PackageError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PackageError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
-            PackageError::InvalidPackage => write!(f, "Invalid Package"),
-            PackageError::InvalidContentType(t) => {
-                write!(f, "Package ContentType is invalid `{}`", t)
-            }
-            PackageError::DirectoryNameError(name) => {
-                write!(f, "Invalid directory name: `{}`", name)
-            }
+            Error::InvalidPackage => write!(f, "Invalid Package"),
+            Error::InvalidContentType(t) => write!(f, "Package ContentType is invalid `{}`", t),
+            Error::DirectoryNameError(name) => write!(f, "Invalid directory name: `{}`", name),
         }
     }
 }

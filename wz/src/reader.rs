@@ -1,7 +1,6 @@
 //! WZ Reader
 
-use crate::{error::Result, Metadata};
-use std::io::SeekFrom;
+use crate::{error::Result, types::WzOffset, Metadata};
 
 mod encrypted;
 mod unencrypted;
@@ -14,10 +13,10 @@ pub trait Reader: Sized {
     fn metadata(&self) -> &Metadata;
 
     /// Get the position within the input
-    fn position(&mut self) -> Result<u64>;
+    fn position(&mut self) -> Result<WzOffset>;
 
     /// Seek to position
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+    fn seek(&mut self, pos: WzOffset) -> Result<WzOffset>;
 
     /// Read into the buffer. Raises the underlying `Read` trait
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
@@ -30,17 +29,15 @@ pub trait Reader: Sized {
     /// this function does not need to be implemented.
     fn decrypt(&mut self, _bytes: &mut Vec<u8>) {}
 
-    /// Seek to start
-    fn seek_to_start(&mut self) -> Result<u64> {
-        self.seek(SeekFrom::Start(
-            self.metadata().absolute_position as u64 + 2,
-        ))
+    /// Seek to start after the version checksum (absolute_position + 2)
+    fn seek_to_start(&mut self) -> Result<WzOffset> {
+        self.seek(WzOffset::from(self.metadata().absolute_position as u32 + 2))
     }
 
     /// Seek from absolute position
-    fn seek_from_start(&mut self, offset: u64) -> Result<u64> {
-        self.seek(SeekFrom::Start(
-            self.metadata().absolute_position as u64 + offset,
+    fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset> {
+        self.seek(WzOffset::from(
+            self.metadata().absolute_position as u32 + offset,
         ))
     }
 

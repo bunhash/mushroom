@@ -1,67 +1,88 @@
 //! WZ Package Structure
 
-use crate::{error::Result, types::WzInt, Decode, Encode, Reader, Writer};
+use crate::{
+    error::Result,
+    map::{CursorMut, Map},
+    types::{WzInt, WzOffset, WzString},
+    Decode, Encode, Reader, Writer,
+};
 
 mod content;
-//mod map;
+mod error;
 mod metadata;
 
 pub use content::Content;
-//pub use map::Map;
+pub use error::Error;
 pub use metadata::{Metadata, Params};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Package {
-    /// Total size of package
-    pub size: u64,
-
-    /// Number of contents in the package
-    pub num_contents: WzInt,
-
-    /// Vector of content information
+    /// Vector of content metadata
     pub contents: Vec<Metadata>,
 }
 
-impl Decode for Package {
-    fn decode<R>(_reader: &mut R) -> Result<Self>
+impl Package {
+    pub fn map_at<R>(name: &str, params: Params, reader: &mut R) -> Result<Map<Content>>
     where
         R: Reader,
     {
-        todo!("decode package")
+        reader.seek(params.offset)?;
+        let package = Package::decode(reader)?;
+        let mut map = Map::new(WzString::from(name), Content::Package(params));
+        let mut cursor = map.cursor_mut();
+        for content in package.contents {
+            Self::map_content_to(content, &mut cursor, reader)?;
+        }
+        Ok(map)
     }
-}
 
-impl Encode for Package {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        self.size
-    }
-
-    fn encode<W>(&self, _writer: &mut W) -> Result<()>
+    pub fn map<R>(name: &str, reader: &mut R) -> Result<Map<Content>>
     where
-        W: Writer,
-        Self: Sized,
+        R: Reader,
     {
-        todo!("encode packages")
+        let size = WzInt::from(reader.metadata().size as i32);
+        let checksum = WzInt::from(0);
+        let offset = WzOffset::from(reader.metadata().absolute_position as u32 + 2);
+        Self::map_at(
+            name,
+            Params {
+                size,
+                checksum,
+                offset,
+            },
+            reader,
+        )
     }
-}
 
-/*
-use crate::{
-    error::{Result, WzError},
-    types::{WzInt, WzOffset, WzString},
-    Decode, Encode, Reader, Writer,
-};
-use std::io::SeekFrom;
+    // *** PRIVATES *** //
 
-/// WZ Package Structure -- acts as a directory
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Package {
-    /// Number of contents
-    pub num_contents: WzInt,
-
-    /// Package's contents
-    pub contents: Vec<Content>,
+    fn map_content_to<'a, R>(
+        content: Metadata,
+        cursor: &mut CursorMut<'a, Content>,
+        reader: &mut R,
+    ) -> Result<()>
+    where
+        R: Reader,
+    {
+        match content {
+            Metadata::Package(name, params) => {
+                reader.seek(params.offset)?;
+                cursor
+                    .create(name.clone(), Content::Package(params))?
+                    .move_to(name.as_ref())?;
+                let package = Package::decode(reader)?;
+                for content in package.contents {
+                    Self::map_content_to(content, cursor, reader)?;
+                }
+                cursor.parent()?;
+                Ok(())
+            }
+            Metadata::Image(name, params) => {
+                cursor.create(name, Content::Image(params))?;
+                Ok(())
+            }
+        }
+    }
 }
 
 impl Decode for Package {
@@ -71,12 +92,12 @@ impl Decode for Package {
     {
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
-            return Err(WzError::InvalidPackage.into());
+            return Err(Error::InvalidPackage.into());
         }
-        let len = *num_entries as usize;
-        let mut contents = Vec::with_capacity(len);
-        for _ in 0..len {
-            contents.push(Content::decode(reader)?);
+        let num_contents = *num_contents as usize;
+        let mut contents = Vec::with_capacity(num_contents);
+        for _ in 0..num_contents {
+            contents.push(Metadata::decode(reader)?);
         }
         Ok(Self { contents })
     }
@@ -85,54 +106,36 @@ impl Decode for Package {
 impl Encode for Package {
     #[inline]
     fn encode_size(&self) -> u64 {
-        WzInt::from(self.contents.len() as i32).encode_size()
-            + self
-                .contents
-                .iter()
-                .map(|content| content.encode_size())
-                .sum::<u64>()
+        todo!("implement size")
     }
 
     fn encode<W>(&self, _writer: &mut W) -> Result<()>
     where
         W: Writer,
-        Self: Sized,
     {
-        unimplemented!()
+        todo!("implement encode")
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        package::{Content, Package},
-        Decode, EncryptedReader, UnencryptedReader,
-    };
+    use crate::{package::Package, EncryptedReader, UnencryptedReader};
     use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
     use std::fs::File;
 
     #[test]
-    fn v83_package() {
+    fn map_v83_base() {
         let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
         let mut reader = EncryptedReader::from_reader(
-            "Base.wz",
             File::open("testdata/v83-base.wz").expect("error opening file"),
             &system,
         )
         .expect("error making reader");
-        let package = Package::decode(&mut reader).expect("error parsing package");
-        let contents = package
-            .contents
-            .iter()
-            .map(|c| match c {
-                Content::Package(name, _) => String::from(name.as_ref()),
-                Content::Image(name, _) => String::from(name.as_ref()),
-                e => panic!("{:?}", e),
-            })
-            .collect::<Vec<String>>();
+        let map = Package::map("Base.wz", &mut reader).expect("error mapping v83-base.wz");
+        let cursor = map.cursor();
         assert_eq!(
-            &contents,
+            &cursor.list(),
             &[
                 "smap.img",
                 "zmap.img",
@@ -153,28 +156,19 @@ mod tests {
                 "Mob",
                 "Quest"
             ]
-        )
+        );
     }
 
     #[test]
-    fn v172_package() {
+    fn map_v172_base() {
         let mut reader = UnencryptedReader::from_reader(
-            "Base.wz",
             File::open("testdata/v172-base.wz").expect("error opening file"),
         )
-        .expect("error making reader file");
-        let package = Package::decode(&mut reader).expect("error parsing package");
-        let contents = package
-            .contents
-            .iter()
-            .map(|c| match c {
-                Content::Package(name, _) => String::from(name.as_ref()),
-                Content::Image(name, _) => String::from(name.as_ref()),
-                e => panic!("{:?}", e),
-            })
-            .collect::<Vec<String>>();
+        .expect("error making reader");
+        let map = Package::map("Base.wz", &mut reader).expect("error mapping v172-base.wz");
+        let cursor = map.cursor();
         assert_eq!(
-            &contents,
+            &cursor.list(),
             &[
                 "zmap.img",
                 "StandardPDD.img",
@@ -197,7 +191,6 @@ mod tests {
                 "Mob2",
                 "Etc"
             ]
-        )
+        );
     }
 }
-*/

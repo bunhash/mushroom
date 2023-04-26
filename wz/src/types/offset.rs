@@ -18,7 +18,7 @@ impl_primitive!(WzOffset, u32, u64);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information
-    pub fn new(value: u32, position: u64, abs_pos: i32, version_checksum: u32) -> Self {
+    pub fn new(value: u32, position: WzOffset, abs_pos: i32, version_checksum: u32) -> Self {
         Self(WzOffset::decode_from(
             value,
             position,
@@ -27,8 +27,8 @@ impl WzOffset {
         ))
     }
 
-    fn decode_from(value: u32, position: u64, abs_pos: i32, version_checksum: u32) -> u32 {
-        let cur = Wrapping(position as u32);
+    fn decode_from(value: u32, position: WzOffset, abs_pos: i32, version_checksum: u32) -> u32 {
+        let cur = Wrapping(*position);
         let abs_pos = Wrapping(abs_pos as u32);
         let version_checksum = Wrapping(version_checksum as u32);
         let magic = Wrapping(0x581C3F6D);

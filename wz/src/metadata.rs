@@ -1,22 +1,18 @@
 //! WZ Metadata
 
 use crate::{
-    error::{Error, Result, PackageError},
+    error::{Result, WzError},
     types::CString,
     Encode, Writer,
 };
 use crypto::checksum;
 use std::{
     fs::File,
-    io::{BufReader, ErrorKind, Read},
-    path::Path,
+    io::{BufReader, Read},
 };
 
 /// Metadata of the WZ file
 pub struct Metadata {
-    /// Name of the file
-    pub name: String,
-
     /// Constant value. ASCII for "PKG1"
     pub identifier: [u8; 4],
 
@@ -42,10 +38,9 @@ pub struct Metadata {
 
 impl Metadata {
     /// Creates new metadata with default values.
-    pub fn new(name: &str, version: u16) -> Self {
+    pub fn new(version: u16) -> Self {
         let (_, version_checksum) = checksum(&version.to_string());
         Self {
-            name: String::from(name),
             identifier: [0x50, 0x4b, 0x47, 0x31],
             size: 0,
             absolute_position: 60,
@@ -56,17 +51,12 @@ impl Metadata {
     }
 
     pub fn from_file(filename: &str) -> Result<Metadata> {
-        let path = Path::new(filename);
-        let name = match path.file_name() {
-            Some(file_name) => file_name.to_str().unwrap(), // it passed during file_name()
-            None => return Err(Error::Io(ErrorKind::NotFound)),
-        };
-        let mut reader = BufReader::new(File::open(path)?);
-        Metadata::from_reader(name, &mut reader)
+        let mut reader = BufReader::new(File::open(filename)?);
+        Metadata::from_reader(&mut reader)
     }
 
     /// Reads the metadata at the beginning of the WZ file
-    pub(crate) fn from_reader<R>(name: &str, buf: &mut R) -> Result<Metadata>
+    pub(crate) fn from_reader<R>(buf: &mut R) -> Result<Metadata>
     where
         R: Read,
     {
@@ -78,7 +68,7 @@ impl Metadata {
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
         if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
-            return Err(PackageError::InvalidPackage.into());
+            return Err(WzError::InvalidPackage.into());
         }
 
         // Read the size
@@ -91,7 +81,7 @@ impl Metadata {
         absolute_position.copy_from_slice(&data[12..16]);
         let absolute_position = i32::from_le_bytes(absolute_position);
         if absolute_position.is_negative() {
-            return Err(PackageError::InvalidPackage.into());
+            return Err(WzError::InvalidPackage.into());
         }
 
         // Read the description
@@ -110,7 +100,6 @@ impl Metadata {
         let (version, version_checksum) = Metadata::bruteforce_version(encrypted_version)?;
 
         Ok(Metadata {
-            name: String::from(name),
             identifier,
             size,
             absolute_position,
@@ -127,7 +116,7 @@ impl Metadata {
                 return Ok((version, version_checksum));
             }
         }
-        Err(PackageError::BruteForceChecksum.into())
+        Err(WzError::BruteForceChecksum.into())
     }
 }
 
@@ -155,7 +144,6 @@ mod tests {
     #[test]
     fn v83_metadata() {
         let metadata = Metadata::from_file("testdata/v83-base.wz").expect("error reading metadata");
-        assert_eq!(&metadata.name, "v83-base.wz");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6480);
         assert_eq!(metadata.absolute_position, 60);
@@ -171,7 +159,6 @@ mod tests {
     fn v172_metadata() {
         let metadata =
             Metadata::from_file("testdata/v172-base.wz").expect("error reading metadata");
-        assert_eq!(&metadata.name, "v172-base.wz");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6705);
         assert_eq!(metadata.absolute_position, 60);

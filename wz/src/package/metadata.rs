@@ -3,19 +3,14 @@
 //! Metadata such as type and size hints for encoding/decoding contents
 
 use crate::{
-    error::{PackageError, Result},
+    error::Result,
+    package::Error,
     types::{WzInt, WzOffset, WzString},
     Decode, Encode, Reader, Writer,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Metadata {
-    /// I don't know what these bytes are
-    Unknown([u8; 10]),
-
-    /// Reference to another location in the file
-    Reference(i32, Params),
-
     /// Package or directory
     Package(WzString, Params),
 
@@ -29,16 +24,42 @@ impl Decode for Metadata {
         R: Reader,
     {
         match reader.read_byte()? {
-            1 => {
-                let mut bytes = [0u8; 10];
-                reader.read_exact(&mut bytes)?;
-                panic!("found unknown bytes: {:?}", bytes);
-                //Ok(Self::Unknown(bytes))
+            2 => {
+                // A tag of 2 indicates a reference elsewhere. This is probably used as a form of
+                // compression so duplicate strings are only written once to the WZ file. This just
+                // de-references the strings. Writing duplicate strings to in a WZ pacakge should
+                // not be invalid when parsing. Maybe in the future, I can implement this form of
+                // compression but I'd rather not waste the time now.
+
+                // Read the offset of where the name and "real" tag are located
+                let off = i32::decode(reader)?;
+                if off.is_negative() {
+                    // sanity check
+                    return Err(Error::InvalidPackage.into());
+                }
+                // Read the parameters while the content is still in the buffer
+                let params = Params::decode(reader)?;
+
+                // Store the current location
+                let pos = reader.position()?;
+
+                // Move to the referenced content--this empties the buffer
+                reader.seek_from_start(off as u32)?;
+
+                // Read the name and "real" tag
+                let tag = reader.read_byte()?;
+                let name = WzString::decode(reader)?;
+
+                // Seek back
+                reader.seek(pos)?;
+
+                // Return content
+                match tag {
+                    3 => Ok(Self::Package(name, params)),
+                    4 => Ok(Self::Image(name, params)),
+                    _ => Err(Error::InvalidPackage.into()),
+                }
             }
-            2 => Ok(Self::Reference(
-                i32::decode(reader)?,
-                Params::decode(reader)?,
-            )),
             3 => Ok(Self::Package(
                 WzString::decode(reader)?,
                 Params::decode(reader)?,
@@ -47,7 +68,7 @@ impl Decode for Metadata {
                 WzString::decode(reader)?,
                 Params::decode(reader)?,
             )),
-            t => Err(PackageError::InvalidContentType(t).into()),
+            t => Err(Error::InvalidContentType(t).into()),
         }
     }
 }
@@ -56,8 +77,6 @@ impl Encode for Metadata {
     #[inline]
     fn encode_size(&self) -> u64 {
         match self {
-            Metadata::Unknown(bytes) => 1 + bytes.len() as u64,
-            Metadata::Reference(offset, info) => 1 + offset.encode_size() + info.encode_size(),
             Metadata::Package(name, info) => 1 + name.encode_size() + info.encode_size(),
             Metadata::Image(name, info) => 1 + name.encode_size() + info.encode_size(),
         }
@@ -68,15 +87,6 @@ impl Encode for Metadata {
         W: Writer,
     {
         match self {
-            Metadata::Unknown(bytes) => {
-                writer.write_byte(1)?;
-                writer.write_all(bytes)
-            }
-            Metadata::Reference(offset, info) => {
-                writer.write_byte(2)?;
-                offset.encode(writer)?;
-                info.encode(writer)
-            }
             Metadata::Package(name, info) => {
                 writer.write_byte(3)?;
                 name.encode(writer)?;

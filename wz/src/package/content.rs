@@ -1,24 +1,24 @@
 //! WZ Package Contents
 
-use crate::types::{WzInt, WzOffset, WzString};
+use crate::package::Params;
 
 #[derive(Debug)]
 pub enum Content {
-    Directory(WzString),
-    Image(WzString, WzInt, WzOffset),
+    Package(Params),
+    Image(Params),
 }
 
 impl Content {
     #[inline]
-    pub fn is_image(&self) -> bool {
+    pub fn is_package(&self) -> bool {
         match self {
-            Content::Directory(_) => false,
-            Content::Image(_, _, _) => true,
+            Content::Package(_) => true,
+            Content::Image(_) => false,
         }
     }
 
     #[inline]
-    pub fn is_directory(&self) -> bool {
-        !self.is_image()
+    pub fn is_image(&self) -> bool {
+        !self.is_package()
     }
 }

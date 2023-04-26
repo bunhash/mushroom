@@ -1,6 +1,6 @@
 //! WZ File Reader
 
-use crate::{error::Result, Metadata, Reader};
+use crate::{error::Result, types::WzOffset, Metadata, Reader};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 
 /// Reads WZ files with unencrypted strings
@@ -25,9 +25,9 @@ where
     }
 
     /// Creates a [`UnencryptedReader`] from a file
-    pub fn from_reader(name: &str, reader: R) -> Result<Self> {
+    pub fn from_reader(reader: R) -> Result<Self> {
         let mut reader = reader;
-        let metadata = Metadata::from_reader(name, &mut reader)?;
+        let metadata = Metadata::from_reader(&mut reader)?;
         Ok(Self::new(reader, metadata))
     }
 }
@@ -40,12 +40,12 @@ where
         &self.metadata
     }
 
-    fn position(&mut self) -> Result<u64> {
-        Ok(self.buf.stream_position()?)
+    fn position(&mut self) -> Result<WzOffset> {
+        Ok(WzOffset::from(self.buf.stream_position()?))
     }
 
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
-        Ok(self.buf.seek(pos)?)
+    fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+        Ok(WzOffset::from(self.buf.seek(SeekFrom::Start(*pos as u64))?))
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
