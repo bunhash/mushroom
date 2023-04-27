@@ -114,7 +114,7 @@ impl Encode for CString {
 }
 
 impl SizeHint for CString {
-    fn data_size(&self) -> WzInt {
+    fn size_hint(&self, _: usize) -> WzInt {
         WzInt::from(self.0.len() as i32 + 1)
     }
 }
@@ -193,7 +193,7 @@ impl Encode for WzString {
 }
 
 impl SizeHint for WzString {
-    fn data_size(&self) -> WzInt {
+    fn size_hint(&self, _: usize) -> WzInt {
         let length = self.0.len() as i32;
         if self.0.is_ascii() {
             if length > (i8::MAX as i32) {

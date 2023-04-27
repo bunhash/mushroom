@@ -22,13 +22,13 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn map_at<R>(name: &str, params: Params, reader: &mut R) -> Result<Map<Content>>
+    pub fn map_at<R>(name: &str, offset: WzOffset, reader: &mut R) -> Result<Map<Content>>
     where
         R: Reader,
     {
-        reader.seek(params.offset)?;
+        reader.seek(offset)?;
         let package = Package::decode(reader)?;
-        let mut map = Map::new(WzString::from(name), Content::Package(params));
+        let mut map = Map::new(WzString::from(name), Content::Package(offset));
         let mut cursor = map.cursor_mut();
         for content in package.contents {
             Self::map_content_to(content, &mut cursor, reader)?;
@@ -40,18 +40,8 @@ impl Package {
     where
         R: Reader,
     {
-        let size = WzInt::from(reader.metadata().size as i32);
-        let checksum = WzInt::from(0);
         let offset = WzOffset::from(reader.metadata().absolute_position as u32 + 2);
-        Self::map_at(
-            name,
-            Params {
-                size,
-                checksum,
-                offset,
-            },
-            reader,
-        )
+        Self::map_at(name, offset, reader)
     }
 
     // *** PRIVATES *** //
@@ -68,7 +58,7 @@ impl Package {
             Metadata::Package(name, params) => {
                 reader.seek(params.offset)?;
                 cursor
-                    .create(name.clone(), Content::Package(params))?
+                    .create(name.clone(), Content::Package(params.offset))?
                     .move_to(name.as_ref())?;
                 let package = Package::decode(reader)?;
                 for content in package.contents {
@@ -78,7 +68,7 @@ impl Package {
                 Ok(())
             }
             Metadata::Image(name, params) => {
-                cursor.create(name, Content::Image(params))?;
+                cursor.create(name, Content::Image(params.offset, params.size))?;
                 Ok(())
             }
         }

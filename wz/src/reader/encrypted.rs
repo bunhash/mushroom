@@ -1,68 +1,64 @@
 //! WZ File Reader
 
 use crate::{error::Result, types::WzOffset, Metadata, Reader};
-use crypto::{generic_array::ArrayLength, KeyStream, System};
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use crypto::KeyStream;
+use std::io::{Read, Seek, SeekFrom};
 
-/// Reads WZ files with unencrypted strings
-pub struct EncryptedReader<'a, R, B, S>
+/// Reads WZ files with encrypted strings
+pub struct EncryptedReader<R>
 where
     R: Read + Seek,
-    B: ArrayLength<u8>,
-    S: System<B>,
 {
-    buf: BufReader<R>,
+    reader: R,
     metadata: Metadata,
-    stream: KeyStream<'a, B, S>,
+    stream: KeyStream,
 }
 
-impl<'a, R, B, S> EncryptedReader<'a, R, B, S>
+impl<R> EncryptedReader<R>
 where
     R: Read + Seek,
-    B: ArrayLength<u8>,
-    S: System<B>,
 {
     /// Creates an [`EncryptedReader`] that handles string decryption
-    pub fn new(reader: R, metadata: Metadata, system: &'a S) -> Self {
+    pub fn new(reader: R, metadata: Metadata, keystream: KeyStream) -> Self {
         Self {
-            buf: BufReader::new(reader),
+            reader,
             metadata,
-            stream: KeyStream::new(system),
+            stream: keystream,
         }
     }
 
     /// Creates an [`EncryptedReader`] from a file
-    pub fn from_reader(reader: R, system: &'a S) -> Result<Self> {
+    pub fn from_reader(reader: R, keystream: KeyStream) -> Result<Self> {
         let mut reader = reader;
         let metadata = Metadata::from_reader(&mut reader)?;
-        Ok(Self::new(reader, metadata, system))
+        Ok(Self::new(reader, metadata, keystream))
     }
 }
 
-impl<'a, R, B, S> Reader for EncryptedReader<'a, R, B, S>
+impl<R> Reader for EncryptedReader<R>
 where
     R: Read + Seek,
-    B: ArrayLength<u8>,
-    S: System<B>,
 {
     fn metadata(&self) -> &Metadata {
         &self.metadata
     }
 
     fn position(&mut self) -> Result<WzOffset> {
-        Ok(WzOffset::from(self.buf.stream_position()?))
+        Ok(WzOffset::from(self.reader.stream_position()?))
     }
 
     fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
-        Ok(WzOffset::from(self.buf.seek(SeekFrom::Start(*pos as u64))?))
+        Ok(WzOffset::from(
+            self.reader.seek(SeekFrom::Start(*pos as u64))?,
+        ))
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        Ok(self.buf.read(buf)?)
+        Ok(self.reader.read(buf)?)
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        Ok(self.buf.read_exact(buf)?)
+        Ok(self.reader.read_exact(buf)?)
     }
 
     fn decrypt(&mut self, bytes: &mut Vec<u8>) {

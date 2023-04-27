@@ -9,4 +9,13 @@ pub trait Encode {
     where
         W: Writer,
         Self: Sized;
+
+    /// Encodes object metadata
+    fn encode_metadata<W>(&self, _writer: &mut W) -> Result<()>
+    where
+        W: Writer,
+        Self: Sized,
+    {
+        Ok(())
+    }
 }

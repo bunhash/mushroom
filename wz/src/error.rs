@@ -1,6 +1,6 @@
 //! Errors
 
-use crate::{map, package};
+use crate::map;
 use std::{fmt, io, string};
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -9,7 +9,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     Io(io::ErrorKind),
     Map(map::Error),
-    Package(package::Error),
+    //Package(package::Error),
     Utf8(string::FromUtf8Error),
     Unicode(string::FromUtf16Error),
     Wz(WzError),
@@ -20,7 +20,7 @@ impl fmt::Display for Error {
         match self {
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
-            Error::Package(e) => write!(f, "Package: {}", e),
+            //Error::Package(e) => write!(f, "Package: {}", e),
             Error::Utf8(e) => write!(f, "UTF8: {}", e),
             Error::Unicode(e) => write!(f, "Unicode: {}", e),
             Error::Wz(e) => write!(f, "WZ: {}", e),
@@ -46,11 +46,13 @@ impl From<map::Error> for Error {
     }
 }
 
+/*
 impl From<package::Error> for Error {
     fn from(other: package::Error) -> Self {
         Error::Package(other)
     }
 }
+*/
 
 impl From<string::FromUtf8Error> for Error {
     fn from(other: string::FromUtf8Error) -> Self {

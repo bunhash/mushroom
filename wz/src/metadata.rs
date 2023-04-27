@@ -56,13 +56,13 @@ impl Metadata {
     }
 
     /// Reads the metadata at the beginning of the WZ file
-    pub(crate) fn from_reader<R>(buf: &mut R) -> Result<Metadata>
+    pub(crate) fn from_reader<R>(mut reader: R) -> Result<Metadata>
     where
         R: Read,
     {
-        // Fill the buffer and ensure there are at least 16 bytes
+        // Fill the readerfer and ensure there are at least 16 bytes
         let mut data = [0u8; 16];
-        buf.read_exact(&mut data)?;
+        reader.read_exact(&mut data)?;
 
         // Read the identifier
         let mut identifier = [0u8; 4];
@@ -86,16 +86,16 @@ impl Metadata {
 
         // Read the description
         let mut description = vec![0u8; (absolute_position as usize) - 17];
-        buf.read_exact(&mut description)?;
+        reader.read_exact(&mut description)?;
         let description = CString::from(String::from_utf8(description)?);
 
         // Skip the null
         let mut skip = [0];
-        buf.read_exact(&mut skip)?;
+        reader.read_exact(&mut skip)?;
 
         // Read the encrypted version and bruteforce the checksum
         let mut encrypted_version = [0u8; 2];
-        buf.read_exact(&mut encrypted_version)?;
+        reader.read_exact(&mut encrypted_version)?;
         let encrypted_version = u16::from_le_bytes(encrypted_version);
         let (version, version_checksum) = Metadata::bruteforce_version(encrypted_version)?;
 

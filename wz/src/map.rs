@@ -4,31 +4,36 @@ use crate::types::WzString;
 
 use indextree::{Arena, NodeId};
 
-mod cursor;
-mod cursor_mut;
+//mod cursor;
+//mod cursor_mut;
 mod error;
-mod node;
+//mod metadata;
+//mod node;
 mod size_hint;
 
-pub use cursor::Cursor;
-pub use cursor_mut::CursorMut;
+//pub use cursor::Cursor;
+//pub use cursor_mut::CursorMut;
 pub use error::Error;
 pub use indextree::DebugPrettyPrint;
-pub use node::MapNode;
+//pub use metadata::Metadata;
+//pub use node::MapNode;
 pub use size_hint::SizeHint;
 
+/*
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
 /// to be unique.
-pub struct Map<T>
+pub struct Map<M, T>
 where
+    M: Metadata<T>,
     T: SizeHint,
 {
-    arena: Arena<MapNode<T>>,
+    arena: Arena<MapNode<M, T>>,
     root: NodeId,
 }
 
-impl<T> Map<T>
+impl<M, T> Map<M, T>
 where
+    M: Metadata<T>,
     T: SizeHint,
 {
     /// Creates a new map with the provided root name and data
@@ -160,3 +165,4 @@ mod tests {
         assert!(map.get(&["n1", "n1_1", "fail"]).is_err());
     }
 }
+*/

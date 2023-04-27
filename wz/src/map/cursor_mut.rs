@@ -3,15 +3,16 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{Error, MapNode, SizeHint},
+    map::{Cursor, Error, MapNode, Metadata, SizeHint},
     types::{WzInt, WzString},
 };
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
 /// A cursor with mutable access to the contents of the [`Map`](crate::map::Map)
-pub struct CursorMut<'a, T>
+pub struct CursorMut<'a, M, T>
 where
+    M: Metadata<T>,
     T: SizeHint,
 {
     pub(crate) position: NodeId,
@@ -19,11 +20,12 @@ where
     clipboard: Option<NodeId>,
 }
 
-impl<'a, T> CursorMut<'a, T>
+impl<'a, M, T> CursorMut<'a, M, T>
 where
+    M: Metadata<T>,
     T: SizeHint,
 {
-    pub(crate) fn new(position: NodeId, arena: &'a mut Arena<MapNode<T>>) -> Self {
+    pub(crate) fn new(position: NodeId, arena: &'a mut Arena<MapNode<M, T>>) -> Self {
         Self {
             position,
             arena,
@@ -77,24 +79,6 @@ where
             .get()
             .name
             .as_ref()
-    }
-
-    /// Returns the size of the data at the current position (recursively). This function
-    /// returns the data and header size of the current node + the data, header, and metadata
-    /// sizes of its descendants.
-    pub fn size(&self) -> WzInt {
-        let node = self
-            .arena
-            .get(self.position)
-            .expect("recursive_size node should exist")
-            .get();
-        node.data_size()
-            + node.header_size(self.position.children(self.arena).count())
-            + self
-                .position
-                .children(self.arena)
-                .map(|id| *self.recursive_size(id))
-                .sum::<i32>()
     }
 
     /// Renames the node at the current position
@@ -216,21 +200,6 @@ where
             Some(id) => Ok(id),
             None => Err(Error::NotFound(String::from(name))),
         }
-    }
-
-    fn recursive_size(&self, current: NodeId) -> WzInt {
-        let node = self
-            .arena
-            .get(current)
-            .expect("recursive_size node should exist")
-            .get();
-        node.data_size()
-            + node.header_size(current.children(self.arena).count())
-            + node.metadata_size()
-            + current
-                .children(self.arena)
-                .map(|id| *self.recursive_size(id))
-                .sum::<i32>()
     }
 }
 

@@ -9,7 +9,7 @@ mod writer;
 
 pub mod error;
 pub mod map;
-pub mod package;
+//pub mod package;
 pub mod types;
 
 pub use indextree;

@@ -4,19 +4,44 @@
 
 use crate::{
     error::Result,
-    map::SizeHint,
-    package::Error,
+    map::{self, Cursor, SizeHint},
+    package::{Content, Error},
     types::{WzInt, WzOffset, WzString},
     Decode, Encode, Reader, Writer,
 };
 
+/// Info describing the known `Content`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Params {
+    /// Name of the content
+    pub(crate) name: WzString,
+
+    /// Size of the `Content`
+    pub(crate) size: WzInt,
+
+    /// Checksum of the `Content` -- basically ignored
+    pub(crate) checksum: WzInt,
+
+    /// Position of the `Content` in the WZ file
+    pub(crate) offset: WzOffset,
+}
+
+impl SizeHint for Params {
+    fn size_hint(&self, _: usize) -> WzInt {
+        self.name.size_hint()
+            + self.size.size_hint()
+            + self.checksum.size_hint()
+            + self.offset.size_hint()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Metadata {
     /// Package or directory
-    Package(WzString, Params),
+    Package(Params),
 
     /// Image or binary blob
-    Image(WzString, Params),
+    Image(Params),
 }
 
 impl Decode for Metadata {
@@ -24,7 +49,8 @@ impl Decode for Metadata {
     where
         R: Reader,
     {
-        match reader.read_byte()? {
+        let tag = reader.read_byte()?;
+        let (tag, name) = match tag {
             2 => {
                 // A tag of 2 indicates a reference elsewhere. This is probably used as a form of
                 // compression so duplicate strings are only written once to the WZ file. This just
@@ -54,21 +80,24 @@ impl Decode for Metadata {
                 // Seek back
                 reader.seek(pos)?;
 
-                // Return content
-                match tag {
-                    3 => Ok(Self::Package(name, params)),
-                    4 => Ok(Self::Image(name, params)),
-                    _ => Err(Error::InvalidPackage.into()),
-                }
+                (tag, name)
             }
-            3 => Ok(Self::Package(
-                WzString::decode(reader)?,
-                Params::decode(reader)?,
-            )),
-            4 => Ok(Self::Image(
-                WzString::decode(reader)?,
-                Params::decode(reader)?,
-            )),
+            3 => (tag, WzString::decode(reader)?),
+            4 => (tag, WzString::decode(reader)?),
+            t => Err(Error::InvalidContentType(t).into()),
+        };
+
+        let params = Params {
+            name,
+            size: WzInt::decode(reader)?,
+            checksum: WzInt::decode(reader)?,
+            offset: WzOffset::decode(reader)?,
+        };
+
+        // Make Metadata
+        match tag {
+            3 => Ok(Metadata::Package(params)),
+            4 => Ok(Metadata::Image(params)),
             t => Err(Error::InvalidContentType(t).into()),
         }
     }
@@ -79,64 +108,64 @@ impl Encode for Metadata {
     where
         W: Writer,
     {
-        match self {
-            Metadata::Package(name, params) => {
+        let params = match self {
+            Metadata::Package(params) => {
                 writer.write_byte(3)?;
-                name.encode(writer)?;
-                params.encode(writer)
+                params
             }
-            Metadata::Image(name, params) => {
+            Metadata::Image(params) => {
                 writer.write_byte(4)?;
-                name.encode(writer)?;
-                params.encode(writer)
+                params
             }
+        };
+        params.name.encode(writer)?;
+        params.size.encode(writer)?;
+        params.checksum.encode(writer)?;
+        params.offset.encode(writer)
+    }
+}
+
+impl SizeHint for Metadata {
+    fn size_hint(&self, _: usize) -> WzInt {
+        match self {
+            Metadata::Package(params) => 1 + params.size_hint(0),
+            Metadata::Image(params) => 1 + params.size_hint(0),
         }
     }
 }
 
-/// Info describing the known `Content`
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Params {
-    /// Size of the `Content`
-    pub size: WzInt,
-
-    /// Checksum of the `Content` -- basically ignored
-    pub checksum: WzInt,
-
-    /// Position of the `Content` in the WZ file
-    pub offset: WzOffset,
-}
-
-impl Decode for Params {
-    fn decode<R>(reader: &mut R) -> Result<Self>
-    where
-        R: Reader,
-    {
-        let size = WzInt::decode(reader)?;
-        let checksum = WzInt::decode(reader)?;
-        let offset = WzOffset::decode(reader)?;
-        Ok(Self {
+impl map::Metadata<Content> for Metadata {
+    fn new(name: &str, content: &Content, children: &[&Content]) -> Self {
+        let size = match content {
+            Content::Package(_) => WzInt::from(0),
+            Content::Image(_, size) => *size,
+        };
+        Self {
+            name: WzString::from(name),
             size,
-            checksum,
-            offset,
-        })
+            checksum: WzInt::from(0),
+            offset: WzInt::from(0),
+        }
     }
-}
 
-impl Encode for Params {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
-    where
-        W: Writer,
-        Self: Sized,
-    {
-        self.size.encode(writer)?;
-        self.checksum.encode(writer)?;
-        self.offset.encode(writer)
+    fn name<'a>(&'a self) -> &'a str {
+        self.name.as_ref()
     }
-}
 
-impl SizeHint for Params {
-    fn data_size(&self) -> WzInt {
-        self.size.data_size() + self.checksum.data_size() + self.offset.data_size()
+    fn size(&self) -> WzInt {
+        self.size
+    }
+
+    fn rename(&mut self, name: &str) {
+        self.name = WzString::from(name);
+    }
+
+    fn update_size(&mut self, child_sizes: &[WzInt]) {
+        let new_size = match self {
+            Metadata::Package(params) => {
+                WzInt::from(child_size.len()).size_hint(0) + child_sizes.iter().sum::<i32>()
+            }
+            Metadata::Image(params) => params.size,
+        };
     }
 }

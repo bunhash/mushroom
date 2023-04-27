@@ -1,6 +1,7 @@
 //! Decoder Trait
 
 use crate::{error::Result, Reader};
+use std::io::{Read, Seek};
 
 /// Trait for decoding objects
 pub trait Decode {
@@ -9,4 +10,11 @@ pub trait Decode {
     where
         R: Reader,
         Self: Sized;
+}
+
+/// Decoder trait
+pub trait Decoder<R>
+where
+    R: Read + Seek,
+{
 }

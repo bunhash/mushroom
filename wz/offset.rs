@@ -1,3 +1,0 @@
-//! WZ Offset Structure
-
-

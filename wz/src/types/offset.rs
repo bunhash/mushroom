@@ -108,7 +108,7 @@ impl Encode for WzOffset {
 }
 
 impl SizeHint for WzOffset {
-    fn data_size(&self) -> WzInt {
+    fn size_hint(&self, _: usize) -> WzInt {
         WzInt::from(4)
     }
 }
