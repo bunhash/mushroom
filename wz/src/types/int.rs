@@ -1,17 +1,21 @@
 //! WZ Int and Long Formats
 
-use crate::{error::Result, impl_primitive, Decode, Encode, Reader, Writer};
-use core::ops::{Deref, DerefMut};
+use crate::{error::Result, impl_conversions, map::SizeHint, Decode, Encode, Reader, Writer};
+use core::ops::{Add, Deref, DerefMut, Sub};
 
 /// Defines a WZ-INT structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzInt(i32);
 
-impl_deref!(WzInt, i32);
-impl_primitive!(WzInt, i32, i8);
-impl_primitive!(WzInt, i32, i16);
-impl_primitive!(WzInt, i32, i32);
-impl_primitive!(WzInt, i32, i64);
+impl_primitive!(WzInt, i32);
+impl_conversions!(WzInt, i32, i8);
+impl_conversions!(WzInt, i32, i16);
+impl_conversions!(WzInt, i32, i32);
+impl_conversions!(WzInt, i32, i64);
+impl_conversions!(WzInt, i32, u8);
+impl_conversions!(WzInt, i32, u16);
+impl_conversions!(WzInt, i32, u32);
+impl_conversions!(WzInt, i32, u64);
 
 impl Decode for WzInt {
     fn decode<R>(reader: &mut R) -> Result<Self>
@@ -27,15 +31,6 @@ impl Decode for WzInt {
 }
 
 impl Encode for WzInt {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
-            5
-        } else {
-            1
-        }
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -49,15 +44,29 @@ impl Encode for WzInt {
     }
 }
 
+impl SizeHint for WzInt {
+    fn data_size(&self) -> WzInt {
+        if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
+            WzInt::from(5)
+        } else {
+            WzInt::from(1)
+        }
+    }
+}
+
 /// Defines a WZ-LONG structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzLong(i64);
 
-impl_deref!(WzLong, i64);
-impl_primitive!(WzLong, i64, i8);
-impl_primitive!(WzLong, i64, i16);
-impl_primitive!(WzLong, i64, i32);
-impl_primitive!(WzLong, i64, i64);
+impl_primitive!(WzLong, i64);
+impl_conversions!(WzLong, i64, i8);
+impl_conversions!(WzLong, i64, i16);
+impl_conversions!(WzLong, i64, i32);
+impl_conversions!(WzLong, i64, i64);
+impl_conversions!(WzLong, i64, u8);
+impl_conversions!(WzLong, i64, u16);
+impl_conversions!(WzLong, i64, u32);
+impl_conversions!(WzLong, i64, u64);
 
 impl Decode for WzLong {
     fn decode<R>(reader: &mut R) -> Result<Self>
@@ -73,15 +82,6 @@ impl Decode for WzLong {
 }
 
 impl Encode for WzLong {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
-            9
-        } else {
-            1
-        }
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -95,12 +95,22 @@ impl Encode for WzLong {
     }
 }
 
+impl SizeHint for WzLong {
+    fn data_size(&self) -> WzInt {
+        if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
+            WzInt::from(9)
+        } else {
+            WzInt::from(1)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use crate::{
         types::{WzInt, WzLong},
-        Decode, Encode, Metadata, UnencryptedReader,
+        Decode, Metadata, UnencryptedReader,
     };
     use std::io::Cursor;
 
@@ -130,20 +140,27 @@ mod tests {
     }
 
     #[test]
+    fn calculate_with_wz_int() {
+        let i1 = 5;
+        let i2 = 7;
+
+        let wz_int1 = WzInt::from(i1);
+        let wz_int2 = WzInt::from(i2);
+        assert_eq!(wz_int1 + wz_int2, WzInt::from(i1 + i2));
+        assert_eq!(wz_int2 - wz_int1, WzInt::from(i2 - i1));
+    }
+
+    #[test]
     fn decode_wz_int() {
         let short_notation = vec![0x72];
-        let size = short_notation.len() as u64;
         let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new(0));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 0x72);
-        assert_eq!(wz_int.encode_size(), size);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0];
-        let size = long_notation.len() as u64;
         let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new(0));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 257);
-        assert_eq!(wz_int.encode_size(), size);
 
         let failure = vec![(i8::MIN as u8), 1, 1];
         let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new(0));
@@ -179,20 +196,27 @@ mod tests {
     }
 
     #[test]
+    fn calculate_with_wz_long() {
+        let i1 = 5;
+        let i2 = 7;
+
+        let wz_long1 = WzLong::from(i1);
+        let wz_long2 = WzLong::from(i2);
+        assert_eq!(wz_long1 + wz_long2, WzLong::from(i1 + i2));
+        assert_eq!(wz_long2 - wz_long1, WzLong::from(i2 - i1));
+    }
+
+    #[test]
     fn decode_wz_long() {
         let short_notation = vec![0x72];
-        let size = short_notation.len() as u64;
         let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new(0));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, 0x72);
-        assert_eq!(wz_long.encode_size(), size);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
-        let size = long_notation.len() as u64;
         let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new(0));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, 257);
-        assert_eq!(wz_long.encode_size(), size);
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
         let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new(0));

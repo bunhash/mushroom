@@ -121,11 +121,6 @@ impl Metadata {
 }
 
 impl Encode for Metadata {
-    /// Get the size
-    fn encode_size(&self) -> u64 {
-        19 + self.description.len() as u64
-    }
-
     /// Encodes objects
     fn encode<W>(&self, _writer: &mut W) -> Result<()>
     where

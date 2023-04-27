@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! impl_deref {
+macro_rules! impl_primitive {
     ($lhs:ty, $rhs:ty ) => {
         impl Deref for $lhs {
             type Target = $rhs;
@@ -13,11 +13,27 @@ macro_rules! impl_deref {
                 &mut self.0
             }
         }
+
+        impl Add<$lhs> for $lhs {
+            type Output = $lhs;
+
+            fn add(self, other: $lhs) -> Self::Output {
+                <$lhs>::from(*self + *other)
+            }
+        }
+
+        impl Sub<$lhs> for $lhs {
+            type Output = $lhs;
+
+            fn sub(self, other: $lhs) -> Self::Output {
+                <$lhs>::from(*self - *other)
+            }
+        }
     };
 }
 
 #[macro_export]
-macro_rules! impl_primitive {
+macro_rules! impl_conversions {
     ($lhs:ty, $expected:ty, $rhs:ty ) => {
         impl From<$rhs> for $lhs {
             fn from(other: $rhs) -> Self {
@@ -64,6 +80,38 @@ macro_rules! impl_primitive {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<core::cmp::Ordering> {
                 PartialOrd::partial_cmp(self, &Into::<$rhs>::into(*other))
+            }
+        }
+
+        impl Add<$rhs> for $lhs {
+            type Output = $lhs;
+
+            fn add(self, other: $rhs) -> Self::Output {
+                Self::Output::from(self.0 + other as $expected)
+            }
+        }
+
+        impl Add<$lhs> for $rhs {
+            type Output = $lhs;
+
+            fn add(self, other: $lhs) -> Self::Output {
+                Self::Output::from(self as $expected + other.0)
+            }
+        }
+
+        impl Sub<$rhs> for $lhs {
+            type Output = $lhs;
+
+            fn sub(self, other: $rhs) -> Self::Output {
+                Self::Output::from(self.0 - other as $expected)
+            }
+        }
+
+        impl Sub<$lhs> for $rhs {
+            type Output = $lhs;
+
+            fn sub(self, other: $lhs) -> Self::Output {
+                Self::Output::from(self as $expected - other.0)
             }
         }
     };

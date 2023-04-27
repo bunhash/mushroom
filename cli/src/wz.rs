@@ -56,6 +56,7 @@ fn do_debug(name: &str, reader: impl Reader) -> Result<()> {
     let mut reader = reader;
     let map = Package::map(name, &mut reader)?;
     println!("{:?}", map.debug_pretty_print());
+    println!("Total size: {:?}", map.cursor().size() + 2);
     Ok(())
 }
 

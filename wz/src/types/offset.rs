@@ -1,20 +1,26 @@
 //! WZ Offset Structure
 
-use crate::{error::Result, impl_primitive, Decode, Encode, Reader, Writer};
+use crate::{
+    error::Result, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, Reader, Writer,
+};
 use core::{
     num::Wrapping,
-    ops::{Deref, DerefMut},
+    ops::{Add, Deref, DerefMut, Sub},
 };
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzOffset(u32);
 
-impl_deref!(WzOffset, u32);
-impl_primitive!(WzOffset, u32, u8);
-impl_primitive!(WzOffset, u32, u16);
-impl_primitive!(WzOffset, u32, u32);
-impl_primitive!(WzOffset, u32, u64);
+impl_primitive!(WzOffset, u32);
+impl_conversions!(WzOffset, u32, u8);
+impl_conversions!(WzOffset, u32, u16);
+impl_conversions!(WzOffset, u32, u32);
+impl_conversions!(WzOffset, u32, u64);
+impl_conversions!(WzOffset, u32, i8);
+impl_conversions!(WzOffset, u32, i16);
+impl_conversions!(WzOffset, u32, i32);
+impl_conversions!(WzOffset, u32, i64);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information
@@ -87,11 +93,6 @@ impl Decode for WzOffset {
 }
 
 impl Encode for WzOffset {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        4
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -103,6 +104,12 @@ impl Encode for WzOffset {
             writer.metadata().version_checksum,
         );
         encoded.encode(writer)
+    }
+}
+
+impl SizeHint for WzOffset {
+    fn data_size(&self) -> WzInt {
+        WzInt::from(4)
     }
 }
 

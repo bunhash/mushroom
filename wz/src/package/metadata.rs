@@ -4,6 +4,7 @@
 
 use crate::{
     error::Result,
+    map::SizeHint,
     package::Error,
     types::{WzInt, WzOffset, WzString},
     Decode, Encode, Reader, Writer,
@@ -74,28 +75,20 @@ impl Decode for Metadata {
 }
 
 impl Encode for Metadata {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        match self {
-            Metadata::Package(name, info) => 1 + name.encode_size() + info.encode_size(),
-            Metadata::Image(name, info) => 1 + name.encode_size() + info.encode_size(),
-        }
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
     {
         match self {
-            Metadata::Package(name, info) => {
+            Metadata::Package(name, params) => {
                 writer.write_byte(3)?;
                 name.encode(writer)?;
-                info.encode(writer)
+                params.encode(writer)
             }
-            Metadata::Image(name, info) => {
+            Metadata::Image(name, params) => {
                 writer.write_byte(4)?;
                 name.encode(writer)?;
-                info.encode(writer)
+                params.encode(writer)
             }
         }
     }
@@ -131,11 +124,6 @@ impl Decode for Params {
 }
 
 impl Encode for Params {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        self.size.encode_size() + self.checksum.encode_size() + self.offset.encode_size()
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -144,5 +132,11 @@ impl Encode for Params {
         self.size.encode(writer)?;
         self.checksum.encode(writer)?;
         self.offset.encode(writer)
+    }
+}
+
+impl SizeHint for Params {
+    fn data_size(&self) -> WzInt {
+        self.size.data_size() + self.checksum.data_size() + self.offset.data_size()
     }
 }

@@ -2,6 +2,8 @@
 
 use crate::{
     error::{Result, WzError},
+    map::SizeHint,
+    types::WzInt,
     {Decode, Encode, Reader, Writer},
 };
 use core::ops::{Deref, DerefMut};
@@ -102,17 +104,18 @@ impl Decode for CString {
 }
 
 impl Encode for CString {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        self.0.len() as u64 + 1
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
     {
         writer.write_all(self.as_bytes())?;
         writer.write_byte(0)
+    }
+}
+
+impl SizeHint for CString {
+    fn data_size(&self) -> WzInt {
+        WzInt::from(self.0.len() as i32 + 1)
     }
 }
 
@@ -150,28 +153,6 @@ impl Decode for WzString {
 }
 
 impl Encode for WzString {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        let length = self.0.len() as i32;
-        if length == 0 {
-            1
-        } else {
-            if self.0.is_ascii() {
-                if length > (i8::MAX as i32) {
-                    5 + (length as u64)
-                } else {
-                    1 + (length as u64)
-                }
-            } else {
-                if length >= (i8::MAX as i32) {
-                    5 + (length as u64 * 2)
-                } else {
-                    1 + (length as u64 * 2)
-                }
-            }
-        }
-    }
-
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: Writer,
@@ -207,6 +188,25 @@ impl Encode for WzString {
             // Write the string
             let bytes = self.encode_utf16().collect::<Vec<u16>>();
             writer.write_unicode_bytes(&bytes)
+        }
+    }
+}
+
+impl SizeHint for WzString {
+    fn data_size(&self) -> WzInt {
+        let length = self.0.len() as i32;
+        if self.0.is_ascii() {
+            if length > (i8::MAX as i32) {
+                WzInt::from(5 + length)
+            } else {
+                WzInt::from(1 + length)
+            }
+        } else {
+            if length >= (i8::MAX as i32) {
+                WzInt::from(5 + (length * 2))
+            } else {
+                WzInt::from(1 + (length * 2))
+            }
         }
     }
 }

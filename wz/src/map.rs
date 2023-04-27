@@ -8,21 +8,29 @@ mod cursor;
 mod cursor_mut;
 mod error;
 mod node;
+mod size_hint;
 
 pub use cursor::Cursor;
 pub use cursor_mut::CursorMut;
 pub use error::Error;
 pub use indextree::DebugPrettyPrint;
 pub use node::MapNode;
+pub use size_hint::SizeHint;
 
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
 /// to be unique.
-pub struct Map<T> {
+pub struct Map<T>
+where
+    T: SizeHint,
+{
     arena: Arena<MapNode<T>>,
     root: NodeId,
 }
 
-impl<T> Map<T> {
+impl<T> Map<T>
+where
+    T: SizeHint,
+{
     /// Creates a new map with the provided root name and data
     pub fn new(name: WzString, data: T) -> Self {
         let mut arena = Arena::new();

@@ -104,11 +104,6 @@ impl Decode for Package {
 }
 
 impl Encode for Package {
-    #[inline]
-    fn encode_size(&self) -> u64 {
-        todo!("implement size")
-    }
-
     fn encode<W>(&self, _writer: &mut W) -> Result<()>
     where
         W: Writer,

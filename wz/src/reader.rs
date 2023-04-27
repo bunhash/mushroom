@@ -31,7 +31,7 @@ pub trait Reader: Sized {
 
     /// Seek to start after the version checksum (absolute_position + 2)
     fn seek_to_start(&mut self) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.metadata().absolute_position as u32 + 2))
+        self.seek(WzOffset::from(self.metadata().absolute_position + 2))
     }
 
     /// Seek from absolute position

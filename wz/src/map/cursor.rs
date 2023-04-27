@@ -2,17 +2,26 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::map::{Error, MapNode};
+use crate::{
+    map::{Error, MapNode, SizeHint},
+    types::WzInt,
+};
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
 /// A cursor with read-only access to the contents of the [`Map`](crate::map::Map)
-pub struct Cursor<'a, T> {
+pub struct Cursor<'a, T>
+where
+    T: SizeHint,
+{
     pub(crate) position: NodeId,
     arena: &'a Arena<MapNode<T>>,
 }
 
-impl<'a, T> Cursor<'a, T> {
+impl<'a, T> Cursor<'a, T>
+where
+    T: SizeHint,
+{
     pub(crate) fn new(position: NodeId, arena: &'a Arena<MapNode<T>>) -> Self {
         Self { position, arena }
     }
@@ -20,7 +29,7 @@ impl<'a, T> Cursor<'a, T> {
     /// Returns the path of the current position as a vector of names starting with the root
     pub fn pwd(&'a self) -> Vec<&'a str> {
         let mut path = VecDeque::new();
-        for id in self.position.ancestors(&self.arena) {
+        for id in self.position.ancestors(self.arena) {
             path.push_front(
                 self.arena
                     .get(id)
@@ -48,6 +57,12 @@ impl<'a, T> Cursor<'a, T> {
             .collect::<Vec<&'a str>>()
     }
 
+    /// Returns true if the child exists. This is slightly more efficient than doing
+    /// list().contains().
+    pub fn has_child(&self, name: &str) -> bool {
+        self.get_id(name).is_ok()
+    }
+
     /// Returns the name of the current position
     pub fn name(&'a self) -> &'a str {
         &self
@@ -57,6 +72,24 @@ impl<'a, T> Cursor<'a, T> {
             .get()
             .name
             .as_ref()
+    }
+
+    /// Returns the size of the data at the current position (recursively). This function
+    /// returns the data and header size of the current node + the data, header, and metadata
+    /// sizes of its descendants.
+    pub fn size(&self) -> WzInt {
+        let node = self
+            .arena
+            .get(self.position)
+            .expect("recursive_size node should exist")
+            .get();
+        node.data_size()
+            + node.header_size(self.position.children(self.arena).count())
+            + self
+                .position
+                .children(self.arena)
+                .map(|id| *self.recursive_size(id))
+                .sum::<i32>()
     }
 
     /// Returns the data at the current position
@@ -112,5 +145,20 @@ impl<'a, T> Cursor<'a, T> {
             Some(id) => Ok(id),
             None => Err(Error::NotFound(String::from(name))),
         }
+    }
+
+    fn recursive_size(&self, current: NodeId) -> WzInt {
+        let node = self
+            .arena
+            .get(current)
+            .expect("recursive_size node should exist")
+            .get();
+        node.data_size()
+            + node.header_size(current.children(self.arena).count())
+            + node.metadata_size()
+            + current
+                .children(self.arena)
+                .map(|id| *self.recursive_size(id))
+                .sum::<i32>()
     }
 }
