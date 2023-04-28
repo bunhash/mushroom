@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```
-//! use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
+//! use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, TRIMMED_KEY};
 //!
 //! let mut stream = KeyStream::new(&TRIMMED_KEY, &GMS_IV);
 //!
@@ -50,3 +50,15 @@ pub const GMS_IV: [u8; 4] = [0x4d, 0x23, 0xc7, 0x2b];
 
 /// The AES-256 IV used in KMS
 pub const KMS_IV: [u8; 4] = [0xb9, 0x7d, 0x63, 0xe9];
+
+/// Trait representing Encryptors
+pub trait Encryptor {
+    /// Encrypts an array of bytes
+    fn encrypt(&mut self, bytes: &mut Vec<u8>);
+}
+
+/// Trait representing Decryptors
+pub trait Decryptor {
+    /// Decrypts an array of bytes
+    fn decrypt(&mut self, bytes: &mut Vec<u8>);
+}

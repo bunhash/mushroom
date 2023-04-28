@@ -1,5 +1,6 @@
 //! Self-growing key stream
 
+use crate::{Decryptor, Encryptor};
 use aes::{
     cipher::{
         generic_array::{typenum::U16, GenericArray},
@@ -64,14 +65,16 @@ impl KeyStream {
             input[i] = val ^ self.stream[i];
         }
     }
+}
 
-    /// Encrypts the vector with the key stream
-    pub fn encrypt(&mut self, input: &mut Vec<u8>) {
+impl Encryptor for KeyStream {
+    fn encrypt(&mut self, input: &mut Vec<u8>) {
         self.xor(input);
     }
+}
 
-    /// Decrypts the vector with the key stream
-    pub fn decrypt(&mut self, input: &mut Vec<u8>) {
+impl Decryptor for KeyStream {
+    fn decrypt(&mut self, input: &mut Vec<u8>) {
         self.xor(input);
     }
 }
@@ -79,7 +82,7 @@ impl KeyStream {
 #[cfg(test)]
 mod tests {
 
-    use crate::{KeyStream, GMS_IV, TRIMMED_KEY};
+    use crate::{Decryptor, Encryptor, KeyStream, GMS_IV, TRIMMED_KEY};
 
     #[test]
     fn stream_16() {

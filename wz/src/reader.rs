@@ -1,55 +1,143 @@
 //! WZ Reader
 
 use crate::{error::Result, types::WzOffset, Metadata};
+use crypto::{Decryptor, KeyStream};
+use std::io::{Read, Seek, SeekFrom};
 
-mod encrypted;
-mod unencrypted;
+mod dummy_decryptor;
 
-pub use self::{encrypted::EncryptedReader, unencrypted::UnencryptedReader};
+pub use self::dummy_decryptor::DummyDecryptor;
 
-/// Trait for reading WZ files
-pub trait Reader: Sized {
-    /// Returns the metadata of the WZ file
-    fn metadata(&self) -> &Metadata;
+/// Wraps a reader into a WZ decoder. Used in (`Decode`)[crate::Decode] trait
+///
+/// ```no_run
+/// use std::{io::BufReader, fs::File};
+/// use wz::{Metadata, WzReader};
+///
+/// let file = File::open("Base.wz").unwrap();
+/// let metadata = Metadata::from_reader(&file).unwrap();
+/// let reader = WzReader::unencrypted(&metadata, BufReader::new(file));
+/// ```
+///
+/// ```no_run
+/// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
+/// use std::{io::BufReader, fs::File};
+/// use wz::{Metadata, WzReader};
+///
+/// let file = File::open("Base.wz").unwrap();
+/// let metadata = Metadata::from_reader(&file).unwrap();
+/// let reader = WzReader::encrypted(
+///     &metadata,
+///     BufReader::new(file),
+///     KeyStream::new(&TRIMMED_KEY, &GMS_IV)
+/// );
+/// ```
+pub struct WzReader<R, D>
+where
+    R: Read + Seek,
+    D: Decryptor,
+{
+    /// Points to the beginning of the file after the metadata. I just include the version checksum
+    /// in the metadata while it technically isn't.
+    absolute_position: i32,
 
-    /// Get the position within the input
-    fn position(&mut self) -> Result<WzOffset>;
+    /// Version hash/checksum
+    version_checksum: u32,
 
-    /// Seek to position
-    fn seek(&mut self, pos: WzOffset) -> Result<WzOffset>;
+    /// Underlying reader
+    reader: R,
 
-    /// Read into the buffer. Raises the underlying `Read` trait
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+    /// Some versions of WZ files have encrypted strings. A [`DummyDecryptor`] is provided for
+    /// versions that do not.
+    decryptor: D,
+}
 
-    /// Read exact into buffer. Raises the underlying `Read` trait
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()>;
+impl<R> WzReader<R, DummyDecryptor>
+where
+    R: Read + Seek,
+{
+    /// Creates an unencrypted reader
+    pub fn unencrypted(metadata: &Metadata, reader: R) -> Self {
+        WzReader::new(metadata, reader, DummyDecryptor)
+    }
+}
 
-    /// Some versions of WZ files have encrypted strings. This function is used internally to
-    /// decrypt them. If the version of WZ file you are reading does not need to decrypt strings,
-    /// this function does not need to be implemented.
-    fn decrypt(&mut self, _bytes: &mut Vec<u8>) {}
+impl<R> WzReader<R, KeyStream>
+where
+    R: Read + Seek,
+{
+    /// Creates an encrypted reader
+    pub fn encrypted(metadata: &Metadata, reader: R, decryptor: KeyStream) -> Self {
+        WzReader::new(metadata, reader, decryptor)
+    }
+}
 
-    /// Seek to start after the version checksum (absolute_position + 2)
-    fn seek_to_start(&mut self) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.metadata().absolute_position + 2))
+impl<R, D> WzReader<R, D>
+where
+    R: Read + Seek,
+    D: Decryptor,
+{
+    /// Creates a new `WzReader`
+    pub fn new(metadata: &Metadata, reader: R, decryptor: D) -> Self {
+        Self {
+            absolute_position: metadata.absolute_position,
+            version_checksum: metadata.version_checksum,
+            reader,
+            decryptor,
+        }
     }
 
-    /// Seek from absolute position
-    fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset> {
-        self.seek(WzOffset::from(
-            self.metadata().absolute_position as u32 + offset,
+    /// Returns the metadata of the WZ file
+    pub fn absolute_position(&self) -> i32 {
+        self.absolute_position
+    }
+
+    /// Returns the metadata of the WZ file
+    pub fn version_checksum(&self) -> u32 {
+        self.version_checksum
+    }
+
+    /// Get the position within the input
+    pub fn position(&mut self) -> Result<WzOffset> {
+        Ok(WzOffset::from(self.reader.stream_position()?))
+    }
+
+    /// Seek to position
+    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+        Ok(WzOffset::from(
+            self.reader.seek(SeekFrom::Start(*pos as u64))?,
         ))
     }
 
+    /// Read into the buffer. Raises the underlying `Read` trait
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        Ok(self.reader.read(buf)?)
+    }
+
+    /// Read exact into buffer. Raises the underlying `Read` trait
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        Ok(self.reader.read_exact(buf)?)
+    }
+
+    /// Seek to start after the version checksum (absolute_position + 2)
+    pub fn seek_to_start(&mut self) -> Result<WzOffset> {
+        self.seek(WzOffset::from(self.absolute_position() + 2))
+    }
+
+    /// Seek from absolute position
+    pub fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset> {
+        self.seek(WzOffset::from(self.absolute_position() as u32 + offset))
+    }
+
     /// Reads a single byte and updates the cursor position
-    fn read_byte(&mut self) -> Result<u8> {
+    pub fn read_byte(&mut self) -> Result<u8> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;
         Ok(buf[0])
     }
 
     /// Attempts to read input into a byte vecotr
-    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
+    pub fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
         let mut data = vec![0u8; len];
         self.read_exact(&mut data)?;
         Ok(data)
@@ -57,9 +145,9 @@ pub trait Reader: Sized {
 
     /// Reads a string as if it were utf8. This function does not do UTF-8 conversion but will read
     /// the amount of bytes required to convert to utf8.
-    fn read_utf8_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
+    pub fn read_utf8_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
         let mut buf = self.read_vec(len)?;
-        self.decrypt(&mut buf);
+        self.decryptor.decrypt(&mut buf);
         let mut mask = 0xaa;
         Ok(buf
             .iter()
@@ -76,9 +164,9 @@ pub trait Reader: Sized {
 
     /// Reads a string as if it were unicode (or wchar). This function does not do unicode
     /// conversion but will read the amount of bytes required to convert to unicode.
-    fn read_unicode_bytes(&mut self, len: usize) -> Result<Vec<u16>> {
+    pub fn read_unicode_bytes(&mut self, len: usize) -> Result<Vec<u16>> {
         let mut buf = self.read_vec(len * 2)?;
-        self.decrypt(&mut buf);
+        self.decryptor.decrypt(&mut buf);
         let mut mask: u16 = 0xaaaa;
         Ok(buf
             .chunks(2)
@@ -92,5 +180,31 @@ pub trait Reader: Sized {
                 wchar
             })
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{Metadata, WzReader};
+    use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
+    use std::{fs::File, io::BufReader};
+
+    #[test]
+    fn make_encrypted() {
+        let file = File::open("testdata/v83-base.wz").expect("error opening file");
+        let metadata = Metadata::from_reader(&file).expect("error reading metadata");
+        let _ = WzReader::encrypted(
+            &metadata,
+            BufReader::new(file),
+            KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+        );
+    }
+
+    #[test]
+    fn make_unencrypted() {
+        let file = File::open("testdata/v172-base.wz").expect("error opening file");
+        let metadata = Metadata::from_reader(&file).expect("error reading metadata");
+        let _ = WzReader::unencrypted(&metadata, BufReader::new(file));
     }
 }

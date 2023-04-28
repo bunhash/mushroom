@@ -3,13 +3,10 @@
 use crate::{
     error::{Result, WzError},
     types::CString,
-    Encode, Writer,
+    Encode, WzWriter,
 };
-use crypto::checksum;
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-};
+use crypto::{checksum, Encryptor};
+use std::io::{Read, Seek, Write};
 
 /// Metadata of the WZ file
 pub struct Metadata {
@@ -50,13 +47,8 @@ impl Metadata {
         }
     }
 
-    pub fn from_file(filename: &str) -> Result<Metadata> {
-        let mut reader = BufReader::new(File::open(filename)?);
-        Metadata::from_reader(&mut reader)
-    }
-
     /// Reads the metadata at the beginning of the WZ file
-    pub(crate) fn from_reader<R>(mut reader: R) -> Result<Metadata>
+    pub fn from_reader<R>(mut reader: R) -> Result<Metadata>
     where
         R: Read,
     {
@@ -122,10 +114,10 @@ impl Metadata {
 
 impl Encode for Metadata {
     /// Encodes objects
-    fn encode<W>(&self, _writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, _writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
-        Self: Sized,
+        W: Write + Seek,
+        E: Encryptor,
     {
         unimplemented!()
     }
@@ -135,10 +127,12 @@ impl Encode for Metadata {
 mod tests {
 
     use crate::Metadata;
+    use std::fs::File;
 
     #[test]
     fn v83_metadata() {
-        let metadata = Metadata::from_file("testdata/v83-base.wz").expect("error reading metadata");
+        let file = File::open("testdata/v83-base.wz").expect("error opening file");
+        let metadata = Metadata::from_reader(file).expect("error reading metadata");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6480);
         assert_eq!(metadata.absolute_position, 60);
@@ -152,8 +146,8 @@ mod tests {
 
     #[test]
     fn v172_metadata() {
-        let metadata =
-            Metadata::from_file("testdata/v172-base.wz").expect("error reading metadata");
+        let file = File::open("testdata/v172-base.wz").expect("error opening file");
+        let metadata = Metadata::from_reader(file).expect("error reading metadata");
         assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(metadata.size, 6705);
         assert_eq!(metadata.absolute_position, 60);

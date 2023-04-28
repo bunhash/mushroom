@@ -4,9 +4,11 @@ use crate::{
     error::{Result, WzError},
     map::SizeHint,
     types::WzInt,
-    {Decode, Encode, Reader, Writer},
+    {Decode, Encode, WzReader, WzWriter},
 };
 use core::ops::{Deref, DerefMut};
+use crypto::{Decryptor, Encryptor};
+use std::io::{Read, Seek, Write};
 
 macro_rules! impl_str {
     ( $type:ty ) => {
@@ -88,9 +90,10 @@ impl_str!(CString);
 impl_eq!(CString, &'a String, String, &'a str, str);
 
 impl Decode for CString {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
     {
         let mut buf = Vec::new();
         loop {
@@ -104,9 +107,10 @@ impl Decode for CString {
 }
 
 impl Encode for CString {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
+        W: Write + Seek,
+        E: Encryptor,
     {
         writer.write_all(self.as_bytes())?;
         writer.write_byte(0)
@@ -128,9 +132,10 @@ impl_str!(WzString);
 impl_eq!(WzString, &'a String, String, &'a str, str);
 
 impl Decode for WzString {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
     {
         let check = i8::decode(reader)?;
         let length = match check {
@@ -153,9 +158,10 @@ impl Decode for WzString {
 }
 
 impl Encode for WzString {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
+        W: Write + Seek,
+        E: Encryptor,
     {
         let length = self.0.len() as i32;
 

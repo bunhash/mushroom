@@ -1,12 +1,15 @@
 //! WZ Offset Structure
 
 use crate::{
-    error::Result, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, Reader, Writer,
+    error::Result, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, WzReader,
+    WzWriter,
 };
 use core::{
     num::Wrapping,
     ops::{Add, Deref, DerefMut, Sub},
 };
+use crypto::{Decryptor, Encryptor};
+use std::io::{Read, Seek, Write};
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -54,8 +57,8 @@ impl WzOffset {
         offset.0
     }
 
-    fn encode_with(&self, position: u64, abs_pos: i32, version_checksum: u32) -> u32 {
-        let cur = Wrapping(position as u32);
+    fn encode_with(&self, position: WzOffset, abs_pos: i32, version_checksum: u32) -> u32 {
+        let cur = Wrapping(*position);
         let abs_pos = Wrapping(abs_pos as u32);
         let version_checksum = Wrapping(version_checksum as u32);
         let magic = Wrapping(0x581C3F6D);
@@ -77,31 +80,33 @@ impl WzOffset {
 }
 
 impl Decode for WzOffset {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
     {
         let position = reader.position()?;
         let encoded = u32::decode(reader)?;
         Ok(WzOffset::new(
             encoded,
             position,
-            reader.metadata().absolute_position,
-            reader.metadata().version_checksum,
+            reader.absolute_position(),
+            reader.version_checksum(),
         ))
     }
 }
 
 impl Encode for WzOffset {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
+        W: Write + Seek,
+        E: Encryptor,
     {
         let position = writer.position()?;
         let encoded = self.encode_with(
             position,
-            writer.metadata().absolute_position,
-            writer.metadata().version_checksum,
+            writer.absolute_position(),
+            writer.version_checksum(),
         );
         encoded.encode(writer)
     }

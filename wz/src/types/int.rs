@@ -1,7 +1,9 @@
 //! WZ Int and Long Formats
 
-use crate::{error::Result, impl_conversions, map::SizeHint, Decode, Encode, Reader, Writer};
+use crate::{error::Result, impl_conversions, map::SizeHint, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Add, Deref, DerefMut, Sub};
+use crypto::{Decryptor, Encryptor};
+use std::io::{Read, Seek, Write};
 
 /// Defines a WZ-INT structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -18,9 +20,10 @@ impl_conversions!(WzInt, i32, u32);
 impl_conversions!(WzInt, i32, u64);
 
 impl Decode for WzInt {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -31,9 +34,10 @@ impl Decode for WzInt {
 }
 
 impl Encode for WzInt {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
+        W: Write + Seek,
+        E: Encryptor,
     {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
             writer.write_byte(i8::MIN as u8)?;
@@ -69,9 +73,10 @@ impl_conversions!(WzLong, i64, u32);
 impl_conversions!(WzLong, i64, u64);
 
 impl Decode for WzLong {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -82,9 +87,10 @@ impl Decode for WzLong {
 }
 
 impl Encode for WzLong {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
-        W: Writer,
+        W: Write + Seek,
+        E: Encryptor,
     {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
             writer.write_byte(i8::MIN as u8)?;
@@ -110,7 +116,7 @@ mod tests {
 
     use crate::{
         types::{WzInt, WzLong},
-        Decode, Metadata, UnencryptedReader,
+        Decode, Metadata, WzReader,
     };
     use std::io::Cursor;
 
@@ -152,18 +158,19 @@ mod tests {
 
     #[test]
     fn decode_wz_int() {
+        let metadata = Metadata::new(0);
         let short_notation = vec![0x72];
-        let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(short_notation));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 0x72);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0];
-        let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(long_notation));
         let wz_int = WzInt::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 257);
 
         let failure = vec![(i8::MIN as u8), 1, 1];
-        let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(failure));
         match WzInt::decode(&mut reader) {
             Ok(val) => panic!("WzInt got {}", *val),
             Err(_) => {}
@@ -208,18 +215,19 @@ mod tests {
 
     #[test]
     fn decode_wz_long() {
+        let metadata = Metadata::new(0);
         let short_notation = vec![0x72];
-        let mut reader = UnencryptedReader::new(Cursor::new(short_notation), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(short_notation));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, 0x72);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
-        let mut reader = UnencryptedReader::new(Cursor::new(long_notation), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(long_notation));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, 257);
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
-        let mut reader = UnencryptedReader::new(Cursor::new(failure), Metadata::new(0));
+        let mut reader = WzReader::unencrypted(&metadata, Cursor::new(failure));
         match WzLong::decode(&mut reader) {
             Ok(val) => panic!("WzLong got {}", *val),
             Err(_) => {}

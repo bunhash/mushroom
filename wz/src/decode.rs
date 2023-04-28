@@ -1,20 +1,15 @@
 //! Decoder Trait
 
-use crate::{error::Result, Reader};
+use crate::{error::Result, WzReader};
+use crypto::Decryptor;
 use std::io::{Read, Seek};
 
 /// Trait for decoding objects
 pub trait Decode {
     /// Decodes objects
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
-        R: Reader,
+        R: Read + Seek,
+        D: Decryptor,
         Self: Sized;
-}
-
-/// Decoder trait
-pub trait Decoder<R>
-where
-    R: Read + Seek,
-{
 }

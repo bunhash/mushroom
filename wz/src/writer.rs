@@ -1,38 +1,132 @@
 //! WZ Writer
 
-use crate::{error::Result, Metadata};
-use std::io::SeekFrom;
+use crate::{error::Result, types::WzOffset, Metadata};
+use crypto::{Encryptor, KeyStream};
+use std::io::{Seek, SeekFrom, Write};
 
-/// Trait for writing WZ files
-pub trait Writer: Sized {
+mod dummy_encryptor;
+
+pub use self::dummy_encryptor::DummyEncryptor;
+
+/// Wraps a writer into a WZ encoder. Used in (`Encode`)[crate::Encode] trait
+///
+/// ```no_run
+/// use std::{io::BufWriter, fs::File};
+/// use wz::{Metadata, WzWriter};
+///
+/// let metadata = Metadata::new(172);
+/// let file = File::create("Base.wz").unwrap();
+/// let reader = WzWriter::unencrypted(&metadata, BufWriter::new(file));
+/// ```
+///
+/// ```no_run
+/// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
+/// use std::{io::BufWriter, fs::File};
+/// use wz::{Metadata, WzWriter};
+///
+/// let metadata = Metadata::new(83);
+/// let file = File::open("Base.wz").unwrap();
+/// let reader = WzWriter::encrypted(
+///     &metadata,
+///     BufWriter::new(file),
+///     KeyStream::new(&TRIMMED_KEY, &GMS_IV)
+/// );
+/// ```
+pub struct WzWriter<W, E>
+where
+    W: Write + Seek,
+    E: Encryptor,
+{
+    /// Points to the beginning of the file after the metadata. I just include the version checksum
+    /// in the metadata while it technically isn't.
+    absolute_position: i32,
+
+    /// Version hash/checksum
+    version_checksum: u32,
+
+    /// Underlying writer
+    writer: W,
+
+    /// Some versions of WZ files have encrypted strings. A [`DummyEncryptor`] is provided for
+    /// versions that do not.
+    encryptor: E,
+}
+
+impl<W> WzWriter<W, DummyEncryptor>
+where
+    W: Write + Seek,
+{
+    /// Creates an unencrypted writer
+    pub fn unencrypted(metadata: &Metadata, writer: W) -> Self {
+        WzWriter::new(metadata, writer, DummyEncryptor)
+    }
+}
+
+impl<W> WzWriter<W, KeyStream>
+where
+    W: Write + Seek,
+{
+    /// Creates an encrypted writer
+    pub fn encrypted(metadata: &Metadata, writer: W, encryptor: KeyStream) -> Self {
+        WzWriter::new(metadata, writer, encryptor)
+    }
+}
+
+impl<W, E> WzWriter<W, E>
+where
+    W: Write + Seek,
+    E: Encryptor,
+{
+    /// Creates a new `WzWriter`
+    pub fn new(metadata: &Metadata, writer: W, encryptor: E) -> Self {
+        Self {
+            absolute_position: metadata.absolute_position,
+            version_checksum: metadata.version_checksum,
+            writer,
+            encryptor,
+        }
+    }
+
     /// Returns the metadata of the WZ file
-    fn metadata(&self) -> &Metadata;
+    pub fn absolute_position(&self) -> i32 {
+        self.absolute_position
+    }
+
+    /// Returns the metadata of the WZ file
+    pub fn version_checksum(&self) -> u32 {
+        self.version_checksum
+    }
 
     /// Get the position within the input
-    fn position(&mut self) -> Result<u64>;
+    pub fn position(&mut self) -> Result<WzOffset> {
+        Ok(WzOffset::from(self.writer.stream_position()?))
+    }
 
     /// Seek to position
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+        Ok(WzOffset::from(
+            self.writer.seek(SeekFrom::Start(*pos as u64))?,
+        ))
+    }
 
     /// Write the buffer. Raises the underlying `Write` trait
-    fn write(&mut self, buf: &[u8]) -> Result<usize>;
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        Ok(self.writer.write(buf)?)
+    }
 
     /// Write all of the buffer. Raises the underlying `Write` trait
-    fn write_all(&mut self, buf: &[u8]) -> Result<()>;
-
-    /// Some versions of WZ files have encrypted strings. This function is used internally to
-    /// encrypt them. If the version of WZ file you are writing does not need to encrypt strings,
-    /// this function does not need to be implemented.
-    fn encrypt(&mut self, _bytes: &mut Vec<u8>) {}
+    pub fn write_all(&mut self, buf: &[u8]) -> Result<()> {
+        Ok(self.writer.write_all(buf)?)
+    }
 
     /// Writes a single byte
-    fn write_byte(&mut self, byte: u8) -> Result<()> {
+    pub fn write_byte(&mut self, byte: u8) -> Result<()> {
         self.write_all(&[byte])
     }
 
     /// Writes a UTF-8 string. This function does not do UTF-8 conversion but will write the proper
     /// WZ encoding of the bytes.
-    fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+    pub fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         let mut mask = 0xaa;
         let mut buf = bytes
             .iter()
@@ -45,13 +139,13 @@ pub trait Writer: Sized {
                 c
             })
             .collect();
-        self.encrypt(&mut buf);
+        self.encryptor.encrypt(&mut buf);
         self.write_all(&buf)
     }
 
     /// Writes a unicode string. This function does not do Unicode conversion but will write the
     /// proper WZ encoding of the bytes.
-    fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<()> {
+    pub fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<()> {
         let mut mask: u16 = 0xaaaa;
         let mut buf = bytes
             .iter()
@@ -65,7 +159,31 @@ pub trait Writer: Sized {
             })
             .flatten()
             .collect();
-        self.encrypt(&mut buf);
+        self.encryptor.encrypt(&mut buf);
         self.write_all(&buf)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{Metadata, WzWriter};
+    use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
+    use std::io::Cursor;
+
+    #[test]
+    fn make_encrypted() {
+        let metadata = Metadata::new(83);
+        let _ = WzWriter::encrypted(
+            &metadata,
+            Cursor::new(vec![0u8; 60]),
+            KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+        );
+    }
+
+    #[test]
+    fn make_unencrypted() {
+        let metadata = Metadata::new(176);
+        let _ = WzWriter::unencrypted(&metadata, Cursor::new(vec![0u8; 60]));
     }
 }
