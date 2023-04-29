@@ -158,21 +158,7 @@ impl WzFile {
         R: Read + Seek,
         D: Decryptor,
     {
-        let content = match raw_content.tag {
-            3 => ContentRef::Package(PackageRef {
-                name_size: raw_content.name.size_hint(),
-                size: WzInt::from(0),
-                offset: raw_content.offset,
-                num_content: WzInt::from(0),
-            }),
-            4 => ContentRef::Image(ImageRef {
-                name_size: raw_content.name.size_hint(),
-                size: raw_content.size,
-                checksum: raw_content.checksum,
-                offset: raw_content.offset,
-            }),
-            t => return Err(Error::InvalidContentType(t).into()),
-        };
+        let content = (&raw_content).try_into()?;
         cursor.create(raw_content.name.clone(), content)?;
         match raw_content.tag {
             3 => {
