@@ -1,7 +1,6 @@
 //! WZ File
 
 use crate::{
-    decode::Error,
     error::{Result, WzError},
     map::{CursorMut, Map, SizeHint},
     reader::DummyDecryptor,
@@ -95,8 +94,8 @@ impl WzFile {
         });
         let mut map = Map::new(name, content);
         let mut cursor = map.cursor_mut();
-        for content in WzFile::decode_package_contents(&mut reader)? {
-            WzFile::map_content_to(content, &mut cursor, &mut reader)?;
+        for raw_content in WzFile::decode_package_contents(&mut reader)? {
+            WzFile::map_content_to(&raw_content, &mut cursor, &mut reader)?;
         }
         Ok(map)
     }
@@ -150,7 +149,7 @@ impl WzFile {
     }
 
     fn map_content_to<'a, R, D>(
-        raw_content: RawContentRef,
+        raw_content: &RawContentRef,
         cursor: &mut CursorMut<'a, ContentRef>,
         reader: &mut WzReader<R, D>,
     ) -> Result<()>
@@ -158,20 +157,16 @@ impl WzFile {
         R: Read + Seek,
         D: Decryptor,
     {
-        let content = (&raw_content).try_into()?;
+        let content = raw_content.try_into()?;
         cursor.create(raw_content.name.clone(), content)?;
-        match raw_content.tag {
-            3 => {
-                reader.seek(raw_content.offset)?;
-                cursor.move_to(raw_content.name.as_ref())?;
-                for raw_content in WzFile::decode_package_contents(reader)? {
-                    WzFile::map_content_to(raw_content, cursor, reader)?;
-                }
-                cursor.parent()?;
-                Ok(())
+        if raw_content.tag == 3 {
+            reader.seek(raw_content.offset)?;
+            cursor.move_to(raw_content.name.as_ref())?;
+            for raw_content in WzFile::decode_package_contents(reader)? {
+                WzFile::map_content_to(&raw_content, cursor, reader)?;
             }
-            4 => Ok(()),
-            t => Err(Error::InvalidContentType(t).into()),
+            cursor.parent()?;
         }
+        Ok(())
     }
 }
