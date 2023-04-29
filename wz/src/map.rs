@@ -77,8 +77,7 @@ where
             .data)
     }
 
-    /// Modifies the data at the uri path. Errors when the node does not exist. It is not advised
-    /// to change the name using this function. It will bypass the assertions this [`Map`] makes.
+    /// Modifies the data at the uri path. Errors when the node does not exist.
     pub fn modify(&mut self, uri: &[&str], closure: impl Fn(&mut T) -> ()) -> Result<(), Error> {
         let id = self.get_id(uri)?;
         CursorMut::new(id, &mut self.arena).modify(closure);

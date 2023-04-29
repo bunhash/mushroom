@@ -8,6 +8,7 @@ use crate::{
 };
 use std::convert::TryFrom;
 
+/// Used to reference a `Package` within the WZ file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageRef {
     pub(crate) name_size: WzInt,
@@ -16,6 +17,7 @@ pub struct PackageRef {
     pub(crate) num_content: WzInt,
 }
 
+/// Used to reference an `Image` within the WZ file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageRef {
     pub(crate) name_size: WzInt,
@@ -27,10 +29,10 @@ pub struct ImageRef {
 /// `ContentRef` found in WZ files
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContentRef {
-    /// Package holding more content
+    /// Package Content Type
     Package(PackageRef),
 
-    /// Image--treated as a binary blob
+    /// Image Content Type. Treated as a binary blob.
     Image(ImageRef),
 }
 

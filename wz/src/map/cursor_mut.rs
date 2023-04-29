@@ -205,9 +205,8 @@ where
     }
 
     /// Sends an update to the current node and all its ancestors. This calls Metadata::update()
-    /// internally so each node can update their metadata. This function should only be called if
-    /// the internal data was modified outside of [`CursorMut`] by the
-    /// [`get_mut`](CursorMut::get_mut) function.
+    /// internally so each node can update their metadata. This function only needs to be called if
+    /// the data is changed outside of [`Map`](crate::map::Map).
     pub fn send_update(&mut self) {
         let to_update = self
             .position

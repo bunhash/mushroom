@@ -1,4 +1,22 @@
 //! WZ File
+//!
+//! ```no_run
+//! use wz::{error::Result, WzFile};
+//!
+//! let file = WzFile::open("Base.wz").expect("error reading Base.wz");
+//! let map = file.map_unencrypted().expect("error mapping Base.wz");
+//! println!("{:?}", map.debug_pretty_print());
+//! ```
+//!
+//! ```no_run
+//! use crypto::{Decryptor, KeyStream, GMS_IV, TRIMMED_KEY};
+//! use wz::{error::Result, WzFile};
+//!
+//! let file = WzFile::open("Base.wz").expect("error reading Base.wz");
+//! let map = file.map_encrypted(KeyStream::new(&TRIMMED_KEY, &GMS_IV))
+//!     .expect("error mapping Base.wz");
+//! println!("{:?}", map.debug_pretty_print());
+//! ```
 
 use crate::{
     error::{Result, WzError},
@@ -23,6 +41,7 @@ pub use metadata::Metadata;
 
 use raw::RawContentRef;
 
+/// Represents a WZ file. This object should point to a location on disk.
 pub struct WzFile {
     path: PathBuf,
     metadata: Metadata,
@@ -36,7 +55,7 @@ impl WzFile {
         Ok(Self { path, metadata })
     }
 
-    /// Gets the filename of the provided path
+    /// Gets the filename of the WZ file
     pub fn file_name(&self) -> Result<&str> {
         match self.path.file_name() {
             Some(name) => match name.to_str() {
@@ -79,6 +98,9 @@ impl WzFile {
         self.to_reader(keystream)
     }
 
+    /// Maps the WZ file at a specific offset. This offset is expected to be a Package content
+    /// type. The decryptor is used to decrypt strings. A [`DummyDecryptor`] is provided for WZ
+    /// files that do not use string encryption.
     pub fn map_at<D>(&self, name: &str, offset: WzOffset, decryptor: D) -> Result<Map<ContentRef>>
     where
         D: Decryptor,
@@ -100,10 +122,14 @@ impl WzFile {
         Ok(map)
     }
 
+    /// Maps the WZ file at a specific offset without string encryption. See
+    /// [`map_at`](WzFile::map_at) for more information.
     pub fn map_unencrypted_at(&self, name: &str, offset: WzOffset) -> Result<Map<ContentRef>> {
         self.map_at(name, offset, DummyDecryptor)
     }
 
+    /// Maps the WZ file at a specific offset while decrypting string. See
+    /// [`map_at`](WzFile::map_at) for more information.
     pub fn map_encrypted_at(
         &self,
         name: &str,
@@ -113,6 +139,9 @@ impl WzFile {
         self.map_at(name, offset, keystream)
     }
 
+    /// Maps the entire WZ file starting from the absolute position. The decryptor is used to
+    /// decrypt strings. A [`DummyDecryptor`] is provided for WZ files that do not use string
+    /// encryption.
     pub fn map<D>(&self, decryptor: D) -> Result<Map<ContentRef>>
     where
         D: Decryptor,
@@ -121,10 +150,14 @@ impl WzFile {
         self.map_at(self.file_name()?, offset, decryptor)
     }
 
+    /// Maps the entire WZ file without decrypting any strings. If the WZ file is encrypted, it is
+    /// very likely UTF-8/UTF-16 errors will occur trying to decode the strings from bytes.
     pub fn map_unencrypted(&self) -> Result<Map<ContentRef>> {
         self.map(DummyDecryptor)
     }
 
+    /// Maps the entire WZ file while decrypting the strings. If the WZ file is not encrypted, it
+    /// is very likely UTF-8/UTF-16 errors will occur trying to decode the strings from bytes.
     pub fn map_encrypted(&self, keystream: KeyStream) -> Result<Map<ContentRef>> {
         self.map(keystream)
     }
