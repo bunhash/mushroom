@@ -10,7 +10,6 @@ pub enum Error {
     Decode(decode::Error),
     Io(io::ErrorKind),
     Map(map::Error),
-    //Package(package::Error),
     Utf8(string::FromUtf8Error),
     Unicode(string::FromUtf16Error),
     Wz(WzError),
@@ -22,7 +21,6 @@ impl fmt::Display for Error {
             Error::Decode(e) => write!(f, "Decode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
-            //Error::Package(e) => write!(f, "Package: {}", e),
             Error::Utf8(e) => write!(f, "UTF8: {}", e),
             Error::Unicode(e) => write!(f, "Unicode: {}", e),
             Error::Wz(e) => write!(f, "WZ: {}", e),
@@ -47,14 +45,6 @@ impl From<map::Error> for Error {
         Error::Map(other)
     }
 }
-
-/*
-impl From<package::Error> for Error {
-    fn from(other: package::Error) -> Self {
-        Error::Package(other)
-    }
-}
-*/
 
 impl From<string::FromUtf8Error> for Error {
     fn from(other: string::FromUtf8Error) -> Self {
