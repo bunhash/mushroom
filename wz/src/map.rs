@@ -8,7 +8,7 @@ mod cursor;
 mod cursor_mut;
 mod error;
 mod metadata;
-mod node;
+//mod node;
 mod size_hint;
 
 pub use cursor::Cursor;
@@ -16,7 +16,7 @@ pub use cursor_mut::CursorMut;
 pub use error::Error;
 pub use indextree::DebugPrettyPrint;
 pub use metadata::Metadata;
-pub use node::MapNode;
+//pub use node::MapNode;
 pub use size_hint::SizeHint;
 
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
@@ -25,7 +25,7 @@ pub struct Map<T>
 where
     T: Metadata + SizeHint,
 {
-    arena: Arena<MapNode<T>>,
+    arena: Arena<T>,
     root: NodeId,
 }
 
@@ -33,10 +33,10 @@ impl<T> Map<T>
 where
     T: Metadata + SizeHint,
 {
-    /// Creates a new map with the provided root name and data
-    pub fn new(name: WzString, data: T) -> Self {
+    /// Creates a new map with the provided root data
+    pub fn new(data: T) -> Self {
         let mut arena = Arena::new();
-        let root = arena.new_node(MapNode::new(name, data));
+        let root = arena.new_node(data);
         Self { arena, root }
     }
 
@@ -52,46 +52,37 @@ where
 
     /// Returns the name of the root node
     pub fn name(&self) -> &str {
-        &self
-            .arena
+        self.arena
             .get(self.root)
-            .expect("root node should exist")
+            .expect("get() node should exist")
             .get()
-            .name
-            .as_ref()
+            .name()
     }
 
     /// Renames the root node
     pub fn rename(&mut self, name: WzString) {
-        self.arena
-            .get_mut(self.root)
-            .expect("root node should exist")
-            .get_mut()
-            .name = name;
+        self.cursor_mut().rename(name);
     }
 
     /// Gets the data at the uri path. Errors when the node does not exist.
     pub fn get(&self, uri: &[&str]) -> Result<&T, Error> {
-        Ok(&self
+        Ok(self
             .arena
             .get(self.get_id(uri)?)
             .expect("get() node should exist")
-            .get()
-            .data)
+            .get())
     }
 
-    /// Gets the mutable data at the uri path. Errors when the node does not exist.
-    pub fn get_mut(&mut self, uri: &[&str]) -> Result<&mut T, Error> {
-        Ok(&mut self
-            .arena
-            .get_mut(self.get_id(uri)?)
-            .expect("get_mut() node should exist")
-            .get_mut()
-            .data)
+    /// Modifies the data at the uri path. Errors when the node does not exist. It is not advised
+    /// to change the name using this function. It will bypass the assertions this [`Map`] makes.
+    pub fn modify(&mut self, uri: &[&str], closure: impl Fn(&mut T) -> ()) -> Result<(), Error> {
+        let id = self.get_id(uri)?;
+        CursorMut::new(id, &mut self.arena).modify(closure);
+        Ok(())
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
-    pub fn debug_pretty_print<'a>(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
+    pub fn debug_pretty_print<'a>(&'a self) -> DebugPrettyPrint<'a, T> {
         self.root.debug_pretty_print(&self.arena)
     }
 
@@ -119,20 +110,33 @@ mod tests {
 
     use crate::{
         map::{Map, Metadata, SizeHint},
-        types::WzString,
+        types::{WzInt, WzString},
     };
 
-    impl Metadata for i32 {
-        fn update<S>(&mut self, _: &[&S])
-        where
-            S: SizeHint,
-        {
+    #[derive(Debug)]
+    struct SimpleNode(WzString, i32);
+
+    impl Metadata for SimpleNode {
+        fn name(&self) -> &str {
+            self.0.as_ref()
+        }
+
+        fn rename(&mut self, name: WzString) {
+            self.0 = name;
+        }
+
+        fn update(&mut self, _: &[WzInt]) {}
+    }
+
+    impl SizeHint for SimpleNode {
+        fn size_hint(&self) -> WzInt {
+            self.0.size_hint() + self.1.size_hint()
         }
     }
 
     #[test]
     fn make_map() {
-        let mut map = Map::new(WzString::from("root"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("root"), 100));
         let mut cursor = map.cursor_mut();
         assert_eq!(cursor.name(), "root");
         cursor.rename(WzString::from("n1"));
@@ -145,29 +149,30 @@ mod tests {
 
     #[test]
     fn get_uri() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         // arena ownership moves to cursor in the next line.
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_1_1"), 155)
+            .create(SimpleNode(WzString::from("n1_1_1"), 155))
             .expect("error creating n1_1_1")
-            .create(WzString::from("n1_1_2"), 175)
+            .create(SimpleNode(WzString::from("n1_1_2"), 175))
             .expect("error creating n1_1_1")
             .move_to("n1_1_1")
             .expect("error moving into n1_1_1")
-            .create(WzString::from("n1_1_1_1"), 255)
+            .create(SimpleNode(WzString::from("n1_1_1_1"), 255))
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");
         assert_eq!(&cursor.pwd(), &["n1", "n1_1", "n1_1_1", "n1_1_1_1"]);
         // `cursor` dies here--arena ownership moves back to map in the next line.
         assert_eq!(
-            *map.get(&["n1", "n1_1", "n1_1_1", "n1_1_1_1"])
-                .expect("error getting uri"),
+            map.get(&["n1", "n1_1", "n1_1_1", "n1_1_1_1"])
+                .expect("error getting uri")
+                .1,
             255
         );
         assert!(map.get(&["n1", "n1_1", "fail"]).is_err());

@@ -2,7 +2,7 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::map::{Error, MapNode, Metadata, SizeHint};
+use crate::map::{Error, Metadata, SizeHint};
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
@@ -12,14 +12,14 @@ where
     T: Metadata + SizeHint,
 {
     pub(crate) position: NodeId,
-    arena: &'a Arena<MapNode<T>>,
+    arena: &'a Arena<T>,
 }
 
 impl<'a, T> Cursor<'a, T>
 where
     T: Metadata + SizeHint,
 {
-    pub(crate) fn new(position: NodeId, arena: &'a Arena<MapNode<T>>) -> Self {
+    pub(crate) fn new(position: NodeId, arena: &'a Arena<T>) -> Self {
         Self { position, arena }
     }
 
@@ -32,8 +32,7 @@ where
                     .get(id)
                     .expect("pwd() node should exist")
                     .get()
-                    .name
-                    .as_ref(),
+                    .name(),
             );
         }
         path.into()
@@ -48,8 +47,7 @@ where
                     .get(id)
                     .expect("list() node should exist")
                     .get()
-                    .name
-                    .as_ref()
+                    .name()
             })
             .collect::<Vec<&'a str>>()
     }
@@ -67,8 +65,7 @@ where
             .get(self.position)
             .expect("get() node should exist")
             .get()
-            .name
-            .as_ref()
+            .name()
     }
 
     /// Returns the data at the current position
@@ -78,7 +75,6 @@ where
             .get(self.position)
             .expect("get() node should exist")
             .get()
-            .data
     }
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
@@ -115,8 +111,7 @@ where
                     .get(*id)
                     .expect("get_id() node should exist")
                     .get()
-                    .name
-                    .as_ref()
+                    .name()
                     == name
             })
             .next()

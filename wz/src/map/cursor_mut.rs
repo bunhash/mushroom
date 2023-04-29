@@ -3,8 +3,8 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{Error, MapNode, Metadata, SizeHint},
-    types::WzString,
+    map::{Error, Metadata, SizeHint},
+    types::{WzInt, WzString},
 };
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
@@ -15,7 +15,7 @@ where
     T: Metadata + SizeHint,
 {
     pub(crate) position: NodeId,
-    arena: &'a mut Arena<MapNode<T>>,
+    arena: &'a mut Arena<T>,
     clipboard: Option<NodeId>,
 }
 
@@ -23,7 +23,7 @@ impl<'a, T> CursorMut<'a, T>
 where
     T: Metadata + SizeHint,
 {
-    pub(crate) fn new(position: NodeId, arena: &'a mut Arena<MapNode<T>>) -> Self {
+    pub(crate) fn new(position: NodeId, arena: &'a mut Arena<T>) -> Self {
         Self {
             position,
             arena,
@@ -40,8 +40,7 @@ where
                     .get(id)
                     .expect("pwd() node should exist")
                     .get()
-                    .name
-                    .as_ref(),
+                    .name(),
             );
         }
         path.into()
@@ -56,8 +55,7 @@ where
                     .get(id)
                     .expect("list() node should exist")
                     .get()
-                    .name
-                    .as_ref()
+                    .name()
             })
             .collect::<Vec<&'a str>>()
     }
@@ -70,42 +68,19 @@ where
 
     /// Returns the name of the current position
     pub fn name(&'a self) -> &'a str {
-        &self
-            .arena
+        self.arena
             .get(self.position)
             .expect("get() node should exist")
             .get()
-            .name
-            .as_ref()
-    }
-
-    /// Renames the node at the current position
-    pub fn rename(&mut self, name: WzString) {
-        self.arena
-            .get_mut(self.position)
-            .expect("get() node should exist")
-            .get_mut()
-            .name = name;
+            .name()
     }
 
     /// Returns the data at the current position
     pub fn get(&self) -> &T {
-        &self
-            .arena
+        self.arena
             .get(self.position)
             .expect("get() node should exist")
             .get()
-            .data
-    }
-
-    /// Returns the mutable data at the current position
-    pub fn get_mut(&mut self) -> &mut T {
-        &mut self
-            .arena
-            .get_mut(self.position)
-            .expect("get_mut() node should exist")
-            .get_mut()
-            .data
     }
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
@@ -131,14 +106,38 @@ where
         }
     }
 
+    // *** Mutable Functions *** //
+
+    /// Renames the node at the current position
+    pub fn rename(&mut self, name: WzString) {
+        self.arena
+            .get_mut(self.position)
+            .expect("current position should exist")
+            .get_mut()
+            .rename(name);
+        self.send_update();
+    }
+
+    /// Modifies the data at the current position
+    pub fn modify(&mut self, closure: impl Fn(&mut T) -> ()) {
+        let data = self
+            .arena
+            .get_mut(self.position)
+            .expect("current position should exist")
+            .get_mut();
+        closure(data);
+        self.send_update();
+    }
+
     /// Creates a new child at the current position. Errors when a child with the provided name
     /// already exists.
-    pub fn create(&mut self, name: WzString, data: T) -> Result<&mut Self, Error> {
-        if self.list().contains(&name.as_ref()) {
-            Err(Error::DuplicateError(name.to_string()))
+    pub fn create(&mut self, data: T) -> Result<&mut Self, Error> {
+        if self.has_child(data.name()) {
+            Err(Error::DuplicateError(data.name().to_string()))
         } else {
-            let node = self.arena.new_node(MapNode::new(name, data));
+            let node = self.arena.new_node(data);
             self.position.append(node, &mut self.arena);
+            self.send_update();
             Ok(self)
         }
     }
@@ -154,6 +153,7 @@ where
             to_delete.remove_subtree(&mut self.arena);
         }
         self.clipboard = Some(id);
+        self.send_update();
         Ok(self)
     }
 
@@ -164,6 +164,7 @@ where
             Some(id) => {
                 self.position.append(id, &mut self.arena);
                 self.clipboard = None;
+                self.send_update();
                 Ok(self)
             }
             None => Err(Error::ClipboardEmpty),
@@ -175,10 +176,44 @@ where
     pub fn delete(&mut self, name: &str) -> Result<&mut Self, Error> {
         let id = self.get_id(name)?;
         id.remove_subtree(&mut self.arena);
+        self.send_update();
         Ok(self)
     }
 
+    /// Sends an update to the current node and all its ancestors. This calls Metadata::update()
+    /// internally so each node can update their metadata. This function should only be called if
+    /// the internal data was modified outside of [`CursorMut`] by the
+    /// [`get_mut`](CursorMut::get_mut) function.
+    pub fn send_update(&mut self) {
+        let to_update = self
+            .position
+            .ancestors(&self.arena)
+            .collect::<Vec<NodeId>>();
+        for id in to_update {
+            self.update(id);
+        }
+    }
+
     // *** PRIVATES *** //
+
+    fn update(&mut self, position: NodeId) {
+        let children_sizes = position
+            .children(&self.arena)
+            .map(|id| {
+                self.arena
+                    .get(id)
+                    .expect("child should exist")
+                    .get()
+                    .size_hint()
+            })
+            .collect::<Vec<WzInt>>();
+        let current = &mut self
+            .arena
+            .get_mut(position)
+            .expect("current node should exist")
+            .get_mut();
+        current.update(&children_sizes);
+    }
 
     fn get_id(&self, name: &str) -> Result<NodeId, Error> {
         match self
@@ -189,8 +224,7 @@ where
                     .get(*id)
                     .expect("get_id() node should exist")
                     .get()
-                    .name
-                    .as_ref()
+                    .name()
                     == name
             })
             .next()
@@ -204,19 +238,45 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{map::Map, types::WzString};
+    use crate::{
+        map::{Map, Metadata, SizeHint},
+        types::{WzInt, WzString},
+    };
+
+    #[derive(Debug)]
+    struct SimpleNode(WzString, i32);
+
+    impl Metadata for SimpleNode {
+        fn name(&self) -> &str {
+            self.0.as_ref()
+        }
+
+        fn rename(&mut self, name: WzString) {
+            self.0 = name;
+        }
+
+        fn update(&mut self, _: &[WzInt]) {}
+    }
+
+    impl SizeHint for SimpleNode {
+        fn size_hint(&self) -> WzInt {
+            self.0.size_hint() + self.1.size_hint()
+        }
+    }
 
     #[test]
     fn add_nodes() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
-            .create(WzString::from("n1_2"), 3500)
+            .create(SimpleNode(WzString::from("n1_2"), 3500))
             .expect("error creating n1_2");
         assert!(
-            cursor.create(WzString::from("n1_2"), 0).is_err(),
+            cursor
+                .create(SimpleNode(WzString::from("n1_2"), 0))
+                .is_err(),
             "should have errored here"
         );
         assert_eq!(&cursor.list(), &["n1_1", "n1_2"]);
@@ -224,12 +284,12 @@ mod tests {
 
     #[test]
     fn remove_node() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
-            .create(WzString::from("n1_2"), 3500)
+            .create(SimpleNode(WzString::from("n1_2"), 3500))
             .expect("error creating n1_2")
             .delete("n1_1")
             .expect("should have deleted n1_1");
@@ -239,16 +299,16 @@ mod tests {
 
     #[test]
     fn remove_subtree() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
-            .create(WzString::from("n1_2"), 3500)
+            .create(SimpleNode(WzString::from("n1_2"), 3500))
             .expect("error creating n1_2")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_2_1"), 50)
+            .create(SimpleNode(WzString::from("n1_2_1"), 50))
             .expect("error creating n1_2_1")
             .parent()
             .expect("error moving back to n1")
@@ -259,16 +319,16 @@ mod tests {
 
     #[test]
     fn move_node() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
-            .create(WzString::from("n1_2"), 3500)
+            .create(SimpleNode(WzString::from("n1_2"), 3500))
             .expect("error creating n1_2")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_2_1"), 50)
+            .create(SimpleNode(WzString::from("n1_2_1"), 50))
             .expect("error creating n1_2_1")
             .parent()
             .expect("error moving back to n1")
@@ -283,20 +343,20 @@ mod tests {
 
     #[test]
     fn pwd() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(SimpleNode(WzString::from("n1"), 100));
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(SimpleNode(WzString::from("n1_1"), 150))
             .expect("error creating n1_1")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_1_1"), 155)
+            .create(SimpleNode(WzString::from("n1_1_1"), 155))
             .expect("error creating n1_1_1")
-            .create(WzString::from("n1_1_2"), 175)
+            .create(SimpleNode(WzString::from("n1_1_2"), 175))
             .expect("error creating n1_1_1")
             .move_to("n1_1_1")
             .expect("error moving into n1_1_1")
-            .create(WzString::from("n1_1_1_1"), 255)
+            .create(SimpleNode(WzString::from("n1_1_1_1"), 255))
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");
