@@ -18,13 +18,25 @@ pub trait Decode {
         Self: Sized;
 }
 
+/// Decode Error Types
 #[derive(Debug)]
 pub enum Error {
+    /// Content Type is unknown
     InvalidContentType(u8),
+
+    /// The length is invalid (likely negative)
     InvalidLength(i32),
+
+    /// The offset is invalid (likely negative)
     InvalidOffset(i32),
+
+    /// Unable to decode UTF-8
     Utf8(string::FromUtf8Error),
+
+    /// Unable to decode Unicode
     Unicode(string::FromUtf16Error),
+
+    /// IO error
     Io(io::ErrorKind),
 }
 

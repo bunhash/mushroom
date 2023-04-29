@@ -17,8 +17,10 @@ pub trait Encode {
         Self: Sized;
 }
 
+/// Encode Error Types
 #[derive(Debug)]
 pub enum Error {
+    /// IO error
     Io(io::ErrorKind),
 }
 

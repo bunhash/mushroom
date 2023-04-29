@@ -5,11 +5,19 @@ use std::{fmt, io};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+/// Overall Error catcher
 #[derive(Debug)]
 pub enum Error {
+    /// Decoding error
     Decode(decode::Error),
+
+    /// IO error
     Io(io::ErrorKind),
+    
+    /// Map error
     Map(map::Error),
+
+    /// WZ error
     Wz(WzError),
 }
 
@@ -54,10 +62,16 @@ impl From<WzError> for Error {
     }
 }
 
+/// Various WZ-specific errors
 #[derive(Debug)]
 pub enum WzError {
+    /// Brute forcing the checksum failed
     BruteForceChecksum,
+
+    /// The Metadata is invalid or cannot be parsed
     InvalidMetadata,
+
+    /// The WZ package is invalid
     InvalidPackage,
 }
 
