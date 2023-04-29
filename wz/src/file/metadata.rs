@@ -1,8 +1,11 @@
 //! WZ Metadata
 
-use crate::{error::{Result, WzError}, types::CString, Encode, WzWriter};
-use crypto::{checksum, Encryptor};
-use std::io::{Read, Seek, Write};
+use crate::{
+    error::{Result, WzError},
+    types::CString,
+};
+use crypto::checksum;
+use std::io::Read;
 
 /// Metadata of the WZ file
 pub struct Metadata {
@@ -56,7 +59,7 @@ impl Metadata {
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
         if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
-            return Err(WzError::InvalidPackage.into());
+            return Err(WzError::InvalidMetadata.into());
         }
 
         // Read the size
@@ -69,13 +72,16 @@ impl Metadata {
         absolute_position.copy_from_slice(&data[12..16]);
         let absolute_position = i32::from_le_bytes(absolute_position);
         if absolute_position.is_negative() {
-            return Err(WzError::InvalidPackage.into());
+            return Err(WzError::InvalidMetadata.into());
         }
 
         // Read the description
         let mut description = vec![0u8; (absolute_position as usize) - 17];
         reader.read_exact(&mut description)?;
-        let description = CString::from(String::from_utf8(description)?);
+        let description = CString::from(match String::from_utf8(description) {
+            Ok(s) => s,
+            Err(_) => return Err(WzError::InvalidMetadata.into()),
+        });
 
         // Skip the null
         let mut skip = [0];
@@ -105,17 +111,6 @@ impl Metadata {
             }
         }
         Err(WzError::BruteForceChecksum.into())
-    }
-}
-
-impl Encode for Metadata {
-    /// Encodes objects
-    fn encode<W, E>(&self, _writer: &mut WzWriter<W, E>) -> Result<()>
-    where
-        W: Write + Seek,
-        E: Encryptor,
-    {
-        unimplemented!()
     }
 }
 

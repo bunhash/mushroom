@@ -1,7 +1,7 @@
 //! WZ Offset Structure
 
 use crate::{
-    error::Result, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, WzReader,
+    decode, encode, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, WzReader,
     WzWriter,
 };
 use core::{
@@ -80,7 +80,7 @@ impl WzOffset {
 }
 
 impl Decode for WzOffset {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -97,7 +97,7 @@ impl Decode for WzOffset {
 }
 
 impl Encode for WzOffset {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
         E: Encryptor,

@@ -1,8 +1,7 @@
 //! Raw Content Metadata
 
 use crate::{
-    decode::Error,
-    error::Result,
+    decode, encode,
     types::{WzInt, WzOffset, WzString},
     Decode, Encode, WzReader, WzWriter,
 };
@@ -31,14 +30,17 @@ pub(crate) struct RawContentRef {
 }
 
 impl RawContentRef {
-    fn dereference_name<R, D>(offset: i32, reader: &mut WzReader<R, D>) -> Result<(u8, WzString)>
+    fn dereference_name<R, D>(
+        offset: i32,
+        reader: &mut WzReader<R, D>,
+    ) -> Result<(u8, WzString), decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
     {
         if offset.is_negative() {
             // sanity check
-            return Err(Error::InvalidOffset(offset).into());
+            return Err(decode::Error::InvalidOffset(offset));
         }
 
         // Get current position
@@ -57,13 +59,13 @@ impl RawContentRef {
         // Sanity check to ensure the tag is valid
         match tag {
             3 | 4 => Ok((tag, name)),
-            t => Err(Error::InvalidContentType(t).into()),
+            t => Err(decode::Error::InvalidContentType(t)),
         }
     }
 }
 
 impl Decode for RawContentRef {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -101,13 +103,13 @@ impl Decode for RawContentRef {
                 checksum: WzInt::decode(reader)?,
                 offset: WzOffset::decode(reader)?,
             }),
-            t => return Err(Error::InvalidContentType(t).into()),
+            t => return Err(decode::Error::InvalidContentType(t)),
         }
     }
 }
 
 impl Encode for RawContentRef {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
         E: Encryptor,

@@ -1,12 +1,6 @@
 //! WZ String Formats
 
-use crate::{
-    error::{Result},
-    decode::Error,
-    map::SizeHint,
-    types::WzInt,
-    {Decode, Encode, WzReader, WzWriter},
-};
+use crate::{decode, encode, map::SizeHint, types::WzInt, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Deref, DerefMut};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -91,7 +85,7 @@ impl_str!(CString);
 impl_eq!(CString, &'a String, String, &'a str, str);
 
 impl Decode for CString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -108,7 +102,7 @@ impl Decode for CString {
 }
 
 impl Encode for CString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -133,7 +127,7 @@ impl_str!(WzString);
 impl_eq!(WzString, &'a String, String, &'a str, str);
 
 impl Decode for WzString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -146,7 +140,7 @@ impl Decode for WzString {
         };
         // Sanity check
         if length <= 0 {
-            return Err(Error::InvalidLength(length).into());
+            return Err(decode::Error::InvalidLength(length).into());
         }
         Ok(Self(if check < 0 {
             // UTF-8
@@ -159,7 +153,7 @@ impl Decode for WzString {
 }
 
 impl Encode for WzString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
         E: Encryptor,

@@ -1,7 +1,7 @@
 //! Errors
 
 use crate::{decode, map};
-use std::{fmt, io, string};
+use std::{fmt, io};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -10,8 +10,6 @@ pub enum Error {
     Decode(decode::Error),
     Io(io::ErrorKind),
     Map(map::Error),
-    Utf8(string::FromUtf8Error),
-    Unicode(string::FromUtf16Error),
     Wz(WzError),
 }
 
@@ -21,10 +19,14 @@ impl fmt::Display for Error {
             Error::Decode(e) => write!(f, "Decode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
-            Error::Utf8(e) => write!(f, "UTF8: {}", e),
-            Error::Unicode(e) => write!(f, "Unicode: {}", e),
             Error::Wz(e) => write!(f, "WZ: {}", e),
         }
+    }
+}
+
+impl From<decode::Error> for Error {
+    fn from(other: decode::Error) -> Self {
+        Error::Decode(other)
     }
 }
 
@@ -46,24 +48,6 @@ impl From<map::Error> for Error {
     }
 }
 
-impl From<string::FromUtf8Error> for Error {
-    fn from(other: string::FromUtf8Error) -> Self {
-        Error::Utf8(other)
-    }
-}
-
-impl From<string::FromUtf16Error> for Error {
-    fn from(other: string::FromUtf16Error) -> Self {
-        Error::Unicode(other)
-    }
-}
-
-impl From<decode::Error> for Error {
-    fn from(other: decode::Error) -> Self {
-        Error::Decode(other)
-    }
-}
-
 impl From<WzError> for Error {
     fn from(other: WzError) -> Self {
         Error::Wz(other)
@@ -73,6 +57,7 @@ impl From<WzError> for Error {
 #[derive(Debug)]
 pub enum WzError {
     BruteForceChecksum,
+    InvalidMetadata,
     InvalidPackage,
 }
 
@@ -80,7 +65,8 @@ impl fmt::Display for WzError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
-            WzError::InvalidPackage => write!(f, "Invalid Package"),
+            WzError::InvalidMetadata => write!(f, "Invalid WZ file"),
+            WzError::InvalidPackage => write!(f, "Invalid WZ pacakge"),
         }
     }
 }

@@ -1,6 +1,6 @@
 //! WZ Writer
 
-use crate::{error::Result, file::Metadata, types::WzOffset};
+use crate::{encode::Error, file::Metadata, types::WzOffset};
 use crypto::{Encryptor, KeyStream};
 use std::io::{Seek, SeekFrom, Write};
 
@@ -98,35 +98,35 @@ where
     }
 
     /// Get the position within the input
-    pub fn position(&mut self) -> Result<WzOffset> {
+    pub fn position(&mut self) -> Result<WzOffset, Error> {
         Ok(WzOffset::from(self.writer.stream_position()?))
     }
 
     /// Seek to position
-    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset, Error> {
         Ok(WzOffset::from(
             self.writer.seek(SeekFrom::Start(*pos as u64))?,
         ))
     }
 
     /// Write the buffer. Raises the underlying `Write` trait
-    pub fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
         Ok(self.writer.write(buf)?)
     }
 
     /// Write all of the buffer. Raises the underlying `Write` trait
-    pub fn write_all(&mut self, buf: &[u8]) -> Result<()> {
+    pub fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> {
         Ok(self.writer.write_all(buf)?)
     }
 
     /// Writes a single byte
-    pub fn write_byte(&mut self, byte: u8) -> Result<()> {
+    pub fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
         self.write_all(&[byte])
     }
 
     /// Writes a UTF-8 string. This function does not do UTF-8 conversion but will write the proper
     /// WZ encoding of the bytes.
-    pub fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+    pub fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
         let mut mask = 0xaa;
         let mut buf = bytes
             .iter()
@@ -145,7 +145,7 @@ where
 
     /// Writes a unicode string. This function does not do Unicode conversion but will write the
     /// proper WZ encoding of the bytes.
-    pub fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<()> {
+    pub fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<(), Error> {
         let mut mask: u16 = 0xaaaa;
         let mut buf = bytes
             .iter()
