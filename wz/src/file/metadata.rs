@@ -126,7 +126,7 @@ impl Encode for Metadata {
 #[cfg(test)]
 mod tests {
 
-    use crate::Metadata;
+    use crate::file::Metadata;
     use std::fs::File;
 
     #[test]

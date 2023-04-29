@@ -1,6 +1,6 @@
 //! WZ Writer
 
-use crate::{error::Result, types::WzOffset, Metadata};
+use crate::{error::Result, file::Metadata, types::WzOffset};
 use crypto::{Encryptor, KeyStream};
 use std::io::{Seek, SeekFrom, Write};
 
@@ -12,7 +12,7 @@ pub use self::dummy_encryptor::DummyEncryptor;
 ///
 /// ```no_run
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{Metadata, WzWriter};
+/// use wz::{file::Metadata, WzWriter};
 ///
 /// let metadata = Metadata::new(172);
 /// let file = File::create("Base.wz").unwrap();
@@ -22,7 +22,7 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// ```no_run
 /// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{Metadata, WzWriter};
+/// use wz::{file::Metadata, WzWriter};
 ///
 /// let metadata = Metadata::new(83);
 /// let file = File::open("Base.wz").unwrap();
@@ -167,7 +167,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{Metadata, WzWriter};
+    use crate::{file::Metadata, WzWriter};
     use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
     use std::io::Cursor;
 

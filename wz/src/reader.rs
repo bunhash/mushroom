@@ -1,6 +1,6 @@
 //! WZ Reader
 
-use crate::{error::Result, types::WzOffset, Metadata};
+use crate::{error::Result, file::Metadata, types::WzOffset};
 use crypto::{Decryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -12,7 +12,7 @@ pub use self::dummy_decryptor::DummyDecryptor;
 ///
 /// ```no_run
 /// use std::{io::BufReader, fs::File};
-/// use wz::{Metadata, WzReader};
+/// use wz::{file::Metadata, WzReader};
 ///
 /// let file = File::open("Base.wz").unwrap();
 /// let metadata = Metadata::from_reader(&file).unwrap();
@@ -22,7 +22,7 @@ pub use self::dummy_decryptor::DummyDecryptor;
 /// ```no_run
 /// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
-/// use wz::{Metadata, WzReader};
+/// use wz::{file::Metadata, WzReader};
 ///
 /// let file = File::open("Base.wz").unwrap();
 /// let metadata = Metadata::from_reader(&file).unwrap();
@@ -186,7 +186,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{Metadata, WzReader};
+    use crate::{file::Metadata, WzReader};
     use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 

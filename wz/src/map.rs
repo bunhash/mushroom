@@ -4,37 +4,34 @@ use crate::types::WzString;
 
 use indextree::{Arena, NodeId};
 
-//mod cursor;
-//mod cursor_mut;
+mod cursor;
+mod cursor_mut;
 mod error;
-//mod metadata;
-//mod node;
+mod metadata;
+mod node;
 mod size_hint;
 
-//pub use cursor::Cursor;
-//pub use cursor_mut::CursorMut;
+pub use cursor::Cursor;
+pub use cursor_mut::CursorMut;
 pub use error::Error;
 pub use indextree::DebugPrettyPrint;
-//pub use metadata::Metadata;
-//pub use node::MapNode;
+pub use metadata::Metadata;
+pub use node::MapNode;
 pub use size_hint::SizeHint;
 
-/*
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
 /// to be unique.
-pub struct Map<M, T>
+pub struct Map<T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
-    arena: Arena<MapNode<M, T>>,
+    arena: Arena<MapNode<T>>,
     root: NodeId,
 }
 
-impl<M, T> Map<M, T>
+impl<T> Map<T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
     /// Creates a new map with the provided root name and data
     pub fn new(name: WzString, data: T) -> Self {
@@ -120,7 +117,18 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{map::Map, types::WzString};
+    use crate::{
+        map::{Map, Metadata, SizeHint},
+        types::WzString,
+    };
+
+    impl Metadata for i32 {
+        fn update<S>(&mut self, _: &[&S])
+        where
+            S: SizeHint,
+        {
+        }
+    }
 
     #[test]
     fn make_map() {
@@ -165,4 +173,3 @@ mod tests {
         assert!(map.get(&["n1", "n1_1", "fail"]).is_err());
     }
 }
-*/

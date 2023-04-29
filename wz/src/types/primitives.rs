@@ -25,7 +25,7 @@ impl Encode for i8 {
 }
 
 impl SizeHint for i8 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(1)
     }
 }
@@ -53,7 +53,7 @@ impl Encode for i16 {
 }
 
 impl SizeHint for i16 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(2)
     }
 }
@@ -81,7 +81,7 @@ impl Encode for i32 {
 }
 
 impl SizeHint for i32 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(4)
     }
 }
@@ -109,7 +109,7 @@ impl Encode for i64 {
 }
 
 impl SizeHint for i64 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(8)
     }
 }
@@ -135,7 +135,7 @@ impl Encode for u8 {
 }
 
 impl SizeHint for u8 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(1)
     }
 }
@@ -163,7 +163,7 @@ impl Encode for u16 {
 }
 
 impl SizeHint for u16 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(2)
     }
 }
@@ -191,7 +191,7 @@ impl Encode for u32 {
 }
 
 impl SizeHint for u32 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(4)
     }
 }
@@ -219,7 +219,7 @@ impl Encode for u64 {
 }
 
 impl SizeHint for u64 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(8)
     }
 }
@@ -257,7 +257,7 @@ impl Encode for f32 {
 }
 
 impl SizeHint for f32 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         if *self as u32 == 0 {
             WzInt::from(1)
         } else {
@@ -289,7 +289,7 @@ impl Encode for f64 {
 }
 
 impl SizeHint for f64 {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(8)
     }
 }

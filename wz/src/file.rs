@@ -1,8 +1,12 @@
 //! WZ File
 
-use crate::{error::Result, reader::DummyDecryptor, Metadata, WzReader};
+use crate::{error::Result, reader::DummyDecryptor, WzReader};
 use crypto::{Decryptor, KeyStream};
 use std::{fs::File, io::BufReader, path::PathBuf};
+
+mod metadata;
+
+pub use metadata::Metadata;
 
 pub struct WzFile {
     path: PathBuf,

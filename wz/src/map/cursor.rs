@@ -2,29 +2,24 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::{
-    map::{Error, MapNode, Metadata, SizeHint},
-    types::WzInt,
-};
+use crate::map::{Error, MapNode, Metadata, SizeHint};
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
 /// A cursor with read-only access to the contents of the [`Map`](crate::map::Map)
-pub struct Cursor<'a, M, T>
+pub struct Cursor<'a, T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
     pub(crate) position: NodeId,
-    arena: &'a Arena<MapNode<M, T>>,
+    arena: &'a Arena<MapNode<T>>,
 }
 
-impl<'a, M, T> Cursor<'a, M, T>
+impl<'a, T> Cursor<'a, T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
-    pub(crate) fn new(position: NodeId, arena: &'a Arena<MapNode<M, T>>) -> Self {
+    pub(crate) fn new(position: NodeId, arena: &'a Arena<MapNode<T>>) -> Self {
         Self { position, arena }
     }
 

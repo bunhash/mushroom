@@ -49,7 +49,7 @@ impl Encode for WzInt {
 }
 
 impl SizeHint for WzInt {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
             WzInt::from(5)
         } else {
@@ -102,7 +102,7 @@ impl Encode for WzLong {
 }
 
 impl SizeHint for WzLong {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
             WzInt::from(9)
         } else {
@@ -115,8 +115,9 @@ impl SizeHint for WzLong {
 mod tests {
 
     use crate::{
+        file::Metadata,
         types::{WzInt, WzLong},
-        Decode, Metadata, WzReader,
+        Decode, WzReader,
     };
     use std::io::Cursor;
 

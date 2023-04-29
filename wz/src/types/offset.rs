@@ -113,7 +113,7 @@ impl Encode for WzOffset {
 }
 
 impl SizeHint for WzOffset {
-    fn size_hint(&self, _: usize) -> WzInt {
+    fn size_hint(&self) -> WzInt {
         WzInt::from(4)
     }
 }

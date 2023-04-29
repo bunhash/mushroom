@@ -7,36 +7,44 @@ use crate::{
 
 /// Internal node structure
 #[derive(Debug)]
-pub struct MapNode<M, T>
+pub struct MapNode<T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
     /// Name of the node
     pub(crate) name: WzString,
-
-    /// Metadata of the [`MapNode`]'s contents
-    pub(crate) metadata: Vec<M>,
 
     /// Data of the node
     pub(crate) data: T,
 }
 
-impl<M, T> MapNode<M, T>
+impl<T> MapNode<T>
 where
-    M: Metadata<T>,
-    T: SizeHint,
+    T: Metadata + SizeHint,
 {
     /// Creates a new node with the provided name and data
     pub(crate) fn new(name: WzString, data: T) -> Self {
-        Self {
-            name,
-            metadata: Vec::new(),
-            data,
-        }
+        Self { name, data }
     }
+}
 
-    pub(crate) fn size_hint(&self) -> WzInt {
-        self.data.size_hint(self.metadata.len())
+impl<T> Metadata for MapNode<T>
+where
+    T: Metadata + SizeHint,
+{
+    fn update<S>(&mut self, children: &[&S])
+    where
+        S: SizeHint,
+    {
+        self.data.update(children);
+    }
+}
+
+impl<T> SizeHint for MapNode<T>
+where
+    T: Metadata + SizeHint,
+{
+    fn size_hint(&self) -> WzInt {
+        self.data.size_hint()
     }
 }
