@@ -157,8 +157,7 @@ impl WzFile {
         R: Read + Seek,
         D: Decryptor,
     {
-        let content = raw_content.try_into()?;
-        cursor.create(raw_content.name.clone(), content)?;
+        cursor.create(raw_content.name.clone(), raw_content.try_into()?)?;
         if raw_content.tag == 3 {
             reader.seek(raw_content.offset)?;
             cursor.move_to(raw_content.name.as_ref())?;
