@@ -2,9 +2,7 @@
 
 use clap::{Args, Parser};
 use crypto::{Decryptor, KeyStream, GMS_IV, TRIMMED_KEY};
-use wz::{
-    error::Result, file::Content, map::SizeHint, reader::DummyDecryptor, types::WzInt, WzFile,
-};
+use wz::{error::Result, reader::DummyDecryptor, WzFile};
 
 #[derive(Parser)]
 struct Cli {
@@ -65,11 +63,14 @@ where
 {
     let map = file.map(decryptor)?;
     println!("{:?}", map.debug_pretty_print());
+    /*
     let size: WzInt = match map.cursor().get() {
         Content::Package(_, params, num_content) => 2 + num_content.size_hint() + params.size(),
         _ => panic!("something went wrong"),
     };
     println!("Total Size: {:?}", size);
+    */
+    println!("Metadata Size: {:?}", file.metadata().size);
     Ok(())
 }
 

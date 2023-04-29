@@ -1,6 +1,6 @@
 //! Generic map of WZ Package and Image structures
 
-use crate::types::{WzInt, WzString};
+use crate::types::WzString;
 
 use indextree::{Arena, NodeId};
 

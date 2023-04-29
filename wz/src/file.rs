@@ -1,8 +1,9 @@
 //! WZ File
 
 use crate::{
+    decode::Error,
     error::{Result, WzError},
-    map::{CursorMut, Map},
+    map::{CursorMut, Map, SizeHint},
     reader::DummyDecryptor,
     types::{WzInt, WzOffset, WzString},
     Decode, WzReader,
@@ -16,9 +17,12 @@ use std::{
 
 mod content;
 mod metadata;
+mod raw;
 
-pub use content::{Content, Params};
+pub use content::{ContentRef, ImageRef, PackageRef};
 pub use metadata::Metadata;
+
+use raw::RawContentRef;
 
 pub struct WzFile {
     path: PathBuf,
@@ -42,6 +46,11 @@ impl WzFile {
             },
             None => return Err(ErrorKind::NotFound.into()),
         }
+    }
+
+    /// Returns an immutable reference to the metadata
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
     }
 
     /// Creates a new [`WzReader`]. This creates a new file descriptor as well. This method can be
@@ -71,24 +80,20 @@ impl WzFile {
         self.to_reader(keystream)
     }
 
-    pub fn map_at<D>(&self, name: &str, offset: WzOffset, decryptor: D) -> Result<Map<Content>>
+    pub fn map_at<D>(&self, name: &str, offset: WzOffset, decryptor: D) -> Result<Map<ContentRef>>
     where
         D: Decryptor,
     {
         let mut reader = self.to_reader(decryptor)?;
         reader.seek(offset)?;
-        let mut map = Map::new(
-            WzString::from(name),
-            Content::Package(
-                WzString::from(name),
-                Params {
-                    size: WzInt::from(0),
-                    checksum: WzInt::from(0),
-                    offset,
-                },
-                WzInt::from(0),
-            ),
-        );
+        let name = WzString::from(name);
+        let content = ContentRef::Package(PackageRef {
+            name_size: name.size_hint(),
+            size: WzInt::from(0),
+            offset,
+            num_content: WzInt::from(0),
+        });
+        let mut map = Map::new(name, content);
         let mut cursor = map.cursor_mut();
         for content in WzFile::decode_package_contents(&mut reader)? {
             WzFile::map_content_to(content, &mut cursor, &mut reader)?;
@@ -96,7 +101,7 @@ impl WzFile {
         Ok(map)
     }
 
-    pub fn map_unencrypted_at(&self, name: &str, offset: WzOffset) -> Result<Map<Content>> {
+    pub fn map_unencrypted_at(&self, name: &str, offset: WzOffset) -> Result<Map<ContentRef>> {
         self.map_at(name, offset, DummyDecryptor)
     }
 
@@ -105,11 +110,11 @@ impl WzFile {
         name: &str,
         offset: WzOffset,
         keystream: KeyStream,
-    ) -> Result<Map<Content>> {
+    ) -> Result<Map<ContentRef>> {
         self.map_at(name, offset, keystream)
     }
 
-    pub fn map<D>(&self, decryptor: D) -> Result<Map<Content>>
+    pub fn map<D>(&self, decryptor: D) -> Result<Map<ContentRef>>
     where
         D: Decryptor,
     {
@@ -117,17 +122,17 @@ impl WzFile {
         self.map_at(self.file_name()?, offset, decryptor)
     }
 
-    pub fn map_unencrypted(&self) -> Result<Map<Content>> {
+    pub fn map_unencrypted(&self) -> Result<Map<ContentRef>> {
         self.map(DummyDecryptor)
     }
 
-    pub fn map_encrypted(&self, keystream: KeyStream) -> Result<Map<Content>> {
+    pub fn map_encrypted(&self, keystream: KeyStream) -> Result<Map<ContentRef>> {
         self.map(keystream)
     }
 
     // *** PRIVATES *** //
 
-    fn decode_package_contents<R, D>(reader: &mut WzReader<R, D>) -> Result<Vec<Content>>
+    fn decode_package_contents<R, D>(reader: &mut WzReader<R, D>) -> Result<Vec<RawContentRef>>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -139,36 +144,48 @@ impl WzFile {
         let num_contents = *num_contents as usize;
         let mut contents = Vec::with_capacity(num_contents);
         for _ in 0..num_contents {
-            contents.push(Content::decode(reader)?);
+            contents.push(RawContentRef::decode(reader)?);
         }
         Ok(contents)
     }
 
     fn map_content_to<'a, R, D>(
-        content: Content,
-        cursor: &mut CursorMut<'a, Content>,
+        raw_content: RawContentRef,
+        cursor: &mut CursorMut<'a, ContentRef>,
         reader: &mut WzReader<R, D>,
     ) -> Result<()>
     where
         R: Read + Seek,
         D: Decryptor,
     {
-        let (name, offset) = match &content {
-            Content::Package(name, params, _) => (name.clone(), Some(params.offset)),
-            Content::Image(name, _) => (name.clone(), None),
+        let content = match raw_content.tag {
+            3 => ContentRef::Package(PackageRef {
+                name_size: raw_content.name.size_hint(),
+                size: WzInt::from(0),
+                offset: raw_content.offset,
+                num_content: WzInt::from(0),
+            }),
+            4 => ContentRef::Image(ImageRef {
+                name_size: raw_content.name.size_hint(),
+                size: raw_content.size,
+                checksum: raw_content.checksum,
+                offset: raw_content.offset,
+            }),
+            t => return Err(Error::InvalidContentType(t).into()),
         };
-        cursor.create(name.clone(), content)?;
-        match offset {
-            Some(offset) => {
-                reader.seek(offset)?;
-                cursor.move_to(name.as_ref())?;
-                for content in WzFile::decode_package_contents(reader)? {
-                    WzFile::map_content_to(content, cursor, reader)?;
+        cursor.create(raw_content.name.clone(), content)?;
+        match raw_content.tag {
+            3 => {
+                reader.seek(raw_content.offset)?;
+                cursor.move_to(raw_content.name.as_ref())?;
+                for raw_content in WzFile::decode_package_contents(reader)? {
+                    WzFile::map_content_to(raw_content, cursor, reader)?;
                 }
                 cursor.parent()?;
                 Ok(())
             }
-            None => Ok(()),
+            4 => Ok(()),
+            t => Err(Error::InvalidContentType(t).into()),
         }
     }
 }
