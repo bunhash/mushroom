@@ -12,7 +12,7 @@ pub enum Error {
     ClipboardEmpty,
 
     /// Error when creating a new child node with a name that already exists at that position
-    DuplicateError(String),
+    Duplicate(String),
 
     /// Invalid path. Typically only occurs when an empty path vector is provided.
     InvalidPath,
@@ -26,7 +26,7 @@ impl fmt::Display for Error {
         match self {
             Error::AlreadyRoot => write!(f, "Cursor is already at root node"),
             Error::ClipboardEmpty => write!(f, "Clipboard is empty"),
-            Error::DuplicateError(name) => write!(f, "A node named {} already exists", name),
+            Error::Duplicate(name) => write!(f, "A node named {} already exists", name),
             Error::InvalidPath => write!(f, "Invalid path"),
             Error::NotFound(name) => write!(f, "Could not find {}", name),
         }

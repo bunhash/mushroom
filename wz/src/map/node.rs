@@ -26,17 +26,9 @@ where
     pub(crate) fn new(name: WzString, data: T) -> Self {
         Self { name, data }
     }
-}
 
-impl<T> Metadata for MapNode<T>
-where
-    T: Metadata + SizeHint,
-{
-    fn update<S>(&mut self, children: &[&S])
-    where
-        S: SizeHint,
-    {
-        self.data.update(children);
+    pub(crate) fn update(&mut self, children_sizes: &[WzInt]) {
+        self.data.update(&self.name, children_sizes);
     }
 }
 

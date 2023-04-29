@@ -1,10 +1,6 @@
 //! WZ Metadata
 
-use crate::{
-    error::{Result, WzError},
-    types::CString,
-    Encode, WzWriter,
-};
+use crate::{error::{Result, WzError}, types::CString, Encode, WzWriter};
 use crypto::{checksum, Encryptor};
 use std::io::{Read, Seek, Write};
 

@@ -1,15 +1,16 @@
 //! WZ CLI Tool
 
 use clap::{Args, Parser};
-use crypto::{MushroomSystem, GMS_IV, TRIMMED_KEY};
-use std::{fs::File, io::ErrorKind, path::PathBuf};
-use wz::{error::Result, package::Package, EncryptedReader, Reader, UnencryptedReader};
+use crypto::{Decryptor, KeyStream, GMS_IV, TRIMMED_KEY};
+use wz::{
+    error::Result, file::Content, map::SizeHint, reader::DummyDecryptor, types::WzInt, WzFile,
+};
 
 #[derive(Parser)]
 struct Cli {
     /// File for input/output
     #[arg(short, long, required = true)]
-    file: PathBuf,
+    file: String,
 
     /// Action
     #[command(flatten)]
@@ -44,19 +45,31 @@ struct Action {
     debug: bool,
 }
 
-fn do_list(_reader: impl Reader) -> Result<()> {
+fn do_list<D>(_file: WzFile, _decryptor: D) -> Result<()>
+where
+    D: Decryptor,
+{
     unimplemented!()
 }
 
-fn do_extract(_reader: impl Reader) -> Result<()> {
+fn do_extract<D>(_file: WzFile, _decryptor: D) -> Result<()>
+where
+    D: Decryptor,
+{
     unimplemented!()
 }
 
-fn do_debug(name: &str, reader: impl Reader) -> Result<()> {
-    let mut reader = reader;
-    let map = Package::map(name, &mut reader)?;
+fn do_debug<D>(file: WzFile, decryptor: D) -> Result<()>
+where
+    D: Decryptor,
+{
+    let map = file.map(decryptor)?;
     println!("{:?}", map.debug_pretty_print());
-    println!("Total size: {:?}", map.cursor().size() + 2);
+    let size: WzInt = match map.cursor().get() {
+        Content::Package(_, params, num_content) => 2 + num_content.size_hint() + params.size(),
+        _ => panic!("something went wrong"),
+    };
+    println!("Total Size: {:?}", size);
     Ok(())
 }
 
@@ -64,40 +77,28 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     // Assume encrypted
-    let system = MushroomSystem::new(&TRIMMED_KEY, &GMS_IV);
-
-    // Get filename
-    let name = match args.file.file_name() {
-        Some(name) => match name.to_str() {
-            Some(name) => name,
-            None => return Err(ErrorKind::NotFound.into()),
-        },
-        None => return Err(ErrorKind::NotFound.into()),
-    };
+    let keystream = KeyStream::new(&TRIMMED_KEY, &GMS_IV);
 
     let action = &args.action;
     if action.create {
         unimplemented!();
     } else if action.list {
-        let file = File::open(&args.file)?;
         if args.legacy {
-            do_list(EncryptedReader::from_reader(file, &system)?)?;
+            do_list(WzFile::open(args.file.as_str())?, keystream)?
         } else {
-            do_list(UnencryptedReader::from_reader(file)?)?;
+            do_list(WzFile::open(args.file.as_str())?, DummyDecryptor)?
         }
     } else if action.extract {
-        let file = File::open(&args.file)?;
         if args.legacy {
-            do_extract(EncryptedReader::from_reader(file, &system)?)?;
+            do_extract(WzFile::open(args.file.as_str())?, keystream)?
         } else {
-            do_extract(UnencryptedReader::from_reader(file)?)?;
+            do_extract(WzFile::open(args.file.as_str())?, DummyDecryptor)?
         }
     } else if action.debug {
-        let file = File::open(&args.file)?;
         if args.legacy {
-            do_debug(name, EncryptedReader::from_reader(file, &system)?)?;
+            do_debug(WzFile::open(args.file.as_str())?, keystream)?
         } else {
-            do_debug(name, UnencryptedReader::from_reader(file)?)?;
+            do_debug(WzFile::open(args.file.as_str())?, DummyDecryptor)?
         }
     }
     Ok(())

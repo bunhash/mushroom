@@ -1,7 +1,8 @@
 //! WZ String Formats
 
 use crate::{
-    error::{Result, WzError},
+    error::{Result},
+    decode::Error,
     map::SizeHint,
     types::WzInt,
     {Decode, Encode, WzReader, WzWriter},
@@ -145,7 +146,7 @@ impl Decode for WzString {
         };
         // Sanity check
         if length <= 0 {
-            return Err(WzError::InvalidLength(length).into());
+            return Err(Error::InvalidLength(length).into());
         }
         Ok(Self(if check < 0 {
             // UTF-8

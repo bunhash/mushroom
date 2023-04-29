@@ -1,12 +1,13 @@
 //! Errors
 
-use crate::map;
+use crate::{decode, map};
 use std::{fmt, io, string};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
+    Decode(decode::Error),
     Io(io::ErrorKind),
     Map(map::Error),
     //Package(package::Error),
@@ -18,6 +19,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::Decode(e) => write!(f, "Decode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
             //Error::Package(e) => write!(f, "Package: {}", e),
@@ -66,6 +68,12 @@ impl From<string::FromUtf16Error> for Error {
     }
 }
 
+impl From<decode::Error> for Error {
+    fn from(other: decode::Error) -> Self {
+        Error::Decode(other)
+    }
+}
+
 impl From<WzError> for Error {
     fn from(other: WzError) -> Self {
         Error::Wz(other)
@@ -75,26 +83,14 @@ impl From<WzError> for Error {
 #[derive(Debug)]
 pub enum WzError {
     BruteForceChecksum,
-    CreateError,
-    DirectoryName(String),
     InvalidPackage,
-    InvalidContentType(u8),
-    InvalidLength(i32),
 }
 
 impl fmt::Display for WzError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
-            WzError::CreateError => write!(f, "Failed to create image or directory"),
-            WzError::DirectoryName(name) => {
-                write!(f, "Invalid directory name: `{}`", name)
-            }
             WzError::InvalidPackage => write!(f, "Invalid Package"),
-            WzError::InvalidContentType(t) => {
-                write!(f, "Package ContentType is invalid `{}`", t)
-            }
-            WzError::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
         }
     }
 }

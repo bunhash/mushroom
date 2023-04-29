@@ -2,24 +2,25 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::map::{Error, Metadata, SizeHint};
+use crate::map::{Error, MapNode, Metadata, SizeHint};
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
 /// A cursor with read-only access to the contents of the [`Map`](crate::map::Map)
+#[derive(Debug)]
 pub struct Cursor<'a, T>
 where
     T: Metadata + SizeHint,
 {
     pub(crate) position: NodeId,
-    arena: &'a Arena<T>,
+    arena: &'a Arena<MapNode<T>>,
 }
 
 impl<'a, T> Cursor<'a, T>
 where
     T: Metadata + SizeHint,
 {
-    pub(crate) fn new(position: NodeId, arena: &'a Arena<T>) -> Self {
+    pub(crate) fn new(position: NodeId, arena: &'a Arena<MapNode<T>>) -> Self {
         Self { position, arena }
     }
 
@@ -32,7 +33,8 @@ where
                     .get(id)
                     .expect("pwd() node should exist")
                     .get()
-                    .name(),
+                    .name
+                    .as_ref(),
             );
         }
         path.into()
@@ -47,7 +49,8 @@ where
                     .get(id)
                     .expect("list() node should exist")
                     .get()
-                    .name()
+                    .name
+                    .as_ref()
             })
             .collect::<Vec<&'a str>>()
     }
@@ -55,7 +58,7 @@ where
     /// Returns true if the child exists. This is slightly more efficient than doing
     /// list().contains().
     pub fn has_child(&self, name: &str) -> bool {
-        self.get_id(name).is_ok()
+        self.get_id(self.position, name).is_ok()
     }
 
     /// Returns the name of the current position
@@ -65,7 +68,8 @@ where
             .get(self.position)
             .expect("get() node should exist")
             .get()
-            .name()
+            .name
+            .as_ref()
     }
 
     /// Returns the data at the current position
@@ -75,11 +79,12 @@ where
             .get(self.position)
             .expect("get() node should exist")
             .get()
+            .data
     }
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
     pub fn move_to(&mut self, name: &str) -> Result<&mut Self, Error> {
-        let id = self.get_id(name)?;
+        let id = self.get_id(self.position, name)?;
         self.position = id;
         Ok(self)
     }
@@ -102,16 +107,16 @@ where
 
     // *** PRIVATES *** //
 
-    fn get_id(&self, name: &str) -> Result<NodeId, Error> {
-        match self
-            .position
+    fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, Error> {
+        match position
             .children(self.arena)
             .filter(|id| {
                 self.arena
                     .get(*id)
-                    .expect("get_id() node should exist")
+                    .expect("child position should exist")
                     .get()
-                    .name()
+                    .name
+                    .as_ref()
                     == name
             })
             .next()

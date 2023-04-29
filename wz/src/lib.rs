@@ -1,10 +1,10 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
-mod decode;
-mod encode;
 mod writer;
 
+pub mod decode;
+pub mod encode;
 pub mod error;
 pub mod file;
 pub mod map;
