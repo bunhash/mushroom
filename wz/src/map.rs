@@ -84,6 +84,13 @@ where
         Ok(())
     }
 
+    /// Walks the map depth-first
+    pub fn walk(&self, closure: impl Fn(Cursor<T>) -> ()) {
+        for id in self.root.descendants(&self.arena) {
+            closure(Cursor::new(id, &self.arena));
+        }
+    }
+
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
     pub fn debug_pretty_print<'a>(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
         self.root.debug_pretty_print(&self.arena)

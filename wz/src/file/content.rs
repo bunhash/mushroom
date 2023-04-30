@@ -17,6 +17,17 @@ pub struct PackageRef {
     pub(crate) num_content: WzInt,
 }
 
+impl PackageRef {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name_size: WzString::from(name).size_hint(),
+            size: WzInt::from(0),
+            offset: WzOffset::from(0),
+            num_content: WzInt::from(0),
+        }
+    }
+}
+
 /// Used to reference an `Image` within the WZ file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageRef {
@@ -24,6 +35,17 @@ pub struct ImageRef {
     pub(crate) size: WzInt,
     pub(crate) checksum: WzInt,
     pub(crate) offset: WzOffset,
+}
+
+impl ImageRef {
+    pub fn new(name: &str, size: WzInt, checksum: WzInt) -> Self {
+        Self {
+            name_size: WzString::from(name).size_hint(),
+            size,
+            checksum,
+            offset: WzOffset::from(0),
+        }
+    }
 }
 
 /// `ContentRef` found in WZ files

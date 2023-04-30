@@ -68,19 +68,31 @@ pub enum WzError {
     /// Brute forcing the checksum failed
     BruteForceChecksum,
 
+    /// The WZ package is invalid
+    InvalidImage,
+
     /// The Metadata is invalid or cannot be parsed
     InvalidMetadata,
 
     /// The WZ package is invalid
     InvalidPackage,
+
+    /// Read-only
+    ReadOnly,
+
+    /// Write-only
+    WriteOnly,
 }
 
 impl fmt::Display for WzError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
+            WzError::InvalidImage => write!(f, "Invalid WZ image"),
             WzError::InvalidMetadata => write!(f, "Invalid WZ file"),
             WzError::InvalidPackage => write!(f, "Invalid WZ pacakge"),
+            WzError::ReadOnly => write!(f, "WZ file is read-only"),
+            WzError::WriteOnly => write!(f, "WZ file is write-only"),
         }
     }
 }

@@ -8,6 +8,7 @@ use crypto::checksum;
 use std::io::Read;
 
 /// Metadata of the WZ file
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
     /// Constant value. ASCII for "PKG1"
     pub identifier: [u8; 4],

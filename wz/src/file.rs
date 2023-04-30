@@ -28,7 +28,7 @@ use crate::{
 use crypto::{Decryptor, KeyStream};
 use std::{
     fs::File,
-    io::{BufReader, ErrorKind, Read, Seek},
+    io::{BufReader, ErrorKind, Read, Seek, SeekFrom, Take},
     path::PathBuf,
 };
 
@@ -41,18 +41,42 @@ pub use metadata::Metadata;
 
 use raw::RawContentRef;
 
+/// How the file was opened
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum OpenOption {
+    Read,
+    Write,
+}
+
 /// Represents a WZ file. This object should point to a location on disk.
+#[derive(Debug, Clone)]
 pub struct WzFile {
     path: PathBuf,
+    open_option: OpenOption,
     metadata: Metadata,
 }
 
 impl WzFile {
-    /// Creates a `WzFile` object by reading the file at `path`
+    /// Creates a new `WzFile` as write-only. Errors when the file already exists.
+    pub fn create(path: &str, version: u16) -> Result<Self> {
+        let path = PathBuf::from(path);
+        let metadata = Metadata::new(version);
+        Ok(Self {
+            path,
+            open_option: OpenOption::Write,
+            metadata,
+        })
+    }
+
+    /// Creates a `WzFile` as read-only. Errors when it cannot read the file.
     pub fn open(path: &str) -> Result<Self> {
         let path = PathBuf::from(path);
         let metadata = Metadata::from_reader(File::open(&path)?)?;
-        Ok(Self { path, metadata })
+        Ok(Self {
+            path,
+            open_option: OpenOption::Read,
+            metadata,
+        })
     }
 
     /// Gets the filename of the WZ file
@@ -78,11 +102,15 @@ impl WzFile {
     where
         D: Decryptor,
     {
-        Ok(WzReader::new(
-            &self.metadata,
-            BufReader::new(File::open(&self.path)?),
-            decryptor,
-        ))
+        if self.open_option == OpenOption::Read {
+            Ok(WzReader::new(
+                &self.metadata,
+                BufReader::new(File::open(&self.path)?),
+                decryptor,
+            ))
+        } else {
+            Err(WzError::WriteOnly.into())
+        }
     }
 
     /// Creates a new unencrypted [`WzReader`]. See [`WzFile::to_reader`].
@@ -160,6 +188,17 @@ impl WzFile {
     /// is very likely UTF-8/UTF-16 errors will occur trying to decode the strings from bytes.
     pub fn map_encrypted(&self, keystream: KeyStream) -> Result<Map<ContentRef>> {
         self.map(keystream)
+    }
+
+    /// Creates a reader for [`ImageRef`] objects.
+    pub fn image_reader(&self, image_ref: &ImageRef) -> Result<Take<BufReader<File>>> {
+        if self.open_option == OpenOption::Read {
+            let mut reader = BufReader::new(File::open(&self.path)?);
+            reader.seek(SeekFrom::Start(*image_ref.offset as u64))?;
+            Ok(reader.take(*image_ref.size as u64))
+        } else {
+            Err(WzError::WriteOnly.into())
+        }
     }
 
     // *** PRIVATES *** //
