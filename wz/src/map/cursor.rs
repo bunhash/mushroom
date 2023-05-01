@@ -2,7 +2,7 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::map::{Error, MapNode, Metadata, SizeHint};
+use crate::map::{ChildNames, Children, Error, MapNode, Metadata, SizeHint};
 use indextree::{Arena, NodeId};
 use std::collections::VecDeque;
 
@@ -41,18 +41,13 @@ where
     }
 
     /// Returns a vector containing the names of the current position's children
-    pub fn list(&'a self) -> Vec<&'a str> {
-        self.position
-            .children(self.arena)
-            .map(|id| {
-                self.arena
-                    .get(id)
-                    .expect("list() node should exist")
-                    .get()
-                    .name
-                    .as_ref()
-            })
-            .collect::<Vec<&'a str>>()
+    pub fn list(&'a self) -> ChildNames<'a, T> {
+        ChildNames::new(self.position, self.arena)
+    }
+
+    /// Returns a vector containing the children of the current position
+    pub fn children(&'a self) -> Children<'a, T> {
+        Children::new(self.position, self.arena)
     }
 
     /// Returns true if the child exists. This is slightly more efficient than doing
@@ -84,9 +79,72 @@ where
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
     pub fn move_to(&mut self, name: &str) -> Result<&mut Self, Error> {
-        let id = self.get_id(self.position, name)?;
-        self.position = id;
+        self.position = self.get_id(self.position, name)?;
         Ok(self)
+    }
+
+    /// Moves the cursor to the first child.
+    pub fn first_child(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .first_child()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoChildren),
+        }
+    }
+
+    /// Moves the cursor to the last child.
+    pub fn last_child(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .last_child()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoChildren),
+        }
+    }
+
+    /// Moves the cursor to the previous sibling node
+    pub fn previous_sibling(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .previous_sibling()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoSibling),
+        }
+    }
+
+    /// Moves the cursor to the next sibling node
+    pub fn next_sibling(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .next_sibling()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoSibling),
+        }
     }
 
     /// Moves the cursor to the parent. Errors when already at the root node.
@@ -101,7 +159,7 @@ where
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::AlreadyRoot),
+            None => Err(Error::NoParent),
         }
     }
 

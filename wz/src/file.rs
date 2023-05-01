@@ -144,6 +144,7 @@ impl WzFile {
         });
         let mut map = Map::new(name, content);
         let mut cursor = map.cursor_mut();
+        println!("{:?}", self.metadata);
         for raw_content in WzFile::decode_package_contents(&mut reader)? {
             WzFile::map_content_to(&raw_content, &mut cursor, &mut reader)?;
         }
@@ -201,6 +202,16 @@ impl WzFile {
         }
     }
 
+    /// Calculate the offsets
+    pub fn calculate_offsets(&self, map: &mut Map<ContentRef>) -> Result<()> {
+        let mut cursor = map.cursor_mut();
+        WzFile::recursive_calculate_offset(
+            WzOffset::from(self.metadata.absolute_position as u32 + 2),
+            &mut cursor,
+        )?;
+        Ok(())
+    }
+
     // *** PRIVATES *** //
 
     fn decode_package_contents<R, D>(reader: &mut WzReader<R, D>) -> Result<Vec<RawContentRef>>
@@ -215,7 +226,9 @@ impl WzFile {
         let num_contents = *num_contents as usize;
         let mut contents = Vec::with_capacity(num_contents);
         for _ in 0..num_contents {
-            contents.push(RawContentRef::decode(reader)?);
+            let content = RawContentRef::decode(reader)?;
+            println!("{:?}", content);
+            contents.push(content);
         }
         Ok(contents)
     }
@@ -239,5 +252,69 @@ impl WzFile {
             cursor.parent()?;
         }
         Ok(())
+    }
+
+    fn metadata_size(content_ref: &ContentRef) -> u32 {
+        match content_ref {
+            ContentRef::Package(ref package) => {
+                1 + *package.name_size as u32
+                    + *package.size.size_hint() as u32
+                    + *WzInt::from(0).size_hint() as u32
+                    + *package.offset.size_hint() as u32
+            }
+            ContentRef::Image(ref image) => {
+                1 + *image.name_size as u32
+                    + *image.size.size_hint() as u32
+                    + *image.checksum.size_hint() as u32
+                    + *image.offset.size_hint() as u32
+            }
+        }
+    }
+
+    fn recursive_calculate_offset(
+        current_offset: WzOffset,
+        cursor: &mut CursorMut<ContentRef>,
+    ) -> Result<WzOffset> {
+        // Apply the current offset
+        cursor.modify::<WzError>(|content| match content {
+            ContentRef::Package(ref mut package) => Ok(package.offset = current_offset),
+            ContentRef::Image(ref mut image) => Ok(image.offset = current_offset),
+        })?;
+
+        // Calculate the sibling offset and return the number of children
+        let (next_offset, mut num_content) = match cursor.get() {
+            ContentRef::Package(ref package) => (
+                current_offset + *(package.num_content.size_hint() + package.size) as u32,
+                package.num_content,
+            ),
+            // If it is an image, return the next offset and stop here. Image's have no children.
+            ContentRef::Image(ref image) => return Ok(current_offset + *image.size as u32),
+        };
+
+        if num_content > 0 {
+            // Calculate the start of the children (after all the metadata)
+            let metadata_size = WzOffset::from(
+                *num_content.size_hint() as u32
+                    + cursor
+                        .children()
+                        .map(|child| WzFile::metadata_size(child))
+                        .sum::<u32>(),
+            );
+
+            // Modify children. The order is always the order of insertion.
+            let mut child_offset = current_offset + metadata_size;
+            cursor.first_child()?;
+            loop {
+                child_offset = WzFile::recursive_calculate_offset(child_offset, cursor)?;
+                num_content = num_content - 1;
+                if num_content <= 0 {
+                    break;
+                }
+                cursor.next_sibling()?;
+            }
+            cursor.parent()?;
+        }
+
+        Ok(next_offset)
     }
 }

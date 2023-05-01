@@ -61,14 +61,14 @@ pub enum ContentRef {
 impl ContentRef {
     pub(crate) fn into_raw(&self, name: WzString) -> RawContentRef {
         match self {
-            ContentRef::Package(package) => RawContentRef {
+            ContentRef::Package(ref package) => RawContentRef {
                 tag: 3u8,
                 name,
                 size: package.size,
                 checksum: WzInt::from(0),
                 offset: package.offset,
             },
-            ContentRef::Image(image) => RawContentRef {
+            ContentRef::Image(ref image) => RawContentRef {
                 tag: 4u8,
                 name,
                 size: image.size,
@@ -101,7 +101,7 @@ impl Metadata for ContentRef {
 impl SizeHint for ContentRef {
     fn size_hint(&self) -> WzInt {
         match &self {
-            ContentRef::Package(package) => {
+            ContentRef::Package(ref package) => {
                 1 + package.name_size
                     + package.size.size_hint()
                     + WzInt::from(0).size_hint()
@@ -109,7 +109,7 @@ impl SizeHint for ContentRef {
                     + package.num_content.size_hint()
                     + package.size
             }
-            ContentRef::Image(image) => {
+            ContentRef::Image(ref image) => {
                 1 + image.name_size
                     + image.size.size_hint()
                     + image.checksum.size_hint()

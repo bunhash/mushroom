@@ -3,11 +3,11 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{Error, MapNode, Metadata, SizeHint},
+    map::{ChildNames, Children, Error, MapNode, Metadata, SizeHint},
     types::{WzInt, WzString},
 };
 use indextree::{Arena, NodeId};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::Debug};
 
 /// A cursor with mutable access to the contents of the [`Map`](crate::map::Map)
 #[derive(Debug)]
@@ -49,22 +49,16 @@ where
     }
 
     /// Returns a vector containing the names of the current position's children
-    pub fn list(&'a self) -> Vec<&'a str> {
-        self.position
-            .children(self.arena)
-            .map(|id| {
-                self.arena
-                    .get(id)
-                    .expect("list() node should exist")
-                    .get()
-                    .name
-                    .as_ref()
-            })
-            .collect::<Vec<&'a str>>()
+    pub fn list(&'a self) -> ChildNames<'a, T> {
+        ChildNames::new(self.position, self.arena)
     }
 
-    /// Returns true if the child exists. This is slightly more efficient than doing
-    /// list().contains().
+    /// Returns a vector containing the children of the current position
+    pub fn children(&'a self) -> Children<'a, T> {
+        Children::new(self.position, self.arena)
+    }
+
+    /// Returns true if the child exists.
     pub fn has_child(&self, name: &str) -> bool {
         self.get_id(self.position, name).is_ok()
     }
@@ -91,9 +85,72 @@ where
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
     pub fn move_to(&mut self, name: &str) -> Result<&mut Self, Error> {
-        let id = self.get_id(self.position, name)?;
-        self.position = id;
+        self.position = self.get_id(self.position, name)?;
         Ok(self)
+    }
+
+    /// Moves the cursor to the first child.
+    pub fn first_child(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .first_child()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoChildren),
+        }
+    }
+
+    /// Moves the cursor to the last child.
+    pub fn last_child(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .last_child()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoChildren),
+        }
+    }
+
+    /// Moves the cursor to the previous sibling node
+    pub fn previous_sibling(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .previous_sibling()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoSibling),
+        }
+    }
+
+    /// Moves the cursor to the next sibling node
+    pub fn next_sibling(&mut self) -> Result<&mut Self, Error> {
+        match self
+            .arena
+            .get(self.position)
+            .expect("current node should exist")
+            .next_sibling()
+        {
+            Some(id) => {
+                self.position = id;
+                Ok(self)
+            }
+            None => Err(Error::NoSibling),
+        }
     }
 
     /// Moves the cursor to the parent. Errors when already at the root node.
@@ -108,7 +165,7 @@ where
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::AlreadyRoot),
+            None => Err(Error::NoParent),
         }
     }
 
@@ -131,16 +188,11 @@ where
     }
 
     /// Modifies the data at the current position
-    pub fn modify(&mut self, closure: impl Fn(&mut T) -> ()) -> &mut Self {
-        let data = &mut self
-            .arena
-            .get_mut(self.position)
-            .expect("current position should exist")
-            .get_mut()
-            .data;
-        closure(data);
-        self.send_update();
-        self
+    pub fn modify<E>(&mut self, closure: impl Fn(&mut T) -> Result<(), E>) -> Result<(), E>
+    where
+        E: Debug,
+    {
+        self.modify_by_id(self.position, &closure)
     }
 
     /// Creates a new child at the current position. Errors when a child with the provided name
@@ -208,16 +260,17 @@ where
     /// internally so each node can update their metadata. This function only needs to be called if
     /// the data is changed outside of [`Map`](crate::map::Map).
     pub fn send_update(&mut self) {
-        let to_update = self
-            .position
-            .ancestors(&self.arena)
-            .collect::<Vec<NodeId>>();
+        self.send_update_by_id(self.position);
+    }
+
+    // *** PRIVATES *** //
+
+    fn send_update_by_id(&mut self, position: NodeId) {
+        let to_update = position.ancestors(&self.arena).collect::<Vec<NodeId>>();
         for id in to_update {
             self.update(id);
         }
     }
-
-    // *** PRIVATES *** //
 
     fn update(&mut self, position: NodeId) {
         let children_sizes = position
@@ -256,6 +309,25 @@ where
             None => Err(Error::NotFound(String::from(name))),
         }
     }
+
+    fn modify_by_id<E>(
+        &mut self,
+        position: NodeId,
+        closure: impl Fn(&mut T) -> Result<(), E>,
+    ) -> Result<(), E>
+    where
+        E: Debug,
+    {
+        let data = &mut self
+            .arena
+            .get_mut(position)
+            .expect("current position should exist")
+            .get_mut()
+            .data;
+        let result = closure(data);
+        self.send_update_by_id(position);
+        result
+    }
 }
 
 #[cfg(test)]
@@ -281,7 +353,7 @@ mod tests {
             Err(Error::Duplicate(_)) => {}
             _ => panic!("should have failed with Error::Duplicate"),
         }
-        assert_eq!(&cursor.list(), &["n1_1", "n1_2"]);
+        assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_1", "n1_2"]);
     }
 
     #[test]
@@ -299,7 +371,7 @@ mod tests {
             Err(Error::NotFound(_)) => {}
             r => panic!("expected Error::NotFound, found {:?}", r),
         }
-        assert_eq!(&cursor.list(), &["n1_2"]);
+        assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_2"]);
     }
 
     #[test]
@@ -319,7 +391,7 @@ mod tests {
             .expect("error moving back to n1")
             .delete("n1_1")
             .expect("should have deleted n1_1");
-        assert_eq!(&cursor.list(), &["n1_2"]);
+        assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_2"]);
     }
 
     #[test]
@@ -343,7 +415,7 @@ mod tests {
             .expect("error moving to n1_2")
             .paste()
             .expect("should paste n1_1");
-        assert_eq!(&cursor.list(), &["n1_1"]);
+        assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_1"]);
         match cursor.paste() {
             Err(Error::ClipboardEmpty) => {}
             r => panic!("expected Error::ClipboardEmpty, found {:?}", r),
@@ -407,7 +479,9 @@ mod tests {
         let mut cursor = map.cursor_mut();
         cursor.move_to("n1_1").expect("n1_1 should exist");
         assert_eq!(*cursor.get(), 150);
-        cursor.modify(|node| *node = 100);
+        cursor
+            .modify(|node| Ok::<(), i32>(*node = 100))
+            .expect("error occured");
         assert_eq!(*cursor.get(), 100);
     }
 }

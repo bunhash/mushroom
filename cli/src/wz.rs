@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 use wz::{
-    error::Result,
+    error::{Error, Result},
     file::{ContentRef, ImageRef, PackageRef},
     map::{CursorMut, Map},
     reader::DummyDecryptor,
@@ -111,6 +111,7 @@ where
         ContentRef::Package(PackageRef::new(name)),
     );
     recursive_do_create(directory, &mut map.cursor_mut(), verbose)?;
+    file.calculate_offsets(&mut map)?;
     println!("{:?}", map.debug_pretty_print());
     Ok(())
 }
@@ -122,11 +123,11 @@ where
     let name = file.file_name()?;
     let name_without_extension = &name.replace(".wz", "");
     let map = file.map(decryptor)?;
-    map.walk(|cursor| {
+    map.walk::<Error>(|cursor| {
         let path = cursor.pwd().join("/").replace(name, name_without_extension);
         println!("{}", &path);
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 fn do_extract<D>(file: WzFile, decryptor: D, verbose: bool) -> Result<()>
@@ -136,7 +137,7 @@ where
     let name = file.file_name()?;
     let name_without_extension = &name.replace(".wz", "");
     let map = file.map(decryptor)?;
-    map.walk(|cursor| {
+    map.walk::<Error>(|cursor| {
         let path = cursor.pwd().join("/").replace(name, name_without_extension);
         let data = cursor.get();
         if verbose {
@@ -145,23 +146,20 @@ where
         match data {
             ContentRef::Package(_) => {
                 if !Path::new(&path).exists() {
-                    fs::create_dir(&path).expect(&format!("failed to crate directory: {}", &path));
+                    fs::create_dir(&path)?;
                 }
             }
             ContentRef::Image(image) => {
                 if Path::new(&path).exists() {
-                    fs::remove_file(&path).expect(&format!("cannot overwrite file: {}", &path));
+                    fs::remove_file(&path)?;
                 }
-                let mut reader = file
-                    .image_reader(&image)
-                    .expect("failed to make image reader");
-                let mut writer =
-                    fs::File::create(&path).expect(&format!("failed to create file: {}", &path));
-                copy(&mut reader, &mut writer).expect("error copying from image");
+                let mut reader = file.image_reader(&image)?;
+                let mut writer = fs::File::create(&path)?;
+                copy(&mut reader, &mut writer)?;
             }
         }
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 fn do_debug<D>(file: WzFile, decryptor: D) -> Result<()>
@@ -170,14 +168,14 @@ where
 {
     let map = file.map(decryptor)?;
     //println!("{:?}", map.debug_pretty_print());
-    map.walk(|cursor| {
+    map.walk::<Error>(|cursor| {
         println!(
             "Path: {} -- Data: {:?}",
             cursor.pwd().join("/"),
             cursor.get()
-        )
-    });
-    Ok(())
+        );
+        Ok(())
+    })
 }
 
 fn main() -> Result<()> {

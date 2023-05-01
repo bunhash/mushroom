@@ -37,45 +37,39 @@ impl WzOffset {
     }
 
     fn decode_from(value: u32, position: WzOffset, abs_pos: i32, version_checksum: u32) -> u32 {
-        let cur = Wrapping(*position);
-        let abs_pos = Wrapping(abs_pos as u32);
-        let version_checksum = Wrapping(version_checksum as u32);
-        let magic = Wrapping(0x581C3F6D);
+        let offset = *position;
+        let abs_pos = abs_pos as u32;
+        let magic = 0x581C3F6D;
 
         // Make decoding key (?)
-        let encoding = cur - abs_pos;
-        let encoding = encoding ^ Wrapping(u32::MAX);
-        let encoding = encoding * version_checksum;
-        let encoding = encoding - magic;
-        let encoding = encoding.0.rotate_left(encoding.0 & 0x1F);
-        // unwrapped
+        let offset = offset.wrapping_sub(abs_pos);
+        let offset = offset ^ u32::MAX;
+        let offset = offset.wrapping_mul(version_checksum);
+        let offset = offset.wrapping_sub(magic);
+        let offset = offset.rotate_left(offset & 0x1F);
 
         // Decode offset
         let encoded_offset = value;
-        let offset = Wrapping(encoded_offset ^ encoding);
-        let offset = offset + (abs_pos * Wrapping(2));
-        offset.0
+        let offset = encoded_offset ^ offset;
+        offset.wrapping_add(abs_pos.wrapping_mul(2))
     }
 
     fn encode_with(&self, position: WzOffset, abs_pos: i32, version_checksum: u32) -> u32 {
-        let cur = Wrapping(*position);
-        let abs_pos = Wrapping(abs_pos as u32);
-        let version_checksum = Wrapping(version_checksum as u32);
-        let magic = Wrapping(0x581C3F6D);
+        let offset = *position;
+        let abs_pos = abs_pos as u32;
+        let magic = 0x581C3F6D;
 
         // Make decoding key (?)
-        let encoding = cur - abs_pos;
-        let encoding = encoding ^ Wrapping(u32::MAX);
-        let encoding = encoding * version_checksum;
-        let encoding = encoding - magic;
-        let encoding = encoding.0.rotate_left(encoding.0 & 0x1F);
-        // unwrapped
+        let offset = offset.wrapping_sub(abs_pos);
+        let offset = offset ^ u32::MAX;
+        let offset = offset.wrapping_mul(version_checksum);
+        let offset = offset.wrapping_sub(magic);
+        let offset = offset.rotate_left(offset & 0x1F);
 
         // Encode offset
-        let offset = Wrapping(self.0);
-        let offset = offset - (abs_pos * Wrapping(2));
-        let offset = offset ^ Wrapping(encoding);
-        offset.0
+        let offset = self.0;
+        let offset = offset.wrapping_sub(abs_pos.wrapping_mul(2));
+        offset ^ offset
     }
 }
 

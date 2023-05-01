@@ -4,6 +4,7 @@ use crate::types::WzString;
 
 use indextree::{Arena, NodeId};
 
+mod children;
 mod cursor;
 mod cursor_mut;
 mod error;
@@ -11,6 +12,7 @@ mod metadata;
 mod node;
 mod size_hint;
 
+pub use children::{ChildNames, Children};
 pub use cursor::Cursor;
 pub use cursor_mut::CursorMut;
 pub use error::Error;
@@ -18,6 +20,8 @@ pub use indextree::DebugPrettyPrint;
 pub use metadata::Metadata;
 pub use node::MapNode;
 pub use size_hint::SizeHint;
+
+use std::fmt::Debug;
 
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
 /// to be unique.
@@ -51,6 +55,16 @@ where
         CursorMut::new(self.root, &mut self.arena)
     }
 
+    /// Creates a cursor inside the root that has read-only access to the map data
+    pub fn cursor_at<'a>(&'a self, uri: &[&str]) -> Result<Cursor<'a, T>, Error> {
+        Ok(Cursor::new(self.get_id(uri)?, &self.arena))
+    }
+
+    /// Creates a cursor inside the root that has mutable access to the map data
+    pub fn cursor_mut_at<'a>(&'a mut self, uri: &[&str]) -> Result<CursorMut<'a, T>, Error> {
+        Ok(CursorMut::new(self.get_id(uri)?, &mut self.arena))
+    }
+
     /// Returns the name of the root node
     pub fn name(&self) -> &str {
         self.arena
@@ -77,18 +91,15 @@ where
             .data)
     }
 
-    /// Modifies the data at the uri path. Errors when the node does not exist.
-    pub fn modify(&mut self, uri: &[&str], closure: impl Fn(&mut T) -> ()) -> Result<(), Error> {
-        let id = self.get_id(uri)?;
-        CursorMut::new(id, &mut self.arena).modify(closure);
-        Ok(())
-    }
-
     /// Walks the map depth-first
-    pub fn walk(&self, closure: impl Fn(Cursor<T>) -> ()) {
+    pub fn walk<E>(&self, closure: impl Fn(Cursor<T>) -> Result<(), E>) -> Result<(), E>
+    where
+        E: Debug,
+    {
         for id in self.root.descendants(&self.arena) {
-            closure(Cursor::new(id, &self.arena));
+            closure(Cursor::new(id, &self.arena))?;
         }
+        Ok(())
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
@@ -137,7 +148,7 @@ mod tests {
             .expect("rename should work");
         assert_eq!(cursor.name(), "n1");
         let children: &[&str] = &[];
-        assert_eq!(&cursor.list(), children);
+        assert_eq!(&cursor.list().collect::<Vec<&str>>(), children);
         // let cursor die
         assert_eq!(map.name(), "n1");
     }
