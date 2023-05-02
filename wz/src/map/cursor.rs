@@ -3,7 +3,7 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::map::{ChildNames, Children, Error, MapNode, Metadata, SizeHint};
-use indextree::{Arena, NodeId};
+use indextree::{Arena, DebugPrettyPrint, NodeId};
 use std::collections::VecDeque;
 
 /// A cursor with read-only access to the contents of the [`Map`](crate::map::Map)
@@ -161,6 +161,11 @@ where
             }
             None => Err(Error::NoParent),
         }
+    }
+
+    /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
+    pub fn debug_pretty_print(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
+        self.position.debug_pretty_print(&self.arena)
     }
 
     // *** PRIVATES *** //

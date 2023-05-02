@@ -1,7 +1,7 @@
 //! WZ CLI Tool
 
-use clap::{Args, Parser};
-use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, TRIMMED_KEY};
+use clap::{Args, Parser, ValueEnum};
+use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
     io::{copy, BufReader, Read},
@@ -9,7 +9,7 @@ use std::{
 };
 use wz::{
     error::{Error, Result},
-    file::{ContentRef, ImageRef, PackageRef},
+    file::{ContentRef, ImageRef, Metadata, PackageRef},
     map::{CursorMut, Map},
     reader::DummyDecryptor,
     types::{WzInt, WzString},
@@ -36,10 +36,10 @@ struct Cli {
     verbose: bool,
 
     /// Expect encrypted GMS strings
-    #[arg(short, long, default_value_t = false)]
-    legacy: bool,
+    #[arg(short, long, value_enum)]
+    key: Key,
 
-    /// The version of WZ package to make
+    /// The version of WZ package. Required if create. Overrides the WZ version otherwise.
     #[arg(short = 'm', long)]
     version: Option<u16>,
 }
@@ -62,6 +62,13 @@ struct Action {
     /// Debug the WZ package
     #[arg(short = 'd')]
     debug: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Key {
+    Gms,
+    Kms,
+    None,
 }
 
 fn recursive_do_create(
@@ -111,7 +118,7 @@ where
         ContentRef::Package(PackageRef::new(name)),
     );
     recursive_do_create(directory, &mut map.cursor_mut(), verbose)?;
-    file.calculate_offsets(&mut map)?;
+    file.calculate_checksum_and_offsets(&mut map)?;
     println!("{:?}", map.debug_pretty_print());
     Ok(())
 }
@@ -162,66 +169,82 @@ where
     })
 }
 
-fn do_debug<D>(file: WzFile, decryptor: D) -> Result<()>
+fn do_debug<D>(file: WzFile, decryptor: D, directory: &Option<String>) -> Result<()>
 where
     D: Decryptor,
 {
+    println!("{:?}", file.metadata());
     let map = file.map(decryptor)?;
-    //println!("{:?}", map.debug_pretty_print());
-    map.walk::<Error>(|cursor| {
-        println!(
-            "Path: {} -- Data: {:?}",
-            cursor.pwd().join("/"),
-            cursor.get()
-        );
-        Ok(())
-    })
+    match directory {
+        Some(ref path) => {
+            let path = path.split("/").collect::<Vec<&str>>();
+            let cursor = map.cursor_at(&path)?;
+            let checksum = WzInt::from(
+                cursor
+                    .children()
+                    .map(|child| *child.checksum())
+                    .sum::<i32>(),
+            );
+            println!("{:?}", cursor.debug_pretty_print());
+            println!("Checksum: {}", *checksum);
+        }
+        None => println!("{:?}", map.debug_pretty_print()),
+    }
+    Ok(())
 }
 
 fn main() -> Result<()> {
     let args = Cli::parse();
 
-    // Assume encrypted
-    let keystream = KeyStream::new(&TRIMMED_KEY, &GMS_IV);
-
     let action = &args.action;
     if action.create {
-        if args.legacy {
-            do_create(
-                WzFile::create(args.file.as_str(), args.version.unwrap())?,
+        let file = WzFile::create(args.file.as_str(), args.version.unwrap())?;
+        match args.key {
+            Key::Gms => do_create(
+                file,
                 &args.directory.unwrap(),
-                keystream,
+                KeyStream::new(&TRIMMED_KEY, &GMS_IV),
                 args.verbose,
-            )?
-        } else {
-            do_create(
-                WzFile::create(args.file.as_str(), args.version.unwrap())?,
+            )?,
+            Key::Kms => do_create(
+                file,
                 &args.directory.unwrap(),
-                DummyEncryptor,
+                KeyStream::new(&TRIMMED_KEY, &KMS_IV),
                 args.verbose,
-            )?
+            )?,
+            Key::None => do_create(file, &args.directory.unwrap(), DummyEncryptor, args.verbose)?,
         }
-    } else if action.list {
-        if args.legacy {
-            do_list(WzFile::open(args.file.as_str())?, keystream)?
-        } else {
-            do_list(WzFile::open(args.file.as_str())?, DummyDecryptor)?
-        }
-    } else if action.extract {
-        if args.legacy {
-            do_extract(WzFile::open(args.file.as_str())?, keystream, args.verbose)?
-        } else {
-            do_extract(
-                WzFile::open(args.file.as_str())?,
-                DummyDecryptor,
-                args.verbose,
-            )?
-        }
-    } else if action.debug {
-        if args.legacy {
-            do_debug(WzFile::open(args.file.as_str())?, keystream)?
-        } else {
-            do_debug(WzFile::open(args.file.as_str())?, DummyDecryptor)?
+    } else {
+        let file = match args.version {
+            Some(v) => WzFile::open_as_version(args.file.as_str(), v)?,
+            None => {
+                let mut file = WzFile::open(args.file.as_str())?;
+                match args.key {
+                    Key::Gms => file.guess_version(KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                    Key::Kms => file.guess_version(KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                    Key::None => file.guess_version(DummyDecryptor)?,
+                }
+                file
+            }
+        };
+        if action.list {
+            match args.key {
+                Key::Gms => do_list(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                Key::Kms => do_list(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                Key::None => do_list(file, DummyDecryptor)?,
+            }
+        } else if action.extract {
+            match args.key {
+                Key::Gms => do_extract(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV), args.verbose)?,
+                Key::Kms => do_extract(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV), args.verbose)?,
+                Key::None => do_extract(file, DummyDecryptor, args.verbose)?,
+            }
+        } else if action.debug {
+            match args.key {
+                Key::Gms => do_debug(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV), &args.directory)?,
+                Key::Kms => do_debug(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV), &args.directory)?,
+                Key::None => do_debug(file, DummyDecryptor, &args.directory)?,
+            }
         }
     }
     Ok(())

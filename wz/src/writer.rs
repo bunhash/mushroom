@@ -1,6 +1,6 @@
 //! WZ Writer
 
-use crate::{encode::Error, file::Metadata, types::WzOffset};
+use crate::{encode::Error, types::WzOffset};
 use crypto::{Encryptor, KeyStream};
 use std::io::{Seek, SeekFrom, Write};
 
@@ -11,23 +11,31 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// Wraps a writer into a WZ encoder. Used in [`Encode`](crate::Encode) trait
 ///
 /// ```no_run
+/// use crypto::checksum;
 /// use std::{io::BufWriter, fs::File};
 /// use wz::{file::Metadata, WzWriter};
 ///
 /// let metadata = Metadata::new(172);
 /// let file = File::create("Base.wz").unwrap();
-/// let reader = WzWriter::unencrypted(&metadata, BufWriter::new(file));
+/// let (_, version_checksum) = checksum("172");
+/// let reader = WzWriter::unencrypted(
+///     metadata.absolute_position,
+///     version_checksum,
+///     BufWriter::new(file),
+/// );
 /// ```
 ///
 /// ```no_run
-/// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
+/// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufWriter, fs::File};
 /// use wz::{file::Metadata, WzWriter};
 ///
 /// let metadata = Metadata::new(83);
 /// let file = File::open("Base.wz").unwrap();
+/// let (_, version_checksum) = checksum("83");
 /// let reader = WzWriter::encrypted(
-///     &metadata,
+///     metadata.absolute_position,
+///     version_checksum,
 ///     BufWriter::new(file),
 ///     KeyStream::new(&TRIMMED_KEY, &GMS_IV)
 /// );
@@ -57,8 +65,8 @@ where
     W: Write + Seek,
 {
     /// Creates an unencrypted writer
-    pub fn unencrypted(metadata: &Metadata, writer: W) -> Self {
-        WzWriter::new(metadata, writer, DummyEncryptor)
+    pub fn unencrypted(absolute_position: i32, version_checksum: u32, writer: W) -> Self {
+        WzWriter::new(absolute_position, version_checksum, writer, DummyEncryptor)
     }
 }
 
@@ -67,8 +75,13 @@ where
     W: Write + Seek,
 {
     /// Creates an encrypted writer
-    pub fn encrypted(metadata: &Metadata, writer: W, encryptor: KeyStream) -> Self {
-        WzWriter::new(metadata, writer, encryptor)
+    pub fn encrypted(
+        absolute_position: i32,
+        version_checksum: u32,
+        writer: W,
+        encryptor: KeyStream,
+    ) -> Self {
+        WzWriter::new(absolute_position, version_checksum, writer, encryptor)
     }
 }
 
@@ -78,21 +91,21 @@ where
     E: Encryptor,
 {
     /// Creates a new `WzWriter`
-    pub fn new(metadata: &Metadata, writer: W, encryptor: E) -> Self {
+    pub fn new(absolute_position: i32, version_checksum: u32, writer: W, encryptor: E) -> Self {
         Self {
-            absolute_position: metadata.absolute_position,
-            version_checksum: metadata.version_checksum,
+            absolute_position,
+            version_checksum,
             writer,
             encryptor,
         }
     }
 
-    /// Returns the metadata of the WZ file
+    /// Returns the absolution position of the WZ file
     pub fn absolute_position(&self) -> i32 {
         self.absolute_position
     }
 
-    /// Returns the metadata of the WZ file
+    /// Returns the version checksum of the WZ file
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
     }
@@ -168,14 +181,16 @@ where
 mod tests {
 
     use crate::{file::Metadata, WzWriter};
-    use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
+    use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::io::Cursor;
 
     #[test]
     fn make_encrypted() {
         let metadata = Metadata::new(83);
+        let (_, version_checksum) = checksum("83");
         let _ = WzWriter::encrypted(
-            &metadata,
+            metadata.absolute_position,
+            version_checksum,
             Cursor::new(vec![0u8; 60]),
             KeyStream::new(&TRIMMED_KEY, &GMS_IV),
         );
@@ -184,6 +199,11 @@ mod tests {
     #[test]
     fn make_unencrypted() {
         let metadata = Metadata::new(176);
-        let _ = WzWriter::unencrypted(&metadata, Cursor::new(vec![0u8; 60]));
+        let (_, version_checksum) = checksum("176");
+        let _ = WzWriter::unencrypted(
+            metadata.absolute_position,
+            version_checksum,
+            Cursor::new(vec![0u8; 60]),
+        );
     }
 }

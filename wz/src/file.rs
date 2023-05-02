@@ -25,7 +25,7 @@ use crate::{
     types::{WzInt, WzOffset, WzString},
     Decode, WzReader,
 };
-use crypto::{Decryptor, KeyStream};
+use crypto::{checksum, Decryptor, KeyStream};
 use std::{
     fs::File,
     io::{BufReader, ErrorKind, Read, Seek, SeekFrom, Take},
@@ -44,8 +44,9 @@ use raw::RawContentRef;
 /// How the file was opened
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum OpenOption {
-    Read,
-    Write,
+    ReadUnknown,
+    ReadKnown(u16, u32),
+    Write(u16, u32),
 }
 
 /// Represents a WZ file. This object should point to a location on disk.
@@ -61,9 +62,10 @@ impl WzFile {
     pub fn create(path: &str, version: u16) -> Result<Self> {
         let path = PathBuf::from(path);
         let metadata = Metadata::new(version);
+        let (_, version_checksum) = checksum(&version.to_string());
         Ok(Self {
             path,
-            open_option: OpenOption::Write,
+            open_option: OpenOption::Write(version, version_checksum),
             metadata,
         })
     }
@@ -74,9 +76,30 @@ impl WzFile {
         let metadata = Metadata::from_reader(File::open(&path)?)?;
         Ok(Self {
             path,
-            open_option: OpenOption::Read,
+            open_option: OpenOption::ReadUnknown,
             metadata,
         })
+    }
+
+    /// Creates a `WzFile` as read-only. Errors when it cannot read the file.
+    pub fn open_as_version(path: &str, version: u16) -> Result<Self> {
+        let path = PathBuf::from(path);
+        let metadata = Metadata::from_reader(File::open(&path)?)?;
+        let (calc_version, version_checksum) = checksum(&version.to_string());
+        if calc_version != metadata.encrypted_version {
+            Err(WzError::InvalidChecksum.into())
+        } else {
+            Ok(Self {
+                path,
+                open_option: OpenOption::ReadKnown(version, version_checksum),
+                metadata,
+            })
+        }
+    }
+
+    /// Returns a list of possible versions
+    pub fn possible_versions(&self) -> Vec<(u16, u32)> {
+        Metadata::possible_versions(self.metadata.encrypted_version)
     }
 
     /// Gets the filename of the WZ file
@@ -95,6 +118,18 @@ impl WzFile {
         &self.metadata
     }
 
+    /// Guess the WZ version
+    pub fn guess_version<D>(&mut self, decryptor: D) -> Result<()>
+    where
+        D: Decryptor,
+    {
+        if self.open_option == OpenOption::ReadUnknown {
+            let (version, version_checksum) = self.bruteforce_version(decryptor)?;
+            self.open_option = OpenOption::ReadKnown(version, version_checksum);
+        }
+        Ok(())
+    }
+
     /// Creates a new [`WzReader`]. This creates a new file descriptor as well. This method can be
     /// called multiple times. However, it is important to ensure the file is read-only while these
     /// reader(s) exist.
@@ -102,14 +137,15 @@ impl WzFile {
     where
         D: Decryptor,
     {
-        if self.open_option == OpenOption::Read {
-            Ok(WzReader::new(
-                &self.metadata,
+        match self.open_option {
+            OpenOption::ReadUnknown => Err(WzError::InvalidChecksum.into()),
+            OpenOption::ReadKnown(_, version_checksum) => Ok(WzReader::new(
+                self.metadata.absolute_position,
+                version_checksum,
                 BufReader::new(File::open(&self.path)?),
                 decryptor,
-            ))
-        } else {
-            Err(WzError::WriteOnly.into())
+            )),
+            OpenOption::Write(_, _) => Err(WzError::WriteOnly.into()),
         }
     }
 
@@ -139,12 +175,12 @@ impl WzFile {
         let content = ContentRef::Package(PackageRef {
             name_size: name.size_hint(),
             size: WzInt::from(0),
+            checksum: WzInt::from(0),
             offset,
             num_content: WzInt::from(0),
         });
         let mut map = Map::new(name, content);
         let mut cursor = map.cursor_mut();
-        println!("{:?}", self.metadata);
         for raw_content in WzFile::decode_package_contents(&mut reader)? {
             WzFile::map_content_to(&raw_content, &mut cursor, &mut reader)?;
         }
@@ -193,18 +229,21 @@ impl WzFile {
 
     /// Creates a reader for [`ImageRef`] objects.
     pub fn image_reader(&self, image_ref: &ImageRef) -> Result<Take<BufReader<File>>> {
-        if self.open_option == OpenOption::Read {
-            let mut reader = BufReader::new(File::open(&self.path)?);
-            reader.seek(SeekFrom::Start(*image_ref.offset as u64))?;
-            Ok(reader.take(*image_ref.size as u64))
-        } else {
-            Err(WzError::WriteOnly.into())
+        match self.open_option {
+            OpenOption::ReadUnknown => Err(WzError::InvalidChecksum.into()),
+            OpenOption::ReadKnown(_, _) => {
+                let mut reader = BufReader::new(File::open(&self.path)?);
+                reader.seek(SeekFrom::Start(*image_ref.offset as u64))?;
+                Ok(reader.take(*image_ref.size as u64))
+            }
+            OpenOption::Write(_, _) => Err(WzError::WriteOnly.into()),
         }
     }
 
-    /// Calculate the offsets
-    pub fn calculate_offsets(&self, map: &mut Map<ContentRef>) -> Result<()> {
+    /// Calculates the checksums and offsets
+    pub fn calculate_checksum_and_offsets(&self, map: &mut Map<ContentRef>) -> Result<()> {
         let mut cursor = map.cursor_mut();
+        WzFile::recursive_calculate_checksum(&mut cursor)?;
         WzFile::recursive_calculate_offset(
             WzOffset::from(self.metadata.absolute_position as u32 + 2),
             &mut cursor,
@@ -213,6 +252,38 @@ impl WzFile {
     }
 
     // *** PRIVATES *** //
+
+    fn bruteforce_version<D>(&self, decryptor: D) -> Result<(u16, u32)>
+    where
+        D: Decryptor,
+    {
+        let lower_bound = WzOffset::from(self.metadata.absolute_position as u32);
+        let upper_bound =
+            WzOffset::from(self.metadata.absolute_position as u32 + self.metadata.size as u32);
+        let mut reader = WzReader::new(
+            self.metadata.absolute_position,
+            0u32,
+            BufReader::new(File::open(&self.path)?),
+            decryptor,
+        );
+        for (version, version_checksum) in self.possible_versions() {
+            reader.set_version_checksum(version_checksum);
+            reader.seek(WzOffset::from(self.metadata.absolute_position + 2))?;
+
+            // Decodes the top-level directory contents. If all contents lie within the lower and
+            // upper bounds, we can assume the version checksum is good.
+            let contents = WzFile::decode_package_contents(&mut reader)?;
+            let filtered = contents
+                .iter()
+                .map(|raw_content| raw_content.offset)
+                .filter(|off| *off >= lower_bound && *off < upper_bound)
+                .collect::<Vec<WzOffset>>();
+            if contents.len() == filtered.len() {
+                return Ok((version, version_checksum));
+            }
+        }
+        Err(WzError::BruteForceChecksum.into())
+    }
 
     fn decode_package_contents<R, D>(reader: &mut WzReader<R, D>) -> Result<Vec<RawContentRef>>
     where
@@ -227,7 +298,6 @@ impl WzFile {
         let mut contents = Vec::with_capacity(num_contents);
         for _ in 0..num_contents {
             let content = RawContentRef::decode(reader)?;
-            println!("{:?}", content);
             contents.push(content);
         }
         Ok(contents)
@@ -259,7 +329,7 @@ impl WzFile {
             ContentRef::Package(ref package) => {
                 1 + *package.name_size as u32
                     + *package.size.size_hint() as u32
-                    + *WzInt::from(0).size_hint() as u32
+                    + *package.checksum.size_hint() as u32
                     + *package.offset.size_hint() as u32
             }
             ContentRef::Image(ref image) => {
@@ -269,6 +339,43 @@ impl WzFile {
                     + *image.offset.size_hint() as u32
             }
         }
+    }
+
+    fn recursive_calculate_checksum(cursor: &mut CursorMut<ContentRef>) -> Result<()> {
+        // Calculate the sibling offset and return the number of children
+        let mut num_content = match cursor.get() {
+            ContentRef::Package(ref package) => package.num_content,
+            // If it is an image, return the next checksum and stop here. Image's have no children.
+            ContentRef::Image(_) => return Ok(()),
+        };
+
+        let mut checksum = 0i32;
+        if num_content > 0 {
+            // Calculate children checksums first
+            cursor.first_child()?;
+            loop {
+                WzFile::recursive_calculate_checksum(cursor)?;
+                num_content = num_content - 1;
+                if num_content <= 0 {
+                    break;
+                }
+                cursor.next_sibling()?;
+            }
+            cursor.parent()?;
+
+            // Sum children checksums (overflow may occur here...)
+            for child in cursor.children() {
+                checksum = checksum.wrapping_add(*child.checksum());
+            }
+        }
+
+        // Set the checksum
+        cursor.modify::<WzError>(|content| match content {
+            ContentRef::Package(ref mut package) => Ok(package.checksum = WzInt::from(checksum)),
+            ContentRef::Image(_) => panic!("should not get here..."),
+        })?;
+
+        Ok(())
     }
 
     fn recursive_calculate_offset(

@@ -25,25 +25,21 @@ pub struct Metadata {
     /// Description of the WZ package. Should be "Package file v1.0 Copyright 2002 Wizet, ZMS"
     pub description: CString,
 
-    /// Version of the WZ file
-    pub version: u16,
-
-    /// Checksum of the WZ file version. The computation of this is defined in the [`crypto`]
-    /// package.
-    pub version_checksum: u32,
+    /// Encrypted version (not really encrypted since it is irreversable. More like a checksum or
+    /// non-cryptographic hash.
+    pub encrypted_version: u16,
 }
 
 impl Metadata {
     /// Creates new metadata with default values.
     pub fn new(version: u16) -> Self {
-        let (_, version_checksum) = checksum(&version.to_string());
+        let (encrypted_version, _) = checksum(&version.to_string());
         Self {
             identifier: [0x50, 0x4b, 0x47, 0x31],
             size: 0,
             absolute_position: 60,
             description: CString::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
-            version,
-            version_checksum,
+            encrypted_version,
         }
     }
 
@@ -92,26 +88,25 @@ impl Metadata {
         let mut encrypted_version = [0u8; 2];
         reader.read_exact(&mut encrypted_version)?;
         let encrypted_version = u16::from_le_bytes(encrypted_version);
-        let (version, version_checksum) = Metadata::bruteforce_version(encrypted_version)?;
 
         Ok(Metadata {
             identifier,
             size,
             absolute_position,
             description,
-            version,
-            version_checksum,
+            encrypted_version,
         })
     }
 
-    pub(crate) fn bruteforce_version(encrypted_version: u16) -> Result<(u16, u32)> {
+    pub(crate) fn possible_versions(encrypted_version: u16) -> Vec<(u16, u32)> {
+        let mut versions = Vec::new();
         for version in 1..1000 {
             let (calc_version, version_checksum) = checksum(&version.to_string());
             if calc_version == encrypted_version {
-                return Ok((version, version_checksum));
+                versions.push((version, version_checksum));
             }
         }
-        Err(WzError::BruteForceChecksum.into())
+        versions
     }
 }
 
@@ -132,8 +127,7 @@ mod tests {
             &metadata.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(metadata.version, 83);
-        assert_eq!(metadata.version_checksum, 1876);
+        assert_eq!(metadata.encrypted_version, 172);
     }
 
     #[test]
@@ -147,7 +141,6 @@ mod tests {
             &metadata.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(metadata.version, 176);
-        assert_eq!(metadata.version_checksum, 53047);
+        assert_eq!(metadata.encrypted_version, 7);
     }
 }

@@ -1,6 +1,6 @@
 //! WZ Reader
 
-use crate::{decode::Error, file::Metadata, types::WzOffset};
+use crate::{decode::Error, types::WzOffset};
 use crypto::{Decryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -11,25 +11,33 @@ pub use self::dummy_decryptor::DummyDecryptor;
 /// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::Decode) trait
 ///
 /// ```no_run
+/// use crypto::checksum;
 /// use std::{io::BufReader, fs::File};
 /// use wz::{file::Metadata, WzReader};
 ///
 /// let file = File::open("Base.wz").unwrap();
 /// let metadata = Metadata::from_reader(&file).unwrap();
-/// let reader = WzReader::unencrypted(&metadata, BufReader::new(file));
+/// let (_, version_checksum) = checksum("176");
+/// let reader = WzReader::unencrypted(
+///     metadata.absolute_position,
+///     version_checksum,
+///     BufReader::new(file),
+/// );
 /// ```
 ///
 /// ```no_run
-/// use crypto::{KeyStream, TRIMMED_KEY, GMS_IV};
+/// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
 /// use wz::{file::Metadata, WzReader};
 ///
 /// let file = File::open("Base.wz").unwrap();
 /// let metadata = Metadata::from_reader(&file).unwrap();
+/// let (_, version_checksum) = checksum("83");
 /// let reader = WzReader::encrypted(
-///     &metadata,
+///     metadata.absolute_position,
+///     version_checksum,
 ///     BufReader::new(file),
-///     KeyStream::new(&TRIMMED_KEY, &GMS_IV)
+///     KeyStream::new(&TRIMMED_KEY, &GMS_IV),
 /// );
 /// ```
 pub struct WzReader<R, D>
@@ -57,8 +65,8 @@ where
     R: Read + Seek,
 {
     /// Creates an unencrypted reader
-    pub fn unencrypted(metadata: &Metadata, reader: R) -> Self {
-        WzReader::new(metadata, reader, DummyDecryptor)
+    pub fn unencrypted(absolute_position: i32, version_checksum: u32, reader: R) -> Self {
+        WzReader::new(absolute_position, version_checksum, reader, DummyDecryptor)
     }
 }
 
@@ -67,8 +75,13 @@ where
     R: Read + Seek,
 {
     /// Creates an encrypted reader
-    pub fn encrypted(metadata: &Metadata, reader: R, decryptor: KeyStream) -> Self {
-        WzReader::new(metadata, reader, decryptor)
+    pub fn encrypted(
+        absolute_position: i32,
+        version_checksum: u32,
+        reader: R,
+        decryptor: KeyStream,
+    ) -> Self {
+        WzReader::new(absolute_position, version_checksum, reader, decryptor)
     }
 }
 
@@ -78,10 +91,10 @@ where
     D: Decryptor,
 {
     /// Creates a new `WzReader`
-    pub fn new(metadata: &Metadata, reader: R, decryptor: D) -> Self {
+    pub fn new(absolute_position: i32, version_checksum: u32, reader: R, decryptor: D) -> Self {
         Self {
-            absolute_position: metadata.absolute_position,
-            version_checksum: metadata.version_checksum,
+            absolute_position,
+            version_checksum,
             reader,
             decryptor,
         }
@@ -95,6 +108,11 @@ where
     /// Returns the metadata of the WZ file
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
+    }
+
+    /// Sets the version_checksum
+    pub(crate) fn set_version_checksum(&mut self, version_checksum: u32) {
+        self.version_checksum = version_checksum;
     }
 
     /// Get the position within the input
@@ -187,15 +205,17 @@ where
 mod tests {
 
     use crate::{file::Metadata, WzReader};
-    use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
+    use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 
     #[test]
     fn make_encrypted() {
         let file = File::open("testdata/v83-base.wz").expect("error opening file");
         let metadata = Metadata::from_reader(&file).expect("error reading metadata");
+        let (_, version_checksum) = checksum("83");
         let _ = WzReader::encrypted(
-            &metadata,
+            metadata.absolute_position,
+            version_checksum,
             BufReader::new(file),
             KeyStream::new(&TRIMMED_KEY, &GMS_IV),
         );
@@ -205,6 +225,11 @@ mod tests {
     fn make_unencrypted() {
         let file = File::open("testdata/v172-base.wz").expect("error opening file");
         let metadata = Metadata::from_reader(&file).expect("error reading metadata");
-        let _ = WzReader::unencrypted(&metadata, BufReader::new(file));
+        let (_, version_checksum) = checksum("176");
+        let _ = WzReader::unencrypted(
+            metadata.absolute_position,
+            version_checksum,
+            BufReader::new(file),
+        );
     }
 }

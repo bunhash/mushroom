@@ -6,7 +6,7 @@ use crate::{
     map::{ChildNames, Children, Error, MapNode, Metadata, SizeHint},
     types::{WzInt, WzString},
 };
-use indextree::{Arena, NodeId};
+use indextree::{Arena, DebugPrettyPrint, NodeId};
 use std::{collections::VecDeque, fmt::Debug};
 
 /// A cursor with mutable access to the contents of the [`Map`](crate::map::Map)
@@ -261,6 +261,11 @@ where
     /// the data is changed outside of [`Map`](crate::map::Map).
     pub fn send_update(&mut self) {
         self.send_update_by_id(self.position);
+    }
+
+    /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
+    pub fn debug_pretty_print(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
+        self.position.debug_pretty_print(&self.arena)
     }
 
     // *** PRIVATES *** //

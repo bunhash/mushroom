@@ -13,7 +13,7 @@ pub enum Error {
 
     /// IO error
     Io(io::ErrorKind),
-    
+
     /// Map error
     Map(map::Error),
 
@@ -68,6 +68,9 @@ pub enum WzError {
     /// Brute forcing the checksum failed
     BruteForceChecksum,
 
+    /// Invalid checksum
+    InvalidChecksum,
+
     /// The WZ package is invalid
     InvalidImage,
 
@@ -88,6 +91,9 @@ impl fmt::Display for WzError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
+            WzError::InvalidChecksum => {
+                write!(f, "Invalid version checksum. Maybe try guess_version()?")
+            }
             WzError::InvalidImage => write!(f, "Invalid WZ image"),
             WzError::InvalidMetadata => write!(f, "Invalid WZ file"),
             WzError::InvalidPackage => write!(f, "Invalid WZ pacakge"),

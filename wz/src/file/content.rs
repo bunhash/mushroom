@@ -13,6 +13,7 @@ use std::convert::TryFrom;
 pub struct PackageRef {
     pub(crate) name_size: WzInt,
     pub(crate) size: WzInt,
+    pub(crate) checksum: WzInt,
     pub(crate) offset: WzOffset,
     pub(crate) num_content: WzInt,
 }
@@ -22,9 +23,26 @@ impl PackageRef {
         Self {
             name_size: WzString::from(name).size_hint(),
             size: WzInt::from(0),
+            checksum: WzInt::from(0),
             offset: WzOffset::from(0),
             num_content: WzInt::from(0),
         }
+    }
+
+    pub fn size(&self) -> WzInt {
+        self.size
+    }
+
+    pub fn checksum(&self) -> WzInt {
+        self.checksum
+    }
+
+    pub fn offset(&self) -> WzOffset {
+        self.offset
+    }
+
+    pub fn num_content(&self) -> WzInt {
+        self.num_content
     }
 }
 
@@ -46,6 +64,18 @@ impl ImageRef {
             offset: WzOffset::from(0),
         }
     }
+
+    pub fn size(&self) -> WzInt {
+        self.size
+    }
+
+    pub fn checksum(&self) -> WzInt {
+        self.checksum
+    }
+
+    pub fn offset(&self) -> WzOffset {
+        self.offset
+    }
 }
 
 /// `ContentRef` found in WZ files
@@ -65,7 +95,7 @@ impl ContentRef {
                 tag: 3u8,
                 name,
                 size: package.size,
-                checksum: WzInt::from(0),
+                checksum: package.checksum,
                 offset: package.offset,
             },
             ContentRef::Image(ref image) => RawContentRef {
@@ -75,6 +105,27 @@ impl ContentRef {
                 checksum: image.checksum,
                 offset: image.offset,
             },
+        }
+    }
+
+    pub fn size(&self) -> WzInt {
+        match self {
+            ContentRef::Package(ref package) => package.size,
+            ContentRef::Image(ref image) => image.size,
+        }
+    }
+
+    pub fn checksum(&self) -> WzInt {
+        match self {
+            ContentRef::Package(ref package) => package.checksum,
+            ContentRef::Image(ref image) => image.checksum,
+        }
+    }
+
+    pub fn offset(&self) -> WzOffset {
+        match self {
+            ContentRef::Package(ref package) => package.offset,
+            ContentRef::Image(ref image) => image.offset,
         }
     }
 }
@@ -104,7 +155,7 @@ impl SizeHint for ContentRef {
             ContentRef::Package(ref package) => {
                 1 + package.name_size
                     + package.size.size_hint()
-                    + WzInt::from(0).size_hint()
+                    + package.checksum.size_hint()
                     + package.offset.size_hint()
                     + package.num_content.size_hint()
                     + package.size
@@ -128,6 +179,7 @@ impl TryFrom<&RawContentRef> for ContentRef {
             3 => Ok(ContentRef::Package(PackageRef {
                 name_size: raw_content.name.size_hint(),
                 size: WzInt::from(0),
+                checksum: raw_content.checksum,
                 offset: raw_content.offset,
                 num_content: WzInt::from(0),
             })),
