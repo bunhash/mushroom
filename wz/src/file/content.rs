@@ -2,6 +2,7 @@
 
 use crate::{
     decode::Error,
+    error,
     file::raw::RawContentRef,
     map::{Metadata, SizeHint},
     types::{WzInt, WzOffset, WzString},
@@ -25,6 +26,16 @@ impl PackageRef {
             size: WzInt::from(0),
             checksum: WzInt::from(0),
             offset: WzOffset::from(0),
+            num_content: WzInt::from(0),
+        }
+    }
+
+    pub(crate) fn from_raw(raw_content: &RawContentRef) -> Self {
+        Self {
+            name_size: raw_content.name.size_hint(),
+            size: raw_content.size,
+            checksum: raw_content.checksum,
+            offset: raw_content.offset,
             num_content: WzInt::from(0),
         }
     }
@@ -62,6 +73,15 @@ impl ImageRef {
             size,
             checksum,
             offset: WzOffset::from(0),
+        }
+    }
+
+    pub(crate) fn from_raw(raw_content: &RawContentRef) -> Self {
+        Self {
+            name_size: raw_content.name.size_hint(),
+            size: raw_content.size,
+            checksum: raw_content.checksum,
+            offset: raw_content.offset,
         }
     }
 

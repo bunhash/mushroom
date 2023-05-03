@@ -1,11 +1,13 @@
 //! WZ Metadata
 
 use crate::{
-    error::{Result, WzError},
+    encode,
+    error::{self, WzError},
     types::CString,
+    Encode, WzWriter,
 };
-use crypto::checksum;
-use std::io::Read;
+use crypto::{checksum, Encryptor};
+use std::io::{Read, Seek, Write};
 
 /// Metadata of the WZ file
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,7 +46,7 @@ impl Metadata {
     }
 
     /// Reads the metadata at the beginning of the WZ file
-    pub fn from_reader<R>(mut reader: R) -> Result<Metadata>
+    pub fn from_reader<R>(mut reader: R) -> error::Result<Metadata>
     where
         R: Read,
     {
@@ -107,6 +109,21 @@ impl Metadata {
             }
         }
         versions
+    }
+}
+
+impl Encode for Metadata {
+    /// Encodes objects
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    where
+        W: Write + Seek,
+        E: Encryptor,
+    {
+        writer.write_all(&self.identifier)?;
+        self.size.encode(writer)?;
+        self.absolute_position.encode(writer)?;
+        self.description.encode(writer)?;
+        self.encrypted_version.encode(writer)
     }
 }
 

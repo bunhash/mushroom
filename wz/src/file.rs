@@ -19,16 +19,18 @@
 //! ```
 
 use crate::{
+    decode, encode,
     error::{Result, WzError},
-    map::{CursorMut, Map, SizeHint},
+    map::{Cursor, CursorMut, Map, SizeHint},
     reader::DummyDecryptor,
     types::{WzInt, WzOffset, WzString},
-    Decode, WzReader,
+    writer::DummyEncryptor,
+    Decode, Encode, WzReader, WzWriter,
 };
-use crypto::{checksum, Decryptor, KeyStream};
+use crypto::{checksum, Decryptor, Encryptor, KeyStream};
 use std::{
     fs::File,
-    io::{BufReader, ErrorKind, Read, Seek, SeekFrom, Take},
+    io::{BufReader, BufWriter, ErrorKind, Read, Seek, SeekFrom, Take, Write},
     path::PathBuf,
 };
 
@@ -162,6 +164,36 @@ impl WzFile {
         self.to_reader(keystream)
     }
 
+    /// Creates a new [`WzWriter`]. This creates a new file descriptor as well. However, his method
+    /// will likely error if called multiple times.
+    pub fn to_writer<E>(&self, encryptor: E) -> Result<WzWriter<BufWriter<File>, E>>
+    where
+        E: Encryptor,
+    {
+        match self.open_option {
+            OpenOption::Write(_, version_checksum) => Ok(WzWriter::new(
+                self.metadata.absolute_position,
+                version_checksum,
+                BufWriter::new(File::create(&self.path)?),
+                encryptor,
+            )),
+            _ => Err(WzError::ReadOnly.into()),
+        }
+    }
+
+    /// Creates a new unencrypted [`WzWriter`]. See [`WzFile::to_writer`].
+    pub fn to_unencrypted_writer(&self) -> Result<WzWriter<BufWriter<File>, DummyEncryptor>> {
+        self.to_writer(DummyEncryptor)
+    }
+
+    /// Creates a new encrypted [`WzWriter`]. See [`WzFile::to_writer`].
+    pub fn to_encrypted_writer(
+        &self,
+        keystream: KeyStream,
+    ) -> Result<WzWriter<BufWriter<File>, KeyStream>> {
+        self.to_writer(keystream)
+    }
+
     /// Maps the WZ file at a specific offset. This offset is expected to be a Package content
     /// type. The decryptor is used to decrypt strings. A [`DummyDecryptor`] is provided for WZ
     /// files that do not use string encryption.
@@ -227,19 +259,6 @@ impl WzFile {
         self.map(keystream)
     }
 
-    /// Creates a reader for [`ImageRef`] objects.
-    pub fn image_reader(&self, image_ref: &ImageRef) -> Result<Take<BufReader<File>>> {
-        match self.open_option {
-            OpenOption::ReadUnknown => Err(WzError::InvalidChecksum.into()),
-            OpenOption::ReadKnown(_, _) => {
-                let mut reader = BufReader::new(File::open(&self.path)?);
-                reader.seek(SeekFrom::Start(*image_ref.offset as u64))?;
-                Ok(reader.take(*image_ref.size as u64))
-            }
-            OpenOption::Write(_, _) => Err(WzError::WriteOnly.into()),
-        }
-    }
-
     /// Calculates the checksums and offsets
     pub fn calculate_checksum_and_offsets(&self, map: &mut Map<ContentRef>) -> Result<()> {
         let mut cursor = map.cursor_mut();
@@ -249,6 +268,26 @@ impl WzFile {
             &mut cursor,
         )?;
         Ok(())
+    }
+
+    /// Write map to WZ file
+    pub fn save<E>(&self, map: &Map<ContentRef>, encryptor: E) -> Result<()>
+    where
+        E: Encryptor,
+    {
+        match self.open_option {
+            OpenOption::Write(_, _) => {
+                let mut writer = self.to_writer(encryptor)?;
+                self.metadata.encode(&mut writer)?;
+                let mut cursor = map.cursor();
+                match cursor.get() {
+                    ContentRef::Package(ref package) => package.num_content.encode(&mut writer)?,
+                    ContentRef::Image(_) => return Err(WzError::InvalidPackage.into()),
+                }
+                Ok(())
+            }
+            _ => Err(WzError::ReadOnly.into()),
+        }
     }
 
     // *** PRIVATES *** //
@@ -273,12 +312,12 @@ impl WzFile {
             // Decodes the top-level directory contents. If all contents lie within the lower and
             // upper bounds, we can assume the version checksum is good.
             let contents = WzFile::decode_package_contents(&mut reader)?;
-            let filtered = contents
+            let filtered_len = contents
                 .iter()
                 .map(|raw_content| raw_content.offset)
                 .filter(|off| *off >= lower_bound && *off < upper_bound)
-                .collect::<Vec<WzOffset>>();
-            if contents.len() == filtered.len() {
+                .count();
+            if contents.len() == filtered_len {
                 return Ok((version, version_checksum));
             }
         }
@@ -303,6 +342,18 @@ impl WzFile {
         Ok(contents)
     }
 
+    pub fn image_reader(&self, offset: WzOffset, size: WzInt) -> Result<Take<BufReader<File>>> {
+        match self.open_option {
+            OpenOption::ReadUnknown => Err(WzError::InvalidChecksum.into()),
+            OpenOption::ReadKnown(_, _) => {
+                let mut reader = BufReader::new(File::open(&self.path)?);
+                reader.seek(SeekFrom::Start(*offset as u64))?;
+                Ok(reader.take(*size as u64))
+            }
+            OpenOption::Write(_, _) => Err(WzError::WriteOnly.into()),
+        }
+    }
+
     fn map_content_to<'a, R, D>(
         raw_content: &RawContentRef,
         cursor: &mut CursorMut<'a, ContentRef>,
@@ -312,7 +363,14 @@ impl WzFile {
         R: Read + Seek,
         D: Decryptor,
     {
-        cursor.create(raw_content.name.clone(), raw_content.try_into()?)?;
+        cursor.create(
+            raw_content.name.clone(),
+            match raw_content.tag {
+                3 => ContentRef::Package(PackageRef::from_raw(&raw_content)),
+                4 => ContentRef::Image(ImageRef::from_raw(&raw_content)),
+                t => return Err(decode::Error::InvalidContentType(t).into()),
+            },
+        )?;
         if raw_content.tag == 3 {
             reader.seek(raw_content.offset)?;
             cursor.move_to(raw_content.name.as_ref())?;
@@ -423,5 +481,19 @@ impl WzFile {
         }
 
         Ok(next_offset)
+    }
+
+    fn encode_package_contents<W, E>(
+        cursor: &mut Cursor<ContentRef>,
+        writer: &mut WzWriter<W, E>,
+    ) -> Result<()>
+    where
+        W: Write + Seek,
+        E: Encryptor,
+    {
+        match cursor.get() {
+            ContentRef::Package(ref package) => Ok(()),
+            ContentRef::Image(ref image) => Ok(()),
+        }
     }
 }

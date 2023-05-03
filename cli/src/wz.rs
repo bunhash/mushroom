@@ -9,7 +9,7 @@ use std::{
 };
 use wz::{
     error::{Error, Result},
-    file::{ContentRef, ImageRef, Metadata, PackageRef},
+    file::{ContentRef, ImageRef, PackageRef},
     map::{CursorMut, Map},
     reader::DummyDecryptor,
     types::{WzInt, WzString},
@@ -160,7 +160,7 @@ where
                 if Path::new(&path).exists() {
                     fs::remove_file(&path)?;
                 }
-                let mut reader = file.image_reader(&image)?;
+                let mut reader = file.image_reader(image.offset(), image.size())?;
                 let mut writer = fs::File::create(&path)?;
                 copy(&mut reader, &mut writer)?;
             }

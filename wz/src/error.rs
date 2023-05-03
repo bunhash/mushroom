@@ -1,6 +1,6 @@
 //! Errors
 
-use crate::{decode, map};
+use crate::{decode, encode, map};
 use std::{fmt, io};
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -10,6 +10,9 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     /// Decoding error
     Decode(decode::Error),
+
+    /// Decoding error
+    Encode(encode::Error),
 
     /// IO error
     Io(io::ErrorKind),
@@ -25,6 +28,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Decode(e) => write!(f, "Decode: {}", e),
+            Error::Encode(e) => write!(f, "Encode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
             Error::Wz(e) => write!(f, "WZ: {}", e),
@@ -35,6 +39,12 @@ impl fmt::Display for Error {
 impl From<decode::Error> for Error {
     fn from(other: decode::Error) -> Self {
         Error::Decode(other)
+    }
+}
+
+impl From<encode::Error> for Error {
+    fn from(other: encode::Error) -> Self {
+        Error::Encode(other)
     }
 }
 
