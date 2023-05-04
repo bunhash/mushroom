@@ -4,24 +4,24 @@ use clap::{Args, Parser, ValueEnum};
 use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
-    io::{copy, BufReader, Read},
-    path::Path,
+    io::{copy, BufReader, ErrorKind, Read, Seek, Write},
+    path::{Path, PathBuf},
 };
 use wz::{
+    archive::Node,
     error::{Error, Result},
-    file::{ContentRef, ImageRef, PackageRef},
     map::{CursorMut, Map},
     reader::DummyDecryptor,
-    types::{WzInt, WzString},
+    types::{WzInt, WzOffset},
     writer::DummyEncryptor,
-    WzFile,
+    Archive, WzReader,
 };
 
 #[derive(Parser)]
 struct Cli {
     /// File for input/output
     #[arg(short, long, required = true)]
-    file: String,
+    file: PathBuf,
 
     /// Directory to create the WZ package from
     #[arg(value_name = "DIR")]
@@ -71,126 +71,71 @@ enum Key {
     None,
 }
 
-fn recursive_do_create(
-    directory: &str,
-    cursor: &mut CursorMut<ContentRef>,
-    verbose: bool,
-) -> Result<()> {
-    for child in fs::read_dir(directory)? {
-        match child {
-            Ok(child) => {
-                let name = WzString::from(child.file_name().to_str().unwrap());
-                let path = child.path();
-                if verbose {
-                    println!("{}", path.to_str().unwrap());
-                }
-                if path.is_dir() {
-                    let package = ContentRef::Package(PackageRef::new(name.as_ref()));
-                    cursor.create(name, package)?;
-                } else if path.is_file() {
-                    let metadata = path.metadata()?;
-                    let mut checksum = WzInt::from(0);
-                    let reader = BufReader::new(fs::File::open(path)?);
-                    for byte in reader.bytes() {
-                        checksum = WzInt::from(checksum.wrapping_add(byte? as i32));
-                    }
-                    let image = ContentRef::Image(ImageRef::new(
-                        name.as_ref(),
-                        WzInt::from(metadata.len()),
-                        checksum,
-                    ));
-                    cursor.create(name, image)?;
-                }
-            }
-            Err(e) => return Err(e.into()),
-        }
-    }
-    Ok(())
-}
-
-fn do_create<E>(file: WzFile, directory: &str, _encryptor: E, verbose: bool) -> Result<()>
-where
-    E: Encryptor,
-{
-    let name = file.file_name()?;
-    let mut map = Map::new(
-        WzString::from(name),
-        ContentRef::Package(PackageRef::new(name)),
-    );
-    recursive_do_create(directory, &mut map.cursor_mut(), verbose)?;
-    file.calculate_checksum_and_offsets(&mut map)?;
-    println!("{:?}", map.debug_pretty_print());
-    Ok(())
-}
-
-fn do_list<D>(file: WzFile, decryptor: D) -> Result<()>
+fn do_list<D>(name: &str, mut archive: Archive<D>) -> Result<()>
 where
     D: Decryptor,
 {
-    let name = file.file_name()?;
-    let name_without_extension = &name.replace(".wz", "");
-    let map = file.map(decryptor)?;
+    let map = archive.map(name)?;
     map.walk::<Error>(|cursor| {
-        let path = cursor.pwd().join("/").replace(name, name_without_extension);
-        println!("{}", &path);
-        Ok(())
+        let path = cursor.pwd().join("/");
+        Ok(println!("{}", &path))
     })
 }
 
-fn do_extract<D>(file: WzFile, decryptor: D, verbose: bool) -> Result<()>
+fn do_extract<D>(name: &str, mut archive: Archive<D>, verbose: bool) -> Result<()>
 where
     D: Decryptor,
 {
-    let name = file.file_name()?;
-    let name_without_extension = &name.replace(".wz", "");
-    let map = file.map(decryptor)?;
+    let map = archive.map(&name.replace(".wz", ""))?;
+    let mut reader = archive.into_inner();
     map.walk::<Error>(|cursor| {
-        let path = cursor.pwd().join("/").replace(name, name_without_extension);
-        let data = cursor.get();
-        if verbose {
-            println!("{}", path);
-        }
-        match data {
-            ContentRef::Package(_) => {
-                if !Path::new(&path).exists() {
+        let path = cursor.pwd().join("/");
+        match cursor.get() {
+            Node::Package => {
+                if !Path::new(&path).is_dir() {
                     fs::create_dir(&path)?;
                 }
             }
-            ContentRef::Image(image) => {
-                if Path::new(&path).exists() {
+            Node::Image { offset, size } => {
+                if Path::new(&path).is_file() {
                     fs::remove_file(&path)?;
                 }
-                let mut reader = file.image_reader(image.offset(), image.size())?;
-                let mut writer = fs::File::create(&path)?;
-                copy(&mut reader, &mut writer)?;
+                let mut output = fs::File::create(&path)?;
+                reader.copy_to(&mut output, *offset, *size)?;
             }
+        }
+        if verbose {
+            println!("{}", path);
         }
         Ok(())
     })
 }
 
-fn do_debug<D>(file: WzFile, decryptor: D, directory: &Option<String>) -> Result<()>
+fn do_debug<D>(name: &str, mut archive: Archive<D>, directory: &Option<String>) -> Result<()>
 where
     D: Decryptor,
 {
-    println!("{:?}", file.metadata());
-    let map = file.map(decryptor)?;
+    println!("{:?}", archive.header());
+    let map = archive.map(name)?;
     match directory {
         Some(ref path) => {
             let path = path.split("/").collect::<Vec<&str>>();
             let cursor = map.cursor_at(&path)?;
-            let checksum = WzInt::from(
-                cursor
-                    .children()
-                    .map(|child| *child.checksum())
-                    .sum::<i32>(),
-            );
             println!("{:?}", cursor.debug_pretty_print());
-            println!("Checksum: {}", *checksum);
         }
         None => println!("{:?}", map.debug_pretty_print()),
     }
     Ok(())
+}
+
+fn file_name(path: &PathBuf) -> Result<&str> {
+    match path.file_name() {
+        Some(name) => match name.to_str() {
+            Some(name) => Ok(name),
+            None => return Err(ErrorKind::NotFound.into()),
+        },
+        None => return Err(ErrorKind::NotFound.into()),
+    }
 }
 
 fn main() -> Result<()> {
@@ -198,52 +143,111 @@ fn main() -> Result<()> {
 
     let action = &args.action;
     if action.create {
-        let file = WzFile::create(args.file.as_str(), args.version.unwrap())?;
-        match args.key {
-            Key::Gms => do_create(
-                file,
-                &args.directory.unwrap(),
-                KeyStream::new(&TRIMMED_KEY, &GMS_IV),
-                args.verbose,
-            )?,
-            Key::Kms => do_create(
-                file,
-                &args.directory.unwrap(),
-                KeyStream::new(&TRIMMED_KEY, &KMS_IV),
-                args.verbose,
-            )?,
-            Key::None => do_create(file, &args.directory.unwrap(), DummyEncryptor, args.verbose)?,
-        }
+        unimplemented!()
     } else {
-        let file = match args.version {
-            Some(v) => WzFile::open_as_version(args.file.as_str(), v)?,
-            None => {
-                let mut file = WzFile::open(args.file.as_str())?;
-                match args.key {
-                    Key::Gms => file.guess_version(KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-                    Key::Kms => file.guess_version(KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-                    Key::None => file.guess_version(DummyDecryptor)?,
-                }
-                file
-            }
-        };
+        let filename = file_name(&args.file)?;
+        let file = fs::File::open(&args.file)?;
         if action.list {
             match args.key {
-                Key::Gms => do_list(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-                Key::Kms => do_list(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-                Key::None => do_list(file, DummyDecryptor)?,
+                Key::Gms => do_list(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                    },
+                )?,
+                Key::Kms => do_list(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &KMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                    },
+                )?,
+                Key::None => do_list(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(file, v, DummyDecryptor)?,
+                        None => Archive::open(file, DummyDecryptor)?,
+                    },
+                )?,
             }
         } else if action.extract {
             match args.key {
-                Key::Gms => do_extract(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV), args.verbose)?,
-                Key::Kms => do_extract(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV), args.verbose)?,
-                Key::None => do_extract(file, DummyDecryptor, args.verbose)?,
+                Key::Gms => do_extract(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                    },
+                    args.verbose,
+                )?,
+                Key::Kms => do_extract(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &KMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                    },
+                    args.verbose,
+                )?,
+                Key::None => do_extract(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(file, v, DummyDecryptor)?,
+                        None => Archive::open(file, DummyDecryptor)?,
+                    },
+                    args.verbose,
+                )?,
             }
         } else if action.debug {
             match args.key {
-                Key::Gms => do_debug(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV), &args.directory)?,
-                Key::Kms => do_debug(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV), &args.directory)?,
-                Key::None => do_debug(file, DummyDecryptor, &args.directory)?,
+                Key::Gms => do_debug(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                    },
+                    &args.directory,
+                )?,
+                Key::Kms => do_debug(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(
+                            file,
+                            v,
+                            KeyStream::new(&TRIMMED_KEY, &KMS_IV),
+                        )?,
+                        None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                    },
+                    &args.directory,
+                )?,
+                Key::None => do_debug(
+                    filename,
+                    match args.version {
+                        Some(v) => Archive::open_as_version(file, v, DummyDecryptor)?,
+                        None => Archive::open(file, DummyDecryptor)?,
+                    },
+                    &args.directory,
+                )?,
             }
         }
     }

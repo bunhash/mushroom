@@ -1,4 +1,4 @@
-//! WZ Metadata
+//! WZ Archive Header
 
 use crate::{
     encode,
@@ -9,9 +9,9 @@ use crate::{
 use crypto::{checksum, Encryptor};
 use std::io::{Read, Seek, Write};
 
-/// Metadata of the WZ file
+/// Header of the WZ archive
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Metadata {
+pub struct Header {
     /// Constant value. ASCII for "PKG1"
     pub identifier: [u8; 4],
 
@@ -21,7 +21,7 @@ pub struct Metadata {
     /// Position of where the content starts. However, this technically points to the version
     /// checksum which isn't very useful for me. So you should add 2 to get to the top-level
     /// `Package`. However, this value is important for calculating offsets so it isn't modified
-    /// here. The actual value used for WZ files is signed but it probably shouldn't be.
+    /// here. The actual value used for WZ archives is signed but it probably shouldn't be.
     pub absolute_position: i32,
 
     /// Description of the WZ package. Should be "Package file v1.0 Copyright 2002 Wizet, ZMS"
@@ -32,8 +32,8 @@ pub struct Metadata {
     pub encrypted_version: u16,
 }
 
-impl Metadata {
-    /// Creates new metadata with default values.
+impl Header {
+    /// Creates new header with default values.
     pub fn new(version: u16) -> Self {
         let (encrypted_version, _) = checksum(&version.to_string());
         Self {
@@ -45,8 +45,8 @@ impl Metadata {
         }
     }
 
-    /// Reads the metadata at the beginning of the WZ file
-    pub fn from_reader<R>(mut reader: R) -> error::Result<Metadata>
+    /// Reads the header at the beginning of the WZ archive
+    pub fn from_reader<R>(reader: &mut R) -> error::Result<Header>
     where
         R: Read,
     {
@@ -58,7 +58,7 @@ impl Metadata {
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
         if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
-            return Err(WzError::InvalidMetadata.into());
+            return Err(WzError::InvalidHeader.into());
         }
 
         // Read the size
@@ -71,7 +71,7 @@ impl Metadata {
         absolute_position.copy_from_slice(&data[12..16]);
         let absolute_position = i32::from_le_bytes(absolute_position);
         if absolute_position.is_negative() {
-            return Err(WzError::InvalidMetadata.into());
+            return Err(WzError::InvalidHeader.into());
         }
 
         // Read the description
@@ -79,7 +79,7 @@ impl Metadata {
         reader.read_exact(&mut description)?;
         let description = CString::from(match String::from_utf8(description) {
             Ok(s) => s,
-            Err(_) => return Err(WzError::InvalidMetadata.into()),
+            Err(_) => return Err(WzError::InvalidHeader.into()),
         });
 
         // Skip the null
@@ -91,7 +91,7 @@ impl Metadata {
         reader.read_exact(&mut encrypted_version)?;
         let encrypted_version = u16::from_le_bytes(encrypted_version);
 
-        Ok(Metadata {
+        Ok(Header {
             identifier,
             size,
             absolute_position,
@@ -112,7 +112,7 @@ impl Metadata {
     }
 }
 
-impl Encode for Metadata {
+impl Encode for Header {
     /// Encodes objects
     fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
@@ -130,34 +130,34 @@ impl Encode for Metadata {
 #[cfg(test)]
 mod tests {
 
-    use crate::file::Metadata;
+    use crate::file::Header;
     use std::fs::File;
 
     #[test]
-    fn v83_metadata() {
-        let file = File::open("testdata/v83-base.wz").expect("error opening file");
-        let metadata = Metadata::from_reader(file).expect("error reading metadata");
-        assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
-        assert_eq!(metadata.size, 6480);
-        assert_eq!(metadata.absolute_position, 60);
+    fn v83_header() {
+        let mut file = File::open("testdata/v83-base.wz").expect("error opening file");
+        let header = Header::from_reader(&mut file).expect("error reading header");
+        assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
+        assert_eq!(header.size, 6480);
+        assert_eq!(header.absolute_position, 60);
         assert_eq!(
-            &metadata.description,
+            &header.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(metadata.encrypted_version, 172);
+        assert_eq!(header.encrypted_version, 172);
     }
 
     #[test]
-    fn v172_metadata() {
-        let file = File::open("testdata/v172-base.wz").expect("error opening file");
-        let metadata = Metadata::from_reader(file).expect("error reading metadata");
-        assert_eq!(&metadata.identifier, &[0x50, 0x4b, 0x47, 0x31]);
-        assert_eq!(metadata.size, 6705);
-        assert_eq!(metadata.absolute_position, 60);
+    fn v172_header() {
+        let mut file = File::open("testdata/v172-base.wz").expect("error opening file");
+        let header = Header::from_reader(&mut file).expect("error reading header");
+        assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
+        assert_eq!(header.size, 6705);
+        assert_eq!(header.absolute_position, 60);
         assert_eq!(
-            &metadata.description,
+            &header.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(metadata.encrypted_version, 7);
+        assert_eq!(header.encrypted_version, 7);
     }
 }

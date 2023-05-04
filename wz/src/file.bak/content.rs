@@ -190,26 +190,3 @@ impl SizeHint for ContentRef {
         }
     }
 }
-
-impl TryFrom<&RawContentRef> for ContentRef {
-    type Error = Error;
-
-    fn try_from(raw_content: &RawContentRef) -> Result<Self, Self::Error> {
-        match raw_content.tag {
-            3 => Ok(ContentRef::Package(PackageRef {
-                name_size: raw_content.name.size_hint(),
-                size: WzInt::from(0),
-                checksum: raw_content.checksum,
-                offset: raw_content.offset,
-                num_content: WzInt::from(0),
-            })),
-            4 => Ok(ContentRef::Image(ImageRef {
-                name_size: raw_content.name.size_hint(),
-                size: raw_content.size,
-                checksum: raw_content.checksum,
-                offset: raw_content.offset,
-            })),
-            t => Err(Error::InvalidContentType(t).into()),
-        }
-    }
-}

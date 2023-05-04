@@ -1,25 +1,29 @@
 //! WZ Reader
 
-use crate::{decode::Error, types::WzOffset};
+use crate::{
+    decode::Error,
+    types::{WzInt, WzOffset},
+};
 use crypto::{Decryptor, KeyStream};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 
+mod chunk;
 mod dummy_decryptor;
 
-pub use self::dummy_decryptor::DummyDecryptor;
+pub use self::{chunk::ChunkReader, dummy_decryptor::DummyDecryptor};
 
 /// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::Decode) trait
 ///
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Metadata, WzReader};
+/// use wz::{file::Header, WzReader};
 ///
-/// let file = File::open("Base.wz").unwrap();
-/// let metadata = Metadata::from_reader(&file).unwrap();
+/// let mut file = File::open("Base.wz").unwrap();
+/// let header = Header::from_reader(&mut file).unwrap();
 /// let (_, version_checksum) = checksum("176");
 /// let reader = WzReader::unencrypted(
-///     metadata.absolute_position,
+///     header.absolute_position,
 ///     version_checksum,
 ///     BufReader::new(file),
 /// );
@@ -28,25 +32,26 @@ pub use self::dummy_decryptor::DummyDecryptor;
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Metadata, WzReader};
+/// use wz::{file::Header, WzReader};
 ///
-/// let file = File::open("Base.wz").unwrap();
-/// let metadata = Metadata::from_reader(&file).unwrap();
+/// let mut file = File::open("Base.wz").unwrap();
+/// let header = Header::from_reader(&mut file).unwrap();
 /// let (_, version_checksum) = checksum("83");
 /// let reader = WzReader::encrypted(
-///     metadata.absolute_position,
+///     header.absolute_position,
 ///     version_checksum,
 ///     BufReader::new(file),
 ///     KeyStream::new(&TRIMMED_KEY, &GMS_IV),
 /// );
 /// ```
+#[derive(Debug)]
 pub struct WzReader<R, D>
 where
     R: Read + Seek,
     D: Decryptor,
 {
-    /// Points to the beginning of the file after the metadata. I just include the version checksum
-    /// in the metadata while it technically isn't.
+    /// Points to the beginning of the file after the header. I just include the version checksum
+    /// in the header while it technically isn't.
     absolute_position: i32,
 
     /// Version hash/checksum
@@ -55,7 +60,7 @@ where
     /// Underlying reader
     reader: R,
 
-    /// Some versions of WZ files have encrypted strings. A [`DummyDecryptor`] is provided for
+    /// Some versions of WZ archives have encrypted strings. A [`DummyDecryptor`] is provided for
     /// versions that do not.
     decryptor: D,
 }
@@ -100,12 +105,12 @@ where
         }
     }
 
-    /// Returns the metadata of the WZ file
+    /// Returns the header of the WZ archive
     pub fn absolute_position(&self) -> i32 {
         self.absolute_position
     }
 
-    /// Returns the metadata of the WZ file
+    /// Returns the header of the WZ archive
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
     }
@@ -135,6 +140,32 @@ where
     /// Read exact into buffer. Raises the underlying `Read` trait
     pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), Error> {
         Ok(self.reader.read_exact(buf)?)
+    }
+
+    /// Reads until EOF. Raises the underlying `Read` trait
+    pub fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize, Error> {
+        Ok(self.reader.read_to_end(buf)?)
+    }
+
+    /// Copies `size` bytes starting at `offset` to the destination
+    pub fn copy_to<W>(&mut self, dest: &mut W, offset: WzOffset, size: WzInt) -> Result<(), Error>
+    where
+        W: Write,
+    {
+        self.seek(offset)?;
+        let mut buf = [0u8; 8192];
+        let mut remaining = *size as usize;
+        while remaining > 0 {
+            let to_read = if remaining > buf.len() {
+                buf.len()
+            } else {
+                remaining
+            };
+            self.read_exact(&mut buf[0..to_read])?;
+            dest.write_all(&buf[0..to_read])?;
+            remaining = remaining - to_read;
+        }
+        Ok(())
     }
 
     /// Seek to start after the version checksum (absolute_position + 2)
@@ -204,17 +235,17 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{file::Metadata, WzReader};
+    use crate::{file::Header, WzReader};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 
     #[test]
     fn make_encrypted() {
-        let file = File::open("testdata/v83-base.wz").expect("error opening file");
-        let metadata = Metadata::from_reader(&file).expect("error reading metadata");
+        let mut file = File::open("testdata/v83-base.wz").expect("error opening file");
+        let header = Header::from_reader(&mut file).expect("error reading header");
         let (_, version_checksum) = checksum("83");
         let _ = WzReader::encrypted(
-            metadata.absolute_position,
+            header.absolute_position,
             version_checksum,
             BufReader::new(file),
             KeyStream::new(&TRIMMED_KEY, &GMS_IV),
@@ -223,11 +254,11 @@ mod tests {
 
     #[test]
     fn make_unencrypted() {
-        let file = File::open("testdata/v172-base.wz").expect("error opening file");
-        let metadata = Metadata::from_reader(&file).expect("error reading metadata");
+        let mut file = File::open("testdata/v172-base.wz").expect("error opening file");
+        let header = Header::from_reader(&mut file).expect("error reading header");
         let (_, version_checksum) = checksum("176");
         let _ = WzReader::unencrypted(
-            metadata.absolute_position,
+            header.absolute_position,
             version_checksum,
             BufReader::new(file),
         );

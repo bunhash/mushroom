@@ -1,9 +1,6 @@
 //! WZ Offset Structure
 
-use crate::{
-    decode, encode, impl_conversions, map::SizeHint, types::WzInt, Decode, Encode, WzReader,
-    WzWriter,
-};
+use crate::{decode, encode, impl_conversions, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Add, Deref, DerefMut, Sub};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -100,12 +97,6 @@ impl Encode for WzOffset {
             writer.version_checksum(),
         );
         encoded.encode(writer)
-    }
-}
-
-impl SizeHint for WzOffset {
-    fn size_hint(&self) -> WzInt {
-        WzInt::from(4)
     }
 }
 

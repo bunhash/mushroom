@@ -3,27 +3,21 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{ChildNames, Children, Error, MapNode, Metadata, SizeHint},
-    types::{WzInt, WzString},
+    map::{ChildNames, Children, Error, MapNode},
+    types::WzString,
 };
 use indextree::{Arena, DebugPrettyPrint, NodeId};
 use std::{collections::VecDeque, fmt::Debug};
 
 /// A cursor with mutable access to the contents of the [`Map`](crate::map::Map)
 #[derive(Debug)]
-pub struct CursorMut<'a, T>
-where
-    T: Metadata + SizeHint,
-{
+pub struct CursorMut<'a, T> {
     pub(crate) position: NodeId,
     arena: &'a mut Arena<MapNode<T>>,
     clipboard: Option<NodeId>,
 }
 
-impl<'a, T> CursorMut<'a, T>
-where
-    T: Metadata + SizeHint,
-{
+impl<'a, T> CursorMut<'a, T> {
     pub(crate) fn new(position: NodeId, arena: &'a mut Arena<MapNode<T>>) -> Self {
         Self {
             position,
@@ -182,17 +176,18 @@ where
                 .expect("current position should exist")
                 .get_mut()
                 .name = name;
-            self.send_update();
             Ok(self)
         }
     }
 
-    /// Modifies the data at the current position
-    pub fn modify<E>(&mut self, closure: impl Fn(&mut T) -> Result<(), E>) -> Result<(), E>
-    where
-        E: Debug,
-    {
-        self.modify_by_id(self.position, &closure)
+    /// Returns the mutable data at the current position
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self
+            .arena
+            .get_mut(self.position)
+            .expect("get() node should exist")
+            .get_mut()
+            .data
     }
 
     /// Creates a new child at the current position. Errors when a child with the provided name
@@ -203,7 +198,6 @@ where
         } else {
             let node = self.arena.new_node(MapNode::new(name, data));
             self.position.append(node, &mut self.arena);
-            self.send_update();
             Ok(self)
         }
     }
@@ -219,7 +213,6 @@ where
             to_delete.remove_subtree(&mut self.arena);
         }
         self.clipboard = Some(id);
-        self.send_update();
         Ok(self)
     }
 
@@ -240,7 +233,6 @@ where
                 }
                 self.position.append(id, &mut self.arena);
                 self.clipboard = None;
-                self.send_update();
                 Ok(self)
             }
             None => Err(Error::ClipboardEmpty),
@@ -252,15 +244,7 @@ where
     pub fn delete(&mut self, name: &str) -> Result<&mut Self, Error> {
         let id = self.get_id(self.position, name)?;
         id.remove_subtree(&mut self.arena);
-        self.send_update();
         Ok(self)
-    }
-
-    /// Sends an update to the current node and all its ancestors. This calls Metadata::update()
-    /// internally so each node can update their metadata. This function only needs to be called if
-    /// the data is changed outside of [`Map`](crate::map::Map).
-    pub fn send_update(&mut self) {
-        self.send_update_by_id(self.position);
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
@@ -269,32 +253,6 @@ where
     }
 
     // *** PRIVATES *** //
-
-    fn send_update_by_id(&mut self, position: NodeId) {
-        let to_update = position.ancestors(&self.arena).collect::<Vec<NodeId>>();
-        for id in to_update {
-            self.update(id);
-        }
-    }
-
-    fn update(&mut self, position: NodeId) {
-        let children_sizes = position
-            .children(&self.arena)
-            .map(|id| {
-                self.arena
-                    .get(id)
-                    .expect("child position should exist")
-                    .get()
-                    .size_hint()
-            })
-            .collect::<Vec<WzInt>>();
-        let current = &mut self
-            .arena
-            .get_mut(position)
-            .expect("current position should exist")
-            .get_mut();
-        current.update(&children_sizes);
-    }
 
     fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, Error> {
         match position
@@ -314,25 +272,6 @@ where
             None => Err(Error::NotFound(String::from(name))),
         }
     }
-
-    fn modify_by_id<E>(
-        &mut self,
-        position: NodeId,
-        closure: impl Fn(&mut T) -> Result<(), E>,
-    ) -> Result<(), E>
-    where
-        E: Debug,
-    {
-        let data = &mut self
-            .arena
-            .get_mut(position)
-            .expect("current position should exist")
-            .get_mut()
-            .data;
-        let result = closure(data);
-        self.send_update_by_id(position);
-        result
-    }
 }
 
 #[cfg(test)]
@@ -342,8 +281,6 @@ mod tests {
         map::{Error, Map},
         types::WzString,
     };
-
-    // impl Metadata for i32 (in map.rs)
 
     #[test]
     fn add_nodes() {
@@ -484,9 +421,7 @@ mod tests {
         let mut cursor = map.cursor_mut();
         cursor.move_to("n1_1").expect("n1_1 should exist");
         assert_eq!(*cursor.get(), 150);
-        cursor
-            .modify(|node| Ok::<(), i32>(*node = 100))
-            .expect("error occured");
+        *cursor.get_mut() = 100;
         assert_eq!(*cursor.get(), 100);
     }
 }

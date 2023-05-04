@@ -13,13 +13,13 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{file::Metadata, WzWriter};
+/// use wz::{file::Header, WzWriter};
 ///
-/// let metadata = Metadata::new(172);
+/// let header = Header::new(172);
 /// let file = File::create("Base.wz").unwrap();
 /// let (_, version_checksum) = checksum("172");
 /// let reader = WzWriter::unencrypted(
-///     metadata.absolute_position,
+///     header.absolute_position,
 ///     version_checksum,
 ///     BufWriter::new(file),
 /// );
@@ -28,25 +28,26 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{file::Metadata, WzWriter};
+/// use wz::{file::Header, WzWriter};
 ///
-/// let metadata = Metadata::new(83);
+/// let header = Header::new(83);
 /// let file = File::open("Base.wz").unwrap();
 /// let (_, version_checksum) = checksum("83");
 /// let reader = WzWriter::encrypted(
-///     metadata.absolute_position,
+///     header.absolute_position,
 ///     version_checksum,
 ///     BufWriter::new(file),
 ///     KeyStream::new(&TRIMMED_KEY, &GMS_IV)
 /// );
 /// ```
+#[derive(Debug)]
 pub struct WzWriter<W, E>
 where
     W: Write + Seek,
     E: Encryptor,
 {
-    /// Points to the beginning of the file after the metadata. I just include the version checksum
-    /// in the metadata while it technically isn't.
+    /// Points to the beginning of the file after the header. I just include the version checksum
+    /// in the header while it technically isn't.
     absolute_position: i32,
 
     /// Version hash/checksum
@@ -55,7 +56,7 @@ where
     /// Underlying writer
     writer: W,
 
-    /// Some versions of WZ files have encrypted strings. A [`DummyEncryptor`] is provided for
+    /// Some versions of WZ archives have encrypted strings. A [`DummyEncryptor`] is provided for
     /// versions that do not.
     encryptor: E,
 }
@@ -100,12 +101,12 @@ where
         }
     }
 
-    /// Returns the absolution position of the WZ file
+    /// Returns the absolution position of the WZ archive
     pub fn absolute_position(&self) -> i32 {
         self.absolute_position
     }
 
-    /// Returns the version checksum of the WZ file
+    /// Returns the version checksum of the WZ archive
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
     }
@@ -180,16 +181,16 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{file::Metadata, WzWriter};
+    use crate::{file::Header, WzWriter};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::io::Cursor;
 
     #[test]
     fn make_encrypted() {
-        let metadata = Metadata::new(83);
+        let header = Header::new(83);
         let (_, version_checksum) = checksum("83");
         let _ = WzWriter::encrypted(
-            metadata.absolute_position,
+            header.absolute_position,
             version_checksum,
             Cursor::new(vec![0u8; 60]),
             KeyStream::new(&TRIMMED_KEY, &GMS_IV),
@@ -198,10 +199,10 @@ mod tests {
 
     #[test]
     fn make_unencrypted() {
-        let metadata = Metadata::new(176);
+        let header = Header::new(176);
         let (_, version_checksum) = checksum("176");
         let _ = WzWriter::unencrypted(
-            metadata.absolute_position,
+            header.absolute_position,
             version_checksum,
             Cursor::new(vec![0u8; 60]),
         );

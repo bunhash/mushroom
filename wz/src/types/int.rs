@@ -1,6 +1,6 @@
 //! WZ Int and Long Formats
 
-use crate::{decode, encode, impl_conversions, map::SizeHint, Decode, Encode, WzReader, WzWriter};
+use crate::{decode, encode, impl_conversions, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Add, Deref, DerefMut, Sub};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -48,16 +48,6 @@ impl Encode for WzInt {
     }
 }
 
-impl SizeHint for WzInt {
-    fn size_hint(&self) -> WzInt {
-        if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
-            WzInt::from(5)
-        } else {
-            WzInt::from(1)
-        }
-    }
-}
-
 /// Defines a WZ-LONG structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzLong(i64);
@@ -97,16 +87,6 @@ impl Encode for WzLong {
             self.0.encode(writer)
         } else {
             writer.write_byte(self.0 as u8)
-        }
-    }
-}
-
-impl SizeHint for WzLong {
-    fn size_hint(&self) -> WzInt {
-        if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
-            WzInt::from(9)
-        } else {
-            WzInt::from(1)
         }
     }
 }

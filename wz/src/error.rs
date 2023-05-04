@@ -84,8 +84,8 @@ pub enum WzError {
     /// The WZ package is invalid
     InvalidImage,
 
-    /// The Metadata is invalid or cannot be parsed
-    InvalidMetadata,
+    /// The WZ archive header is invalid or cannot be parsed
+    InvalidHeader,
 
     /// The WZ package is invalid
     InvalidPackage,
@@ -105,7 +105,7 @@ impl fmt::Display for WzError {
                 write!(f, "Invalid version checksum. Maybe try guess_version()?")
             }
             WzError::InvalidImage => write!(f, "Invalid WZ image"),
-            WzError::InvalidMetadata => write!(f, "Invalid WZ file"),
+            WzError::InvalidHeader => write!(f, "Invalid WZ header"),
             WzError::InvalidPackage => write!(f, "Invalid WZ pacakge"),
             WzError::ReadOnly => write!(f, "WZ file is read-only"),
             WzError::WriteOnly => write!(f, "WZ file is write-only"),

@@ -17,27 +17,19 @@ pub use cursor::Cursor;
 pub use cursor_mut::CursorMut;
 pub use error::Error;
 pub use indextree::DebugPrettyPrint;
-pub use metadata::Metadata;
 pub use node::MapNode;
-pub use size_hint::SizeHint;
 
 use std::fmt::Debug;
 
 /// A named tree structure. Each node in the tree is given a name. The full path name is guaranteed
 /// to be unique.
 #[derive(Debug)]
-pub struct Map<T>
-where
-    T: Metadata + SizeHint,
-{
+pub struct Map<T> {
     arena: Arena<MapNode<T>>,
     root: NodeId,
 }
 
-impl<T> Map<T>
-where
-    T: Metadata + SizeHint,
-{
+impl<T> Map<T> {
     /// Creates a new map with the provided root data
     pub fn new(name: WzString, data: T) -> Self {
         let mut arena = Arena::new();
@@ -92,7 +84,7 @@ where
     }
 
     /// Walks the map depth-first
-    pub fn walk<E>(&self, closure: impl Fn(Cursor<T>) -> Result<(), E>) -> Result<(), E>
+    pub fn walk<E>(&self, mut closure: impl FnMut(Cursor<T>) -> Result<(), E>) -> Result<(), E>
     where
         E: Debug,
     {
@@ -129,14 +121,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        map::{Map, Metadata},
-        types::{WzInt, WzString},
-    };
-
-    impl Metadata for i32 {
-        fn update(&mut self, _: &WzString, _: &[WzInt]) {}
-    }
+    use crate::{map::Map, types::WzString};
 
     #[test]
     fn make_map() {

@@ -1,6 +1,6 @@
 //! WZ String Formats
 
-use crate::{decode, encode, map::SizeHint, types::WzInt, Decode, Encode, WzReader, WzWriter};
+use crate::{decode, encode, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Deref, DerefMut};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -112,12 +112,6 @@ impl Encode for CString {
     }
 }
 
-impl SizeHint for CString {
-    fn size_hint(&self) -> WzInt {
-        WzInt::from(self.0.len() as i32 + 1)
-    }
-}
-
 /// Defines a WZ-STRING structure and how to encode/decode it
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzString(String);
@@ -189,25 +183,6 @@ impl Encode for WzString {
             // Write the string
             let bytes = self.encode_utf16().collect::<Vec<u16>>();
             writer.write_unicode_bytes(&bytes)
-        }
-    }
-}
-
-impl SizeHint for WzString {
-    fn size_hint(&self) -> WzInt {
-        let length = self.0.len() as i32;
-        if self.0.is_ascii() {
-            if length > (i8::MAX as i32) {
-                WzInt::from(5 + length)
-            } else {
-                WzInt::from(1 + length)
-            }
-        } else {
-            if length >= (i8::MAX as i32) {
-                WzInt::from(5 + (length * 2))
-            } else {
-                WzInt::from(1 + (length * 2))
-            }
         }
     }
 }
