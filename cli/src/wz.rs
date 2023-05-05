@@ -83,17 +83,15 @@ fn recursive_do_create(
 ) -> Result<()> {
     for file in fs::read_dir(&current)? {
         let path = file?.path();
+        let stripped_path = path.strip_prefix(parent).expect("prefix should exist");
+        if verbose {
+            println!("{}", stripped_path.display())
+        }
         if path.is_dir() {
-            builder.add_package(&path.strip_prefix(parent).expect("prefix should exist"))?;
+            builder.add_package(&stripped_path)?;
             recursive_do_create(&path, parent, builder, verbose)?;
         } else if path.is_file() {
-            builder.add_image(
-                &path.strip_prefix(parent).expect("prefix should exist"),
-                ImagePath::new(&path)?,
-            )?;
-        }
-        if verbose {
-            println!("{}", path.display())
+            builder.add_image(&stripped_path, ImagePath::new(&path)?)?;
         }
     }
     Ok(())
@@ -105,6 +103,9 @@ where
 {
     let path = PathBuf::from(&directory);
     let target = file_name(&path)?;
+    if verbose {
+        println!("{}", target);
+    }
     let parent = match path.parent() {
         Some(p) => p,
         None => return Err(ErrorKind::NotFound.into()),
