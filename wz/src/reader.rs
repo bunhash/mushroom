@@ -115,6 +115,11 @@ where
         self.version_checksum
     }
 
+    /// Into inner
+    pub fn into_inner(self) -> R {
+        self.reader
+    }
+
     /// Sets the version_checksum
     pub(crate) fn set_version_checksum(&mut self, version_checksum: u32) {
         self.version_checksum = version_checksum;

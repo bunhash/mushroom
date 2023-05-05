@@ -117,6 +117,16 @@ impl Encode for ContentRef {
     }
 }
 
+impl encode::SizeHint for ContentRef {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        match &self {
+            ContentRef::Package(ref data) => 3u8.size_hint() + data.size_hint(),
+            ContentRef::Image(ref data) => 4u8.size_hint() + data.size_hint(),
+        }
+    }
+}
+
 /// Content metadata
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
@@ -134,6 +144,15 @@ pub struct Metadata {
 }
 
 impl Metadata {
+    pub fn new(name: WzString, size: WzInt, checksum: WzInt, offset: WzOffset) -> Self {
+        Self {
+            name,
+            size,
+            checksum,
+            offset,
+        }
+    }
+
     pub fn name(&self) -> &str {
         self.name.as_ref()
     }
@@ -194,5 +213,15 @@ impl Encode for Metadata {
         self.size.encode(writer)?;
         self.checksum.encode(writer)?;
         self.offset.encode(writer)
+    }
+}
+
+impl encode::SizeHint for Metadata {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        self.name.size_hint()
+            + self.size.size_hint()
+            + self.checksum.size_hint()
+            + self.offset.size_hint()
     }
 }

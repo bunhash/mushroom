@@ -111,6 +111,11 @@ where
         self.version_checksum
     }
 
+    /// Into inner
+    pub fn into_inner(self) -> W {
+        self.writer
+    }
+
     /// Get the position within the input
     pub fn position(&mut self) -> Result<WzOffset, Error> {
         Ok(WzOffset::from(self.writer.stream_position()?))

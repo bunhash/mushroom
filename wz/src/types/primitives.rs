@@ -24,6 +24,13 @@ impl Encode for i8 {
     }
 }
 
+impl encode::SizeHint for i8 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        1
+    }
+}
+
 impl Decode for i16 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -43,6 +50,13 @@ impl Encode for i16 {
         E: Encryptor,
     {
         writer.write_all(&self.to_le_bytes())
+    }
+}
+
+impl encode::SizeHint for i16 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        2
     }
 }
 
@@ -68,6 +82,13 @@ impl Encode for i32 {
     }
 }
 
+impl encode::SizeHint for i32 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        4
+    }
+}
+
 impl Decode for i64 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -90,6 +111,13 @@ impl Encode for i64 {
     }
 }
 
+impl encode::SizeHint for i64 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        8
+    }
+}
+
 impl Decode for u8 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -107,6 +135,13 @@ impl Encode for u8 {
         E: Encryptor,
     {
         writer.write_byte(*self)
+    }
+}
+
+impl encode::SizeHint for u8 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        1
     }
 }
 
@@ -132,6 +167,13 @@ impl Encode for u16 {
     }
 }
 
+impl encode::SizeHint for u16 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        2
+    }
+}
+
 impl Decode for u32 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -154,6 +196,13 @@ impl Encode for u32 {
     }
 }
 
+impl encode::SizeHint for u32 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        4
+    }
+}
+
 impl Decode for u64 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -173,6 +222,13 @@ impl Encode for u64 {
         E: Encryptor,
     {
         writer.write_all(&self.to_le_bytes())
+    }
+}
+
+impl encode::SizeHint for u64 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        8
     }
 }
 
@@ -208,6 +264,17 @@ impl Encode for f32 {
     }
 }
 
+impl encode::SizeHint for f32 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        if *self as u32 == 0 {
+            1
+        } else {
+            5
+        }
+    }
+}
+
 impl Decode for f64 {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
@@ -227,5 +294,12 @@ impl Encode for f64 {
         E: Encryptor,
     {
         writer.write_all(&self.to_le_bytes())
+    }
+}
+
+impl encode::SizeHint for f64 {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        8
     }
 }

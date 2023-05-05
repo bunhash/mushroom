@@ -5,17 +5,21 @@ use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
     io::{copy, BufReader, ErrorKind, Read, Seek, Write},
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 use wz::{
-    archive::Node,
+    archive, builder,
     error::{Error, Result},
     map::{CursorMut, Map},
     reader::DummyDecryptor,
     types::{WzInt, WzOffset},
     writer::DummyEncryptor,
-    Archive, WzReader,
+    Archive, Builder, WzReader,
 };
+
+mod image;
+
+use image::ImagePath;
 
 #[derive(Parser)]
 struct Cli {
@@ -71,6 +75,47 @@ enum Key {
     None,
 }
 
+fn recursive_do_create(
+    current: &Path,
+    parent: &Path,
+    builder: &mut Builder<ImagePath>,
+    verbose: bool,
+) -> Result<()> {
+    for file in fs::read_dir(&current)? {
+        let path = file?.path();
+        if path.is_dir() {
+            builder.add_package(&path.strip_prefix(parent).expect("prefix should exist"))?;
+            recursive_do_create(&path, parent, builder, verbose)?;
+        } else if path.is_file() {
+            builder.add_image(
+                &path.strip_prefix(parent).expect("prefix should exist"),
+                ImagePath::new(&path)?,
+            )?;
+        }
+        if verbose {
+            println!("{}", path.display())
+        }
+    }
+    Ok(())
+}
+
+fn do_create<E>(file: fs::File, encryptor: E, directory: &str, verbose: bool) -> Result<()>
+where
+    E: Encryptor,
+{
+    let path = PathBuf::from(&directory);
+    let target = file_name(&path)?;
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => return Err(ErrorKind::NotFound.into()),
+    };
+    let mut builder = Builder::new(target);
+    recursive_do_create(&path, parent, &mut builder, verbose)?;
+    builder.calculate_metadata(60, 0);
+    println!("{:?}", builder.map().debug_pretty_print());
+    Ok(())
+}
+
 fn do_list<D>(name: &str, mut archive: Archive<D>) -> Result<()>
 where
     D: Decryptor,
@@ -91,12 +136,12 @@ where
     map.walk::<Error>(|cursor| {
         let path = cursor.pwd().join("/");
         match cursor.get() {
-            Node::Package => {
+            archive::Node::Package => {
                 if !Path::new(&path).is_dir() {
                     fs::create_dir(&path)?;
                 }
             }
-            Node::Image { offset, size } => {
+            archive::Node::Image { offset, size } => {
                 if Path::new(&path).is_file() {
                     fs::remove_file(&path)?;
                 }
@@ -143,7 +188,27 @@ fn main() -> Result<()> {
 
     let action = &args.action;
     if action.create {
-        unimplemented!()
+        let file = fs::File::create(&args.file)?;
+        match args.key {
+            Key::Gms => do_create(
+                file,
+                KeyStream::new(&TRIMMED_KEY, &GMS_IV),
+                args.directory.unwrap().as_str(),
+                args.verbose,
+            )?,
+            Key::Kms => do_create(
+                file,
+                KeyStream::new(&TRIMMED_KEY, &KMS_IV),
+                args.directory.unwrap().as_str(),
+                args.verbose,
+            )?,
+            Key::None => do_create(
+                file,
+                DummyEncryptor,
+                args.directory.unwrap().as_str(),
+                args.verbose,
+            )?,
+        }
     } else {
         let filename = file_name(&args.file)?;
         let file = fs::File::open(&args.file)?;

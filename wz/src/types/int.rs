@@ -48,6 +48,17 @@ impl Encode for WzInt {
     }
 }
 
+impl encode::SizeHint for WzInt {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
+            5
+        } else {
+            1
+        }
+    }
+}
+
 /// Defines a WZ-LONG structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzLong(i64);
@@ -87,6 +98,17 @@ impl Encode for WzLong {
             self.0.encode(writer)
         } else {
             writer.write_byte(self.0 as u8)
+        }
+    }
+}
+
+impl encode::SizeHint for WzLong {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
+            9
+        } else {
+            1
         }
     }
 }

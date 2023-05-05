@@ -78,6 +78,9 @@ pub enum WzError {
     /// Brute forcing the checksum failed
     BruteForceChecksum,
 
+    /// Multiple Roots
+    MultipleRoots,
+
     /// Invalid checksum
     InvalidChecksum,
 
@@ -90,6 +93,9 @@ pub enum WzError {
     /// The WZ package is invalid
     InvalidPackage,
 
+    /// Invalid Path
+    InvalidPathName,
+
     /// Read-only
     ReadOnly,
 
@@ -101,12 +107,14 @@ impl fmt::Display for WzError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
+            WzError::MultipleRoots => write!(f, "A WZ archive can only have 1 root"),
             WzError::InvalidChecksum => {
                 write!(f, "Invalid version checksum. Maybe try guess_version()?")
             }
             WzError::InvalidImage => write!(f, "Invalid WZ image"),
             WzError::InvalidHeader => write!(f, "Invalid WZ header"),
             WzError::InvalidPackage => write!(f, "Invalid WZ pacakge"),
+            WzError::InvalidPathName => write!(f, "Invalid path name"),
             WzError::ReadOnly => write!(f, "WZ file is read-only"),
             WzError::WriteOnly => write!(f, "WZ file is write-only"),
         }

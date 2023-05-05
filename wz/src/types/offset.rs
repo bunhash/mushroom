@@ -100,6 +100,13 @@ impl Encode for WzOffset {
     }
 }
 
+impl encode::SizeHint for WzOffset {
+    #[inline]
+    fn size_hint(&self) -> i32 {
+        4
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
