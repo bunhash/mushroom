@@ -9,7 +9,7 @@ use std::{
     num::Wrapping,
     path::PathBuf,
 };
-use wz::{builder::ImageRef, error::Result, types::WzInt, WzWriter};
+use wz::{builder::ImageRef, error::Result, io::WzWriter, types::WzInt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImagePath {

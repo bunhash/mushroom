@@ -11,9 +11,8 @@ use wz::{
     archive,
     error::{Error, Result, WzError},
     file::Header,
-    reader::DummyDecryptor,
-    writer::DummyEncryptor,
-    Archive, Builder,
+    io::{DummyDecryptor, DummyEncryptor},
+    Archive, Builder, List,
 };
 
 mod image;
@@ -65,6 +64,10 @@ struct Action {
     /// Debug the WZ package
     #[arg(short = 'd')]
     debug: bool,
+
+    /// Decode List.wz file
+    #[arg(short = 'L')]
+    list_file: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -177,6 +180,17 @@ where
             println!("{:?}", cursor.debug_pretty_print());
         }
         None => println!("{:?}", map.debug_pretty_print()),
+    }
+    Ok(())
+}
+
+fn do_list_file<D>(file: fs::File, decryptor: D) -> Result<()>
+where
+    D: Decryptor,
+{
+    let list = List::parse(file, decryptor)?;
+    for s in list.strings() {
+        println!("{}", s);
     }
     Ok(())
 }
@@ -327,6 +341,12 @@ fn main() -> Result<()> {
                     },
                     &args.directory,
                 )?,
+            }
+        } else if action.list_file {
+            match args.key {
+                Key::Gms => do_list_file(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+                Key::Kms => do_list_file(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+                Key::None => do_list_file(file, DummyDecryptor)?,
             }
         }
     }

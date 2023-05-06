@@ -2,6 +2,7 @@
 
 mod header;
 
+pub mod image;
 pub mod package;
 
 pub use header::Header;

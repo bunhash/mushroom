@@ -1,80 +1,11 @@
 //! WZ String Formats
 
 use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
-use core::ops::{Deref, DerefMut};
 use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
-
-macro_rules! impl_str {
-    ( $type:ty ) => {
-        impl From<String> for $type {
-            fn from(other: String) -> Self {
-                Self(other)
-            }
-        }
-
-        impl From<&str> for $type {
-            fn from(other: &str) -> Self {
-                Self(String::from(other))
-            }
-        }
-
-        impl Deref for $type {
-            type Target = str;
-            fn deref(&self) -> &Self::Target {
-                self.0.as_str()
-            }
-        }
-
-        impl DerefMut for $type {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                self.0.as_mut_str()
-            }
-        }
-
-        impl AsRef<str> for $type {
-            fn as_ref(&self) -> &str {
-                self.deref().as_ref()
-            }
-        }
-
-        impl AsMut<str> for $type {
-            fn as_mut(&mut self) -> &mut str {
-                self.deref_mut().as_mut()
-            }
-        }
-    };
-}
-
-macro_rules! impl_eq {
-    ($lhs:ty, $( $rhs:ty ),+ ) => {
-        $(
-            #[allow(unused_lifetimes)]
-            impl<'a, 'b> PartialEq<$rhs> for $lhs {
-                #[inline]
-                fn eq(&self, other: &$rhs) -> bool {
-                    PartialEq::eq(&self.0[..], &other[..])
-                }
-                #[inline]
-                fn ne(&self, other: &$rhs) -> bool {
-                    PartialEq::ne(&self.0[..], &other[..])
-                }
-            }
-
-            #[allow(unused_lifetimes)]
-            impl<'a, 'b> PartialEq<$lhs> for $rhs {
-                #[inline]
-                fn eq(&self, other: &$lhs) -> bool {
-                    PartialEq::eq(&self[..], &other.0[..])
-                }
-                #[inline]
-                fn ne(&self, other: &$lhs) -> bool {
-                    PartialEq::ne(&self[..], &other.0[..])
-                }
-            }
-        )+
-    };
-}
+use std::{
+    io::{Read, Seek, Write},
+    ops::{Deref, DerefMut},
+};
 
 /// Defines how to encode/decode a C-style string
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -82,7 +13,7 @@ pub struct CString(String);
 
 impl_str!(CString);
 
-impl_eq!(CString, &'a String, String, &'a str, str);
+impl_str_eq!(CString, &'a String, String, &'a str, str);
 
 impl Decode for CString {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
@@ -125,7 +56,7 @@ pub struct WzString(String);
 
 impl_str!(WzString);
 
-impl_eq!(WzString, &'a String, String, &'a str, str);
+impl_str_eq!(WzString, &'a String, String, &'a str, str);
 
 impl Decode for WzString {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>

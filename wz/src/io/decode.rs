@@ -30,6 +30,9 @@ pub enum Error {
     /// The offset is invalid (likely negative)
     InvalidOffset(i32),
 
+    /// Invalid UOL
+    InvalidUol(u8),
+
     /// Unable to decode UTF-8
     Utf8(string::FromUtf8Error),
 
@@ -48,6 +51,7 @@ impl fmt::Display for Error {
             }
             Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
             Error::InvalidOffset(o) => write!(f, "Invalid offset: `{}`", o),
+            Error::InvalidUol(u) => write!(f, "Invalid UOL: `{}`", u),
             Error::Utf8(e) => write!(f, "UTF-8: {}", e),
             Error::Unicode(e) => write!(f, "Unicode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),

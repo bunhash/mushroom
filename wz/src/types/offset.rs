@@ -1,12 +1,11 @@
 //! WZ Offset Structure
 
-use crate::{
-    impl_conversions,
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
-};
-use core::ops::{Add, Deref, DerefMut, Sub};
+use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
 use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
+use std::{
+    io::{Read, Seek, Write},
+    ops::{Add, Deref, DerefMut, Sub},
+};
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
