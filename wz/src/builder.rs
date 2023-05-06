@@ -162,9 +162,15 @@ where
     }
 
     fn calculate_metadata(&mut self, absolute_position: i32, version_checksum: u32) -> Result<()> {
-        let mut cursor = self.map.cursor_mut();
-        recursive_calculate_size_and_checksum(absolute_position, version_checksum, &mut cursor)?;
-        recursive_calculate_offset(WzOffset::from(absolute_position as u32 + 2), &mut cursor)?;
+        recursive_calculate_size_and_checksum(
+            absolute_position,
+            version_checksum,
+            &mut self.map.cursor_mut(),
+        )?;
+        recursive_calculate_offset(
+            WzOffset::from(absolute_position as u32 + 2),
+            &mut self.map.cursor_mut(),
+        )?;
         Ok(())
     }
 }
