@@ -1,7 +1,7 @@
 //! WZ Reader
 
 use crate::{
-    decode::Error,
+    io::decode::Error,
     types::{WzInt, WzOffset},
 };
 use crypto::{Decryptor, KeyStream};
@@ -16,7 +16,7 @@ pub use self::dummy_decryptor::DummyDecryptor;
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Header, WzReader};
+/// use wz::{file::Header, io::WzReader};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
 /// let header = Header::from_reader(&mut file).unwrap();
@@ -31,7 +31,7 @@ pub use self::dummy_decryptor::DummyDecryptor;
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Header, WzReader};
+/// use wz::{file::Header, io::WzReader};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
 /// let header = Header::from_reader(&mut file).unwrap();
@@ -239,7 +239,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{file::Header, WzReader};
+    use crate::{file::Header, io::WzReader};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 

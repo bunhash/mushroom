@@ -1,6 +1,9 @@
 //! Errors
 
-use crate::{decode, encode, map};
+use crate::{
+    io::{decode, encode},
+    map,
+};
 use std::{fmt, io};
 
 pub type Result<T> = core::result::Result<T, Error>;

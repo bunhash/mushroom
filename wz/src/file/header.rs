@@ -1,10 +1,9 @@
 //! WZ Archive Header
 
 use crate::{
-    encode,
     error::{self, WzError},
+    io::{encode, Encode, WzWriter},
     types::CString,
-    Encode, WzWriter,
 };
 use crypto::{checksum, Encryptor};
 use std::io::{Read, Seek, Write};

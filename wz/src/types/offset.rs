@@ -1,6 +1,9 @@
 //! WZ Offset Structure
 
-use crate::{decode, encode, impl_conversions, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    impl_conversions,
+    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+};
 use core::ops::{Add, Deref, DerefMut, Sub};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};

@@ -1,7 +1,7 @@
 //! WZ Writer
 
 use crate::{
-    encode::Error,
+    io::encode::Error,
     types::{WzInt, WzOffset},
 };
 use crypto::{Encryptor, KeyStream};
@@ -16,7 +16,7 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{file::Header, WzWriter};
+/// use wz::{file::Header, io::WzWriter};
 ///
 /// let header = Header::new(172);
 /// let file = File::create("Base.wz").unwrap();
@@ -31,7 +31,7 @@ pub use self::dummy_encryptor::DummyEncryptor;
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufWriter, fs::File};
-/// use wz::{file::Header, WzWriter};
+/// use wz::{file::Header, io::WzWriter};
 ///
 /// let header = Header::new(83);
 /// let file = File::open("Base.wz").unwrap();
@@ -219,7 +219,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{file::Header, WzWriter};
+    use crate::{file::Header, io::WzWriter};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::io::Cursor;
 

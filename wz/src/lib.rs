@@ -3,18 +3,11 @@
 
 pub mod archive;
 pub mod builder;
-pub mod decode;
-pub mod encode;
 pub mod error;
 pub mod file;
+pub mod io;
 pub mod map;
-pub mod reader;
 pub mod types;
-pub mod writer;
 
 pub use archive::Archive;
 pub use builder::Builder;
-pub use decode::Decode;
-pub use encode::Encode;
-pub use reader::WzReader;
-pub use writer::WzWriter;

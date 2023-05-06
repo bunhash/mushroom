@@ -1,6 +1,6 @@
 //! WZ String Formats
 
-use crate::{decode, encode, Decode, Encode, WzReader, WzWriter};
+use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
 use core::ops::{Deref, DerefMut};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};

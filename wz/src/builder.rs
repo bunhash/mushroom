@@ -1,16 +1,14 @@
 //! WZ Archive Builder
 
 use crate::{
-    encode::SizeHint,
     error::{Result, WzError},
     file::{
         package::{ContentRef, Metadata},
         Header,
     },
+    io::{encode::SizeHint, DummyEncryptor, Encode, WzWriter},
     map::{Cursor, CursorMut, Map},
     types::{WzInt, WzOffset, WzString},
-    writer::DummyEncryptor,
-    Encode, WzWriter,
 };
 use crypto::{checksum, Encryptor};
 use std::{

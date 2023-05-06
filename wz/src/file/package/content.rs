@@ -1,9 +1,8 @@
 //! Content Metadata
 
 use crate::{
-    decode, encode,
+    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
     types::{WzInt, WzOffset, WzString},
-    Decode, Encode, WzReader, WzWriter,
 };
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};

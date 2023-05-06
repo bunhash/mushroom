@@ -3,9 +3,9 @@
 use crate::{
     error::{Result, WzError},
     file::{package::ContentRef, Header, Package},
+    io::{Decode, WzReader},
     map::{CursorMut, Map},
     types::{WzInt, WzOffset, WzString},
-    Decode, WzReader,
 };
 use crypto::{checksum, Decryptor};
 use std::{fs::File, io::BufReader};

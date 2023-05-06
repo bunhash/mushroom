@@ -1,6 +1,6 @@
 //! Encoder Trait
 
-use crate::WzWriter;
+use crate::io::WzWriter;
 use crypto::Encryptor;
 use std::{
     fmt,

@@ -1,6 +1,9 @@
 //! WZ Package
 
-use crate::{decode, encode, types::WzInt, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    types::WzInt,
+};
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},

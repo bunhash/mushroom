@@ -1,6 +1,9 @@
 //! WZ Int and Long Formats
 
-use crate::{decode, encode, impl_conversions, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    impl_conversions,
+    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+};
 use core::ops::{Add, Deref, DerefMut, Sub};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -117,8 +120,8 @@ impl encode::SizeHint for WzLong {
 mod tests {
 
     use crate::{
+        io::{Decode, WzReader},
         types::{WzInt, WzLong},
-        Decode, WzReader,
     };
     use std::io::Cursor;
 

@@ -1,6 +1,6 @@
 //! Decoder Trait
 
-use crate::WzReader;
+use crate::io::WzReader;
 use crypto::Decryptor;
 use std::{
     fmt,
