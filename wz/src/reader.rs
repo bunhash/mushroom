@@ -7,10 +7,9 @@ use crate::{
 use crypto::{Decryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
 
-mod chunk;
 mod dummy_decryptor;
 
-pub use self::{chunk::ChunkReader, dummy_decryptor::DummyDecryptor};
+pub use self::dummy_decryptor::DummyDecryptor;
 
 /// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::Decode) trait
 ///
@@ -105,17 +104,17 @@ where
         }
     }
 
-    /// Returns the header of the WZ archive
+    /// Returns the absolute position of the WZ archive
     pub fn absolute_position(&self) -> i32 {
         self.absolute_position
     }
 
-    /// Returns the header of the WZ archive
+    /// Returns the version checksum of the WZ archive
     pub fn version_checksum(&self) -> u32 {
         self.version_checksum
     }
 
-    /// Into inner
+    /// Consumes the WzReader and returns the underlying reader
     pub fn into_inner(self) -> R {
         self.reader
     }

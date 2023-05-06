@@ -10,6 +10,7 @@ use std::{
 use wz::{
     archive,
     error::{Error, Result, WzError},
+    file::Header,
     reader::DummyDecryptor,
     writer::DummyEncryptor,
     Archive, Builder,
@@ -119,7 +120,7 @@ where
     };
     let mut builder = Builder::new(target);
     recursive_do_create(&path, parent, &mut builder, verbose)?;
-    builder.save(version, file, encryptor)?;
+    builder.save(version, Header::new(version), file, encryptor)?;
     Ok(())
 }
 

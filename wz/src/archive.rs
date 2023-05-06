@@ -17,6 +17,23 @@ pub enum Node {
     Image { offset: WzOffset, size: WzInt },
 }
 
+/// Represents a WZ archive. Basically used as an intermediary to map the contents and make the
+/// reader.
+///
+/// Example:
+///
+/// ```no_run
+/// use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
+/// use std::fs::File;
+/// use wz::Archive;
+///
+/// let file = File::open("Character.wz").unwrap();
+/// let mut archive = Archive::open(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV)).unwrap();
+/// let map = archive.map("Character.wz").unwrap();
+/// let reader = archive.into_inner();
+/// println!("{:?}", map.debug_pretty_print());
+/// // Do stuf with reader
+/// ```
 #[derive(Debug)]
 pub struct Archive<D>
 where
@@ -43,8 +60,8 @@ where
         let mut buf = BufReader::new(file);
         let header = Header::from_reader(&mut buf)?;
         let absolute_position = header.absolute_position;
-        let (calc_version, version_checksum) = checksum(&version.to_string());
-        if calc_version != header.encrypted_version {
+        let (version_hash, version_checksum) = checksum(&version.to_string());
+        if version_hash != header.version_hash {
             Err(WzError::InvalidChecksum.into())
         } else {
             Ok(Self {
@@ -69,7 +86,7 @@ where
         Ok(map)
     }
 
-    /// Raising io::Take for copying images
+    /// Consumes the archive and returns the inner reader
     pub fn into_inner(self) -> WzReader<BufReader<File>, D> {
         self.inner
     }
@@ -84,7 +101,7 @@ where
         let lower_bound = WzOffset::from(header.absolute_position as u32);
         let upper_bound = WzOffset::from(header.absolute_position as u32 + header.size as u32);
         let mut inner = WzReader::new(header.absolute_position, 0u32, buf, decryptor);
-        for (_, version_checksum) in Header::possible_versions(header.encrypted_version) {
+        for (_, version_checksum) in Header::possible_versions(header.version_hash) {
             inner.set_version_checksum(version_checksum);
             inner.seek_to_start()?;
 

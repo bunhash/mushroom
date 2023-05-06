@@ -29,19 +29,19 @@ pub struct Header {
 
     /// Encrypted version (not really encrypted since it is irreversable. More like a checksum or
     /// non-cryptographic hash.
-    pub encrypted_version: u16,
+    pub version_hash: u16,
 }
 
 impl Header {
     /// Creates new header with default values.
     pub fn new(version: u16) -> Self {
-        let (encrypted_version, _) = checksum(&version.to_string());
+        let (version_hash, _) = checksum(&version.to_string());
         Self {
             identifier: [0x50, 0x4b, 0x47, 0x31],
             size: 0,
             absolute_position: 60,
             description: CString::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
-            encrypted_version,
+            version_hash,
         }
     }
 
@@ -87,24 +87,24 @@ impl Header {
         reader.read_exact(&mut skip)?;
 
         // Read the encrypted version and bruteforce the checksum
-        let mut encrypted_version = [0u8; 2];
-        reader.read_exact(&mut encrypted_version)?;
-        let encrypted_version = u16::from_le_bytes(encrypted_version);
+        let mut version_hash = [0u8; 2];
+        reader.read_exact(&mut version_hash)?;
+        let version_hash = u16::from_le_bytes(version_hash);
 
         Ok(Header {
             identifier,
             size,
             absolute_position,
             description,
-            encrypted_version,
+            version_hash,
         })
     }
 
-    pub(crate) fn possible_versions(encrypted_version: u16) -> Vec<(u16, u32)> {
+    pub(crate) fn possible_versions(version_hash: u16) -> Vec<(u16, u32)> {
         let mut versions = Vec::new();
         for version in 1..1000 {
-            let (calc_version, version_checksum) = checksum(&version.to_string());
-            if calc_version == encrypted_version {
+            let (calc_version_hash, version_checksum) = checksum(&version.to_string());
+            if calc_version_hash == version_hash {
                 versions.push((version, version_checksum));
             }
         }
@@ -123,7 +123,7 @@ impl Encode for Header {
         self.size.encode(writer)?;
         self.absolute_position.encode(writer)?;
         self.description.encode(writer)?;
-        self.encrypted_version.encode(writer)
+        self.version_hash.encode(writer)
     }
 }
 
@@ -144,7 +144,7 @@ mod tests {
             &header.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(header.encrypted_version, 172);
+        assert_eq!(header.version_hash, 172);
     }
 
     #[test]
@@ -158,6 +158,6 @@ mod tests {
             &header.description,
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
-        assert_eq!(header.encrypted_version, 7);
+        assert_eq!(header.version_hash, 7);
     }
 }

@@ -114,7 +114,7 @@ where
         self.version_checksum
     }
 
-    /// Into inner
+    /// Consumes the WzWriter and returns the underlying writer
     pub fn into_inner(self) -> W {
         self.writer
     }
@@ -141,7 +141,7 @@ where
         Ok(self.writer.write_all(buf)?)
     }
 
-    /// Copies `size` bytes from the Reader to this writer
+    /// Copies `size` bytes from `src` to this writer
     pub fn copy_from<R>(&mut self, src: &mut R, size: WzInt) -> Result<(), Error>
     where
         R: Read,

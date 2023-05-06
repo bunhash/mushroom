@@ -13,6 +13,7 @@ pub use content::{ContentRef, Metadata};
 
 /// Packages can hold other packages or images. The structure is as follows:
 ///
+/// ```no_build
 /// [ num_contents: WzInt ]
 /// [metadata for content1]
 /// [         ...         ]
@@ -20,18 +21,21 @@ pub use content::{ContentRef, Metadata};
 /// [      content 1      ]
 /// [         ...         ]
 /// [      content N      ]
+/// ```
 ///
-/// Packages are allowed to be empty. Empty packages are used in Base.wz. Probably to signify what
+/// Packages are allowed to be empty. Empty packages are used in Base.wz to probably to signify what
 /// other WZ archives exist. It's best to treat each of the package contents as binary blobs.
 pub struct Package {
     contents: Vec<ContentRef>,
 }
 
 impl Package {
+    /// Returns the number of contents
     pub fn num_contents(&self) -> usize {
         self.contents.len()
     }
 
+    /// Returns an iterator over the contents
     pub fn contents(&self) -> Iter<'_, ContentRef> {
         self.contents.iter()
     }

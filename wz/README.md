@@ -1,4 +1,4 @@
 WZ
 ==
 
-Library for reading and writing WZ files
+Library for reading and writing WZ archives.

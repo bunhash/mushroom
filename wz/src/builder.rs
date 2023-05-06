@@ -37,6 +37,7 @@ pub trait ImageRef {
         E: Encryptor;
 }
 
+/// Map node representing the contents of the WZ archive
 #[derive(Debug)]
 pub enum Node<I>
 where
@@ -53,6 +54,9 @@ where
     },
 }
 
+/// WZ archive builder. Structure for building a WZ archive from a file system directory. The
+/// archive's root directory should only contain other directories and images. It will treat all
+/// non-directory files as images.
 #[derive(Debug)]
 pub struct Builder<I>
 where
@@ -65,6 +69,9 @@ impl<I> Builder<I>
 where
     I: ImageRef,
 {
+    /// Creates a new builder with a root directory named `name`. This name is unimportant and
+    /// won't be written to the WZ archive. However, [`Map`] requires a name and it helps organize
+    /// the data.
     pub fn new(name: &str) -> Self {
         Self {
             map: Map::new(
@@ -78,10 +85,19 @@ where
         }
     }
 
+    /// Returns a reference to the inner map
     pub fn map(&self) -> &Map<Node<I>> {
         &self.map
     }
 
+    /// Adds a package to the builder. A package is essentially a directory but WZ calls it a
+    /// package. When it and its contents are serialized, it is treated as a binary blob.
+    ///
+    /// `path` should be a [`OsStr`]. Example: "root/subdir_a/subdir_b" where `root` is the name given to the
+    /// builder at creation. The entire chain of packages will be created if they don't already
+    /// exist.
+    ///
+    /// Errors when `path` does not start with the root package name.
     pub fn add_package<S>(&mut self, path: &S) -> Result<()>
     where
         S: AsRef<OsStr> + ?Sized,
@@ -90,6 +106,14 @@ where
         Ok(())
     }
 
+    /// Adds an image to the builder. An image is treated as a binary blob.
+    ///
+    /// `path` should be a [`OsStr`]. Example: "root/subdir_a/image_a.img" where `root` is the name
+    /// given to the builder at creation. The entire chain of packages preceeding the image will be
+    /// created if they don't already exist.
+    ///
+    /// Errors when `path` does not start with the root package name or when a package or image
+    /// already exists at the specified `path`.
     pub fn add_image<S>(&mut self, path: &S, image: I) -> Result<()>
     where
         S: AsRef<OsStr> + ?Sized,
@@ -117,13 +141,29 @@ where
         Ok(())
     }
 
-    pub fn save<E>(&mut self, version: u16, mut file: File, encryptor: E) -> Result<()>
+    /// Generates the WZ archive and writes it to disk.
+    ///
+    /// The version must match the [`Header`] and should match the added imges. If the image versions do
+    /// not match the version provided here, decoding offsets contained in the images may not align
+    /// properly.
+    ///
+    /// Errors when the provided version does not match the header's version hash. Or if any IO
+    /// error occurs.
+    pub fn save<E>(
+        &mut self,
+        version: u16,
+        header: Header,
+        mut file: File,
+        encryptor: E,
+    ) -> Result<()>
     where
         E: Encryptor,
     {
-        let header = Header::new(version);
         let absolute_position = header.absolute_position;
-        let (_, version_checksum) = checksum(&version.to_string());
+        let (version_hash, version_checksum) = checksum(&version.to_string());
+        if version_hash != header.version_hash {
+            return Err(WzError::InvalidChecksum.into());
+        }
         self.calculate_metadata(absolute_position, version_checksum)?;
         let mut writer = WzWriter::new(absolute_position, version_checksum, &mut file, encryptor);
         header.encode(&mut writer)?;
