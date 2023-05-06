@@ -1,8 +1,11 @@
 //! WZ Writer
 
-use crate::{encode::Error, types::WzOffset};
+use crate::{
+    encode::Error,
+    types::{WzInt, WzOffset},
+};
 use crypto::{Encryptor, KeyStream};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 mod dummy_encryptor;
 
@@ -136,6 +139,36 @@ where
     /// Write all of the buffer. Raises the underlying `Write` trait
     pub fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> {
         Ok(self.writer.write_all(buf)?)
+    }
+
+    /// Copies `size` bytes from the Reader to this writer
+    pub fn copy_from<R>(&mut self, src: &mut R, size: WzInt) -> Result<(), Error>
+    where
+        R: Read,
+    {
+        let mut buf = [0u8; 8192];
+        let mut remaining = *size as usize;
+        while remaining > 0 {
+            let to_read = if remaining > buf.len() {
+                buf.len()
+            } else {
+                remaining
+            };
+            src.read_exact(&mut buf[0..to_read])?;
+            self.write_all(&buf[0..to_read])?;
+            remaining = remaining - to_read;
+        }
+        Ok(())
+    }
+
+    /// Seek to start after the version checksum (absolute_position + 2)
+    pub fn seek_to_start(&mut self) -> Result<WzOffset, Error> {
+        self.seek(WzOffset::from(self.absolute_position() + 2))
+    }
+
+    /// Seek from absolute position
+    pub fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset, Error> {
+        self.seek(WzOffset::from(self.absolute_position() as u32 + offset))
     }
 
     /// Writes a single byte

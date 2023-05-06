@@ -2,12 +2,12 @@
 
 use crate::{
     encode::SizeHint,
-    error::{Error, Result, WzError},
+    error::{Result, WzError},
     file::{
         package::{ContentRef, Metadata},
         Header,
     },
-    map::{CursorMut, Map},
+    map::{Cursor, CursorMut, Map},
     types::{WzInt, WzOffset, WzString},
     writer::DummyEncryptor,
     Encode, WzWriter,
@@ -17,7 +17,7 @@ use std::{
     convert::AsRef,
     ffi::OsStr,
     fs::File,
-    io::{self, BufWriter, ErrorKind, Seek, Write},
+    io::{self, Seek, Write},
     num::Wrapping,
     path::Path,
 };
@@ -117,6 +117,19 @@ where
         Ok(())
     }
 
+    pub fn save<E>(&mut self, version: u16, mut file: File, encryptor: E) -> Result<()>
+    where
+        E: Encryptor,
+    {
+        let header = Header::new(version);
+        let absolute_position = header.absolute_position;
+        let (_, version_checksum) = checksum(&version.to_string());
+        self.calculate_metadata(absolute_position, version_checksum)?;
+        let mut writer = WzWriter::new(absolute_position, version_checksum, &mut file, encryptor);
+        header.encode(&mut writer)?;
+        recursive_save(&mut self.map.cursor(), &mut writer)
+    }
+
     // *** PRIVATES *** //
 
     fn make_package_path<S>(&mut self, path: &S) -> Result<CursorMut<Node<I>>>
@@ -148,13 +161,10 @@ where
         Ok(cursor)
     }
 
-    pub fn calculate_metadata(
-        &mut self,
-        absolute_position: i32,
-        version_checksum: u32,
-    ) -> Result<()> {
+    fn calculate_metadata(&mut self, absolute_position: i32, version_checksum: u32) -> Result<()> {
         let mut cursor = self.map.cursor_mut();
         recursive_calculate_size_and_checksum(absolute_position, version_checksum, &mut cursor)?;
+        recursive_calculate_offset(WzOffset::from(absolute_position as u32 + 2), &mut cursor)?;
         Ok(())
     }
 }
@@ -173,6 +183,7 @@ where
     Ok(dummy_writer.into_inner().into_inner())
 }
 
+/// Calculates the size and checksum of everything recursively
 fn recursive_calculate_size_and_checksum<I>(
     absolute_position: i32,
     version_checksum: u32,
@@ -184,7 +195,7 @@ where
     // Calculate the sibling offset and return the number of children
     let mut num_children = match cursor.get() {
         Node::Package { .. } => cursor.children().count(),
-        Node::Image { ref image, .. } => 0,
+        Node::Image { .. } => 0,
     };
 
     let num_content = encode_obj(
@@ -193,11 +204,12 @@ where
         &WzInt::from(num_children as i32),
     )?;
 
-    // Set the size to 0--num_content is part of the package "size"
-    let mut calc_size = Wrapping(0);
+    // Set the size to 0--num_content is part of the package "size". It should panic if it
+    // overflows.
+    let mut calc_size = 0;
 
     // Set checksum to 0--not sure if the checksum includes num_content. But since size does not, I
-    // felt it was safe to assume checksum doesn't either.
+    // felt it was safe to assume checksum doesn't either. Doesn't matter if it overflows.
     let mut calc_checksum = Wrapping(0);
 
     if num_children > 0 {
@@ -207,7 +219,7 @@ where
             // Calculate the checksum of the child and get its encoded size
             let (child_size, child_checksum) =
                 recursive_calculate_size_and_checksum(absolute_position, version_checksum, cursor)?;
-            calc_size = calc_size + Wrapping(*child_size);
+            calc_size = calc_size + *child_size;
             calc_checksum = calc_checksum + Wrapping(*child_checksum);
             num_children = num_children - 1;
             if num_children <= 0 {
@@ -225,7 +237,7 @@ where
             ref mut checksum,
             ..
         } => {
-            *size = WzInt::from(calc_size.0);
+            *size = WzInt::from(calc_size);
             *checksum = WzInt::from(calc_checksum.0);
         }
         // Skip for images
@@ -234,7 +246,7 @@ where
 
     // Encode the content metadata
     let name = WzString::from(cursor.name());
-    let content_ref = match cursor.get_mut() {
+    let content_ref = match cursor.get() {
         Node::Package {
             size,
             checksum,
@@ -252,7 +264,7 @@ where
     // Include content metadata here
     let (calc_size, calc_checksum) = match cursor.get() {
         Node::Package { .. } => (
-            calc_size + Wrapping(num_content.len() as i32) + Wrapping(content_ref.size_hint()),
+            calc_size + num_content.len() as i32 + content_ref.size_hint(),
             calc_checksum
                 + num_content
                     .iter()
@@ -264,7 +276,7 @@ where
                     .sum::<Wrapping<i32>>(),
         ),
         Node::Image { image, .. } => (
-            Wrapping(*image.size()?) + Wrapping(content_ref.size_hint()),
+            *image.size()? + content_ref.size_hint(),
             Wrapping(*image.checksum()?)
                 + content_data
                     .iter()
@@ -272,5 +284,145 @@ where
                     .sum::<Wrapping<i32>>(),
         ),
     };
-    Ok((WzInt::from(calc_size.0), WzInt::from(calc_checksum.0)))
+    Ok((WzInt::from(calc_size), WzInt::from(calc_checksum.0)))
+}
+
+/// Calculates the offsets. If overflow occurs here, it should absolutely panic.
+fn recursive_calculate_offset<I>(
+    current_offset: WzOffset,
+    cursor: &mut CursorMut<Node<I>>,
+) -> Result<WzOffset>
+where
+    I: ImageRef,
+{
+    // Apply the current offset
+    match cursor.get_mut() {
+        Node::Package { ref mut offset, .. } => *offset = current_offset,
+        Node::Image { ref mut offset, .. } => *offset = current_offset,
+    }
+
+    // Calculate the sibling offset and return the number of children
+    let next_offset = match cursor.get() {
+        Node::Package { size, .. } => *current_offset + u32::from(*size),
+        // If it is an image, return the next offset and stop here. Image's have no children.
+        Node::Image { ref image, .. } => return Ok(current_offset + *image.size()? as u32),
+    };
+
+    // Get num content dn update next_offset
+    let num_content = cursor.children().count() as i32;
+    let header_size = WzInt::from(num_content).size_hint();
+    let next_offset = WzOffset::from(next_offset + header_size as u32);
+
+    if num_content > 0 {
+        // Total the metadata size to get the position of the first child
+        let mut metadata_size = header_size;
+        let mut count = num_content;
+        cursor.first_child()?;
+        loop {
+            let name = WzString::from(cursor.name());
+            let content_ref = match cursor.get() {
+                Node::Package {
+                    ref size,
+                    ref checksum,
+                    ref offset,
+                } => ContentRef::Package(Metadata::new(name, *size, *checksum, *offset)),
+                Node::Image {
+                    ref image,
+                    ref offset,
+                } => ContentRef::Image(Metadata::new(
+                    name,
+                    image.size()?,
+                    image.checksum()?,
+                    *offset,
+                )),
+            };
+            metadata_size = metadata_size + content_ref.size_hint();
+            count = count - 1;
+            if count <= 0 {
+                break;
+            }
+            cursor.next_sibling()?;
+        }
+        cursor.parent()?;
+
+        // Modify children. The order is always the order of insertion.
+        let mut child_offset = WzOffset::from(current_offset + metadata_size);
+        let mut count = num_content;
+        cursor.first_child()?;
+        loop {
+            child_offset = recursive_calculate_offset(child_offset, cursor)?;
+            count = count - 1;
+            if count <= 0 {
+                break;
+            }
+            cursor.next_sibling()?;
+        }
+        cursor.parent()?;
+    }
+
+    Ok(next_offset)
+}
+
+/// Saves the WZ archive recursively
+fn recursive_save<I, W, E>(cursor: &mut Cursor<Node<I>>, writer: &mut WzWriter<W, E>) -> Result<()>
+where
+    I: ImageRef,
+    W: Write + Seek,
+    E: Encryptor,
+{
+    let num_content = match cursor.get() {
+        // Get number of children
+        Node::Package { .. } => cursor.children().count() as i32,
+        // Write the image and return
+        Node::Image { ref image, .. } => return image.write(writer),
+    };
+
+    // Encode the length
+    WzInt::from(num_content).encode(writer)?;
+    if num_content > 0 {
+        // Encode the package metadata
+        let mut count = num_content;
+        cursor.first_child()?;
+        loop {
+            let name = WzString::from(cursor.name());
+            let content_ref = match cursor.get() {
+                Node::Package {
+                    ref size,
+                    ref checksum,
+                    ref offset,
+                } => ContentRef::Package(Metadata::new(name, *size, *checksum, *offset)),
+                Node::Image {
+                    ref image,
+                    ref offset,
+                } => ContentRef::Image(Metadata::new(
+                    name,
+                    image.size()?,
+                    image.checksum()?,
+                    *offset,
+                )),
+            };
+            content_ref.encode(writer)?;
+            count = count - 1;
+            if count <= 0 {
+                break;
+            }
+            cursor.next_sibling()?;
+        }
+        cursor.parent()?;
+
+        // Encode the children
+        let mut count = num_content;
+        cursor.first_child()?;
+        loop {
+            recursive_save(cursor, writer)?;
+            count = count - 1;
+            if count <= 0 {
+                break;
+            }
+            cursor.next_sibling()?;
+        }
+        cursor.parent()?;
+    }
+
+    Ok(())
 }

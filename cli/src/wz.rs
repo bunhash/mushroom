@@ -4,17 +4,15 @@ use clap::{Args, Parser, ValueEnum};
 use crypto::{Decryptor, Encryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
-    io::{copy, BufReader, ErrorKind, Read, Seek, Write},
-    path::{Component, Path, PathBuf},
+    io::ErrorKind,
+    path::{Path, PathBuf},
 };
 use wz::{
-    archive, builder,
-    error::{Error, Result},
-    map::{CursorMut, Map},
+    archive,
+    error::{Error, Result, WzError},
     reader::DummyDecryptor,
-    types::{WzInt, WzOffset},
     writer::DummyEncryptor,
-    Archive, Builder, WzReader,
+    Archive, Builder,
 };
 
 mod image;
@@ -97,11 +95,20 @@ fn recursive_do_create(
     Ok(())
 }
 
-fn do_create<E>(file: fs::File, encryptor: E, directory: &str, verbose: bool) -> Result<()>
+fn do_create<E>(
+    version: u16,
+    file: fs::File,
+    encryptor: E,
+    directory: &str,
+    verbose: bool,
+) -> Result<()>
 where
     E: Encryptor,
 {
     let path = PathBuf::from(&directory);
+    if !path.is_dir() {
+        return Err(WzError::InvalidPackage.into());
+    }
     let target = file_name(&path)?;
     if verbose {
         println!("{}", target);
@@ -112,8 +119,7 @@ where
     };
     let mut builder = Builder::new(target);
     recursive_do_create(&path, parent, &mut builder, verbose)?;
-    builder.calculate_metadata(60, 0);
-    println!("{:?}", builder.map().debug_pretty_print());
+    builder.save(version, file, encryptor)?;
     Ok(())
 }
 
@@ -189,21 +195,27 @@ fn main() -> Result<()> {
 
     let action = &args.action;
     if action.create {
+        if Path::new(&args.file).is_file() {
+            fs::remove_file(&args.file)?;
+        }
         let file = fs::File::create(&args.file)?;
         match args.key {
             Key::Gms => do_create(
+                args.version.unwrap(),
                 file,
                 KeyStream::new(&TRIMMED_KEY, &GMS_IV),
                 args.directory.unwrap().as_str(),
                 args.verbose,
             )?,
             Key::Kms => do_create(
+                args.version.unwrap(),
                 file,
                 KeyStream::new(&TRIMMED_KEY, &KMS_IV),
                 args.directory.unwrap().as_str(),
                 args.verbose,
             )?,
             Key::None => do_create(
+                args.version.unwrap(),
                 file,
                 DummyEncryptor,
                 args.directory.unwrap().as_str(),

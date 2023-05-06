@@ -56,6 +56,7 @@ impl ImageRef for ImagePath {
         W: Write + Seek,
         E: Encryptor,
     {
-        Ok(())
+        let mut src = File::open(&self.path)?;
+        Ok(writer.copy_from(&mut src, self.size)?)
     }
 }
