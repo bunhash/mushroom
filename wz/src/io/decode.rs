@@ -27,6 +27,9 @@ pub enum Error {
     /// The length is invalid (likely negative)
     InvalidLength(i32),
 
+    /// Invalid Object type
+    InvalidObjectType(String),
+
     /// The offset is invalid (likely negative)
     InvalidOffset(i32),
 
@@ -50,6 +53,7 @@ impl fmt::Display for Error {
                 write!(f, "Package ContentType is invalid `{}`", t)
             }
             Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
+            Error::InvalidObjectType(t) => write!(f, "Invalid object type: `{}`", t),
             Error::InvalidOffset(o) => write!(f, "Invalid offset: `{}`", o),
             Error::InvalidUol(u) => write!(f, "Invalid UOL: `{}`", u),
             Error::Utf8(e) => write!(f, "UTF-8: {}", e),

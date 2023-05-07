@@ -1,8 +1,9 @@
 //! Object in a WZ image
 
 use crate::{
+    file::image::Uol,
     io::{decode, encode, Decode, Encode, WzReader, WzWriter},
-    types::{Uol, WzInt, WzLong, WzOffset},
+    types::{WzInt, WzLong, WzOffset},
 };
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -74,11 +75,11 @@ impl Decode for ContentRef {
             }),
             9 => {
                 let size = i32::decode(reader)?;
-                let offset = reader.position()?;
                 if size.is_negative() {
                     return Err(decode::Error::InvalidLength(size));
                 }
-                reader.seek(offset + WzOffset::from(size as u32))?;
+                let offset = reader.position()?;
+                reader.seek(offset + size)?;
                 Ok(Self::Object { name, size, offset })
             }
             t => Err(decode::Error::InvalidContentType(t)),

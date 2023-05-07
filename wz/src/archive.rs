@@ -80,9 +80,8 @@ where
     pub fn map(&mut self, name: &str) -> Result<Map<Node>> {
         let name = WzString::from(name);
         let mut map = Map::new(name, Node::Package);
-        let mut cursor = map.cursor_mut();
         self.inner.seek_to_start()?;
-        Archive::map_package_to(&mut self.inner, &mut cursor)?;
+        Archive::map_package_to(&mut self.inner, &mut map.cursor_mut())?;
         Ok(map)
     }
 
@@ -121,17 +120,17 @@ where
     }
 
     fn map_package_to(
-        inner: &mut WzReader<BufReader<File>, D>,
+        reader: &mut WzReader<BufReader<File>, D>,
         cursor: &mut CursorMut<Node>,
     ) -> Result<()> {
-        let package = Package::decode(inner)?;
+        let package = Package::decode(reader)?;
         for content in package.contents() {
             match &content {
                 ContentRef::Package(ref data) => {
                     cursor.create(WzString::from(data.name()), Node::Package)?;
                     cursor.move_to(data.name.as_ref())?;
-                    inner.seek(data.offset())?;
-                    Archive::map_package_to(inner, cursor)?;
+                    reader.seek(data.offset())?;
+                    Archive::map_package_to(reader, cursor)?;
                     cursor.parent()?;
                 }
                 ContentRef::Image(ref data) => {
