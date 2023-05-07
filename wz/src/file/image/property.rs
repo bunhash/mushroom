@@ -12,6 +12,7 @@ use std::{
 };
 
 /// A property contains a list of contents--similar to package.
+#[derive(Debug)]
 pub struct Property {
     contents: Vec<ContentRef>,
 }
@@ -34,6 +35,8 @@ impl Decode for Property {
         R: Read + Seek,
         D: Decryptor,
     {
+        let val = u16::decode(reader)?;
+        println!("property val: {:x}", val);
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
             return Err(decode::Error::InvalidLength(*num_contents));

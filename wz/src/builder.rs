@@ -150,7 +150,7 @@ where
     pub fn save<E>(
         &mut self,
         version: u16,
-        header: Header,
+        mut header: Header,
         mut file: File,
         encryptor: E,
     ) -> Result<()>
@@ -163,6 +163,17 @@ where
             return Err(WzError::InvalidChecksum.into());
         }
         self.calculate_metadata(absolute_position, version_checksum)?;
+
+        // Modify the header sizes
+        let cursor = self.map.cursor();
+        let root_num_content = WzInt::from(cursor.children().count() as i32);
+        header.size = match cursor.get() {
+            Node::Package { ref size, .. } => {
+                **size as u64 + root_num_content.size_hint() as u64 + 2
+            }
+            _ => panic!("should never get here"),
+        };
+
         let mut writer = WzWriter::new(absolute_position, version_checksum, &mut file, encryptor);
         header.encode(&mut writer)?;
         recursive_save(&mut self.map.cursor(), &mut writer)

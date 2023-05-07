@@ -8,6 +8,7 @@ use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
 
 /// These are just complex structures compared to the primitive values contained in WZ properties
+#[derive(Debug)]
 pub enum Object {
     /// Contains an embedded list of properties
     Property,
