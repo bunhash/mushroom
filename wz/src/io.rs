@@ -1,4 +1,4 @@
-//! WZ IO Suff
+//! WZ IO
 
 mod reader;
 mod writer;

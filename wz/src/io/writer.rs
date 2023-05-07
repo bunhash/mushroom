@@ -11,7 +11,7 @@ mod dummy_encryptor;
 
 pub use self::dummy_encryptor::DummyEncryptor;
 
-/// Wraps a writer into a WZ encoder. Used in [`Encode`](crate::Encode) trait
+/// Wraps a writer into a WZ encoder. Used in [`Encode`](crate::io::Encode) trait
 ///
 /// ```no_run
 /// use crypto::checksum;

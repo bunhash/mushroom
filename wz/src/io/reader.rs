@@ -11,7 +11,7 @@ mod dummy_decryptor;
 
 pub use self::dummy_decryptor::DummyDecryptor;
 
-/// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::Decode) trait
+/// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::io::Decode) trait
 ///
 /// ```no_run
 /// use crypto::checksum;

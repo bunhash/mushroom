@@ -7,7 +7,7 @@ use crate::{
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
 
-/// Represents the contents of a [`Property`](crate::image::Property)
+/// Represents the contents of a [`Property`](crate::file::image::Property)
 #[derive(Debug)]
 pub enum ContentRef {
     /// Primitive Null type

@@ -173,13 +173,27 @@ where
 {
     println!("{:?}", archive.header());
     let map = archive.map(name)?;
-    match directory {
+    let mut cursor = match directory {
         Some(ref path) => {
             let path = path.split("/").collect::<Vec<&str>>();
-            let cursor = map.cursor_at(&path)?;
-            println!("{:?}", cursor.debug_pretty_print());
+            map.cursor_at(&path)?
         }
-        None => println!("{:?}", map.debug_pretty_print()),
+        None => map.cursor(),
+    };
+    println!("{:?} : {:?}", cursor.name(), cursor.get());
+    let mut num_children = cursor.children().count();
+    if num_children > 0 {
+        cursor.first_child()?;
+        loop {
+            if num_children <= 1 {
+                println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
+                break;
+            } else {
+                println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
+            }
+            num_children = num_children - 1;
+            cursor.next_sibling()?;
+        }
     }
     Ok(())
 }
