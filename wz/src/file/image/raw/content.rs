@@ -1,7 +1,7 @@
 //! Object in a WZ image
 
 use crate::{
-    file::image::Uol,
+    file::image::UolString,
     io::{decode, encode, Decode, Encode, WzReader, WzWriter},
     types::{WzInt, WzLong, WzOffset},
 };
@@ -12,29 +12,29 @@ use std::io::{Read, Seek, Write};
 #[derive(Debug)]
 pub enum ContentRef {
     /// Primitive Null type
-    Null { name: Uol },
+    Null { name: UolString },
 
     /// Primitive short
-    Short { name: Uol, value: i16 },
+    Short { name: UolString, value: i16 },
 
     /// Primitive int
-    Int { name: Uol, value: WzInt },
+    Int { name: UolString, value: WzInt },
 
     /// Primitive WZ-LONG
-    Long { name: Uol, value: WzLong },
+    Long { name: UolString, value: WzLong },
 
     /// Primitive float
-    Float { name: Uol, value: f32 },
+    Float { name: UolString, value: f32 },
 
     /// Primitive double
-    Double { name: Uol, value: f64 },
+    Double { name: UolString, value: f64 },
 
     /// UOL
-    String { name: Uol, value: Uol },
+    String { name: UolString, value: UolString },
 
     /// Complex object
     Object {
-        name: Uol,
+        name: UolString,
         size: u32,
         offset: WzOffset,
     },
@@ -46,7 +46,7 @@ impl Decode for ContentRef {
         R: Read + Seek,
         D: Decryptor,
     {
-        let name = Uol::decode(reader)?;
+        let name = UolString::decode(reader)?;
         match u8::decode(reader)? {
             0 => Ok(Self::Null { name }),
             2 | 11 => Ok(Self::Short {
@@ -71,7 +71,7 @@ impl Decode for ContentRef {
             }),
             8 => Ok(Self::String {
                 name,
-                value: Uol::decode(reader)?,
+                value: UolString::decode(reader)?,
             }),
             9 => {
                 let size = u32::decode(reader)?;

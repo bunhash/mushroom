@@ -11,3 +11,4 @@ crate-type = ["lib"]
 [dependencies]
 indextree = { version = "4.6.0" }
 crypto = { version = "0.1.0", path = "../crypto" }
+xml-rs = { version = "0.8.8" }

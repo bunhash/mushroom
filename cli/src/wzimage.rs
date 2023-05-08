@@ -10,21 +10,21 @@ use std::{
 use wz::{
     archive,
     error::{Error, Result, WzError},
-    file::Image,
+    file::{image::Node, Image},
     io::{DummyDecryptor, WzReader},
 };
 
 pub(crate) fn do_debug(
-    file: &PathBuf,
+    filename: &PathBuf,
     directory: &Option<String>,
     key: Key,
     position: i32,
     version: u16,
 ) -> Result<()> {
-    let name = file_name(&file)?;
-    let file = BufReader::new(fs::File::open(&file)?);
+    let name = file_name(&filename)?;
+    let file = BufReader::new(fs::File::open(&filename)?);
     let (_, version_checksum) = checksum(&version.to_string());
-    match key {
+    let result = match key {
         Key::Gms => debug(
             name,
             WzReader::new(
@@ -50,6 +50,13 @@ pub(crate) fn do_debug(
             WzReader::new(position, version_checksum, file, DummyDecryptor),
             directory,
         ),
+    };
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("{} failed: {:?}", filename.display(), e);
+            Ok(())
+        }
     }
 }
 
@@ -59,6 +66,34 @@ where
     D: Decryptor,
 {
     let image = Image::parse(name, &mut reader)?;
-    println!("{:?}", image.map().debug_pretty_print());
+    /*
+    let map = image.map();
+    let mut cursor = match directory {
+        // Find the optional directory
+        Some(ref path) => {
+            let path = path.split("/").collect::<Vec<&str>>();
+            map.cursor_at(&path)?
+        }
+        // Get the root
+        None => map.cursor(),
+    };
+
+    // Print the directory and its immediate children
+    println!("{:?} : {:?}", cursor.name(), cursor.get());
+    let mut num_children = cursor.children().count();
+    if num_children > 0 {
+        cursor.first_child()?;
+        loop {
+            if num_children <= 1 {
+                println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
+                break;
+            } else {
+                println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
+            }
+            num_children = num_children - 1;
+            cursor.next_sibling()?;
+        }
+    }
+    */
     Ok(())
 }

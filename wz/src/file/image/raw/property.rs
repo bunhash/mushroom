@@ -1,7 +1,7 @@
 //! WZ Image Property Type
 
 use crate::{
-    file::image::ContentRef,
+    file::image::raw::ContentRef,
     io::{decode, encode, Decode, Encode, WzReader, WzWriter},
     types::WzInt,
 };

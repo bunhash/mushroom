@@ -8,8 +8,12 @@ use crypto::{Encryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
 
 mod dummy_encryptor;
+mod xml;
 
-pub use self::dummy_encryptor::DummyEncryptor;
+pub use self::{
+    dummy_encryptor::DummyEncryptor,
+    xml::{XmlElement, XmlWriter},
+};
 
 /// Wraps a writer into a WZ encoder. Used in [`Encode`](crate::io::Encode) trait
 ///

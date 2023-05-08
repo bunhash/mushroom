@@ -23,17 +23,21 @@ pub enum Error {
     /// Map error
     Map(map::Error),
 
+    /// XML Write error
+    XmlWrite(xml::writer::Error),
+
     /// WZ error
     Wz(WzError),
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Decode(e) => write!(f, "Decode: {}", e),
             Error::Encode(e) => write!(f, "Encode: {}", e),
             Error::Io(kind) => write!(f, "IO: {}", kind),
             Error::Map(e) => write!(f, "Map: {}", e),
+            Error::XmlWrite(e) => write!(f, "XML Write: {}", e),
             Error::Wz(e) => write!(f, "WZ: {}", e),
         }
     }
@@ -66,6 +70,12 @@ impl From<io::ErrorKind> for Error {
 impl From<map::Error> for Error {
     fn from(other: map::Error) -> Self {
         Error::Map(other)
+    }
+}
+
+impl From<xml::writer::Error> for Error {
+    fn from(other: xml::writer::Error) -> Self {
+        Error::XmlWrite(other)
     }
 }
 
@@ -107,7 +117,7 @@ pub enum WzError {
 }
 
 impl fmt::Display for WzError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             WzError::BruteForceChecksum => write!(f, "Brute force of the checksum failed"),
             WzError::MultipleRoots => write!(f, "A WZ archive can only have 1 root"),

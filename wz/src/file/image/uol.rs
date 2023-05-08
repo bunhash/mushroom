@@ -1,4 +1,4 @@
-//! UOL
+//! WZ Image UOLs
 
 use crate::{
     io::{decode, encode, Decode, Encode, WzReader, WzWriter},
@@ -10,71 +10,62 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-/// Defines a UOL structure and how to encode/decode it
-///
-/// UOLs are a URI formatted path specifyig where the "borrowed" content actually resides. This is
-/// probably the most useful form of compression WZ files make use of. It can be utilized in
-/// memory. I would not the same about duplicated strings.
+/// This is just a deduplicated string. WZ Images will use an offset to point to the string value
+/// instead of encoding the same string multiple times.
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct Uol {
-    uri: WzString,
-}
+pub struct UolString(WzString);
 
-impl Uol {
-    /// Consumes the UOL and returns the inner WzString
+impl UolString {
+    /// Consumes the UolString and returns the inner WzString
     pub fn into_wz_string(self) -> WzString {
-        self.uri
+        self.0
     }
 }
 
-impl From<String> for Uol {
+impl From<String> for UolString {
     fn from(other: String) -> Self {
-        Self {
-            uri: WzString::from(other),
-        }
+        Self(WzString::from(other))
     }
 }
 
-impl From<WzString> for Uol {
+impl From<WzString> for UolString {
     fn from(other: WzString) -> Self {
-        Self { uri: other }
+        Self(other)
     }
 }
 
-impl Deref for Uol {
+impl Deref for UolString {
     type Target = str;
     fn deref(&self) -> &Self::Target {
-        self.uri.as_ref()
+        self.0.as_ref()
     }
 }
 
-impl DerefMut for Uol {
+impl DerefMut for UolString {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.uri.as_mut()
+        self.0.as_mut()
     }
 }
 
-impl AsRef<str> for Uol {
+impl AsRef<str> for UolString {
     fn as_ref(&self) -> &str {
         self.deref().as_ref()
     }
 }
 
-impl AsMut<str> for Uol {
+impl AsMut<str> for UolString {
     fn as_mut(&mut self) -> &mut str {
         self.deref_mut().as_mut()
     }
 }
 
-impl From<&str> for Uol {
+impl From<&str> for UolString {
     fn from(other: &str) -> Self {
-        Self {
-            uri: WzString::from(other),
-        }
+        Self(WzString::from(other))
     }
 }
 
-impl PartialEq<&str> for Uol {
+impl PartialEq<&str> for UolString {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_ref(), &other[..])
@@ -85,18 +76,18 @@ impl PartialEq<&str> for Uol {
     }
 }
 
-impl PartialEq<Uol> for &str {
+impl PartialEq<UolString> for &str {
     #[inline]
-    fn eq(&self, other: &Uol) -> bool {
+    fn eq(&self, other: &UolString) -> bool {
         PartialEq::eq(&self[..], other.as_ref())
     }
     #[inline]
-    fn ne(&self, other: &Uol) -> bool {
+    fn ne(&self, other: &UolString) -> bool {
         PartialEq::ne(&self[..], other.as_ref())
     }
 }
 
-impl Decode for Uol {
+impl Decode for UolString {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
@@ -104,41 +95,155 @@ impl Decode for Uol {
     {
         let check = u8::decode(reader)?;
         match check {
-            // The URI directly follows this byte
-            0 | 0x73 => Ok(Self {
-                uri: WzString::decode(reader)?,
-            }),
-
-            // The URI is duplicated somewhere in the image. So instead of rewriting it, this
-            // points to the offset of where the first (?) occurance is. Another compression
-            // mechanism.
-            1 | 0x1b => {
+            0 => Ok(Self(WzString::decode(reader)?)),
+            1 => {
                 let offset = WzOffset::from(u32::decode(reader)?);
                 let pos = reader.position()?;
                 reader.seek(offset)?;
-                let uri = WzString::decode(reader)?;
+                let string = WzString::decode(reader)?;
                 reader.seek(pos)?;
-                Ok(Self { uri })
+                Ok(Self(string))
             }
             u => Err(decode::Error::InvalidUol(u)),
         }
     }
 }
 
-impl Encode for Uol {
+impl Encode for UolString {
     fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
         E: Encryptor,
     {
         0u8.encode(writer)?;
+        self.0.encode(writer)
+    }
+}
+
+impl encode::SizeHint for UolString {
+    #[inline]
+    fn size_hint(&self) -> u32 {
+        1 + self.0.size_hint()
+    }
+}
+
+/// Defines a UOL object and how to encode/decode it
+///
+/// UOLs are a URI formatted path specifyig where the "borrowed" content actually resides. This is
+/// probably the most useful form of compression WZ files make use of. It can be utilized in
+/// memory. I would not the same about duplicated strings.
+#[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
+pub struct UolObject {
+    uri: UolString,
+}
+
+impl UolObject {
+    /// Consumes the UolObject and returns the inner WzString
+    pub fn into_wz_string(self) -> WzString {
+        self.uri.into_wz_string()
+    }
+}
+
+impl From<String> for UolObject {
+    fn from(other: String) -> Self {
+        Self {
+            uri: UolString::from(other),
+        }
+    }
+}
+
+impl From<WzString> for UolObject {
+    fn from(other: WzString) -> Self {
+        Self {
+            uri: UolString::from(other),
+        }
+    }
+}
+
+impl Deref for UolObject {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.uri.as_ref()
+    }
+}
+
+impl DerefMut for UolObject {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.uri.as_mut()
+    }
+}
+
+impl AsRef<str> for UolObject {
+    fn as_ref(&self) -> &str {
+        self.deref().as_ref()
+    }
+}
+
+impl AsMut<str> for UolObject {
+    fn as_mut(&mut self) -> &mut str {
+        self.deref_mut().as_mut()
+    }
+}
+
+impl From<&str> for UolObject {
+    fn from(other: &str) -> Self {
+        Self {
+            uri: UolString::from(other),
+        }
+    }
+}
+
+impl PartialEq<&str> for UolObject {
+    #[inline]
+    fn eq(&self, other: &&str) -> bool {
+        PartialEq::eq(self.as_ref(), &other[..])
+    }
+    #[inline]
+    fn ne(&self, other: &&str) -> bool {
+        PartialEq::ne(self.as_ref(), &other[..])
+    }
+}
+
+impl PartialEq<UolObject> for &str {
+    #[inline]
+    fn eq(&self, other: &UolObject) -> bool {
+        PartialEq::eq(&self[..], other.as_ref())
+    }
+    #[inline]
+    fn ne(&self, other: &UolObject) -> bool {
+        PartialEq::ne(&self[..], other.as_ref())
+    }
+}
+
+impl Decode for UolObject {
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    where
+        R: Read + Seek,
+        D: Decryptor,
+    {
+        u8::decode(reader)?;
+        let check = u8::decode(reader)?;
+        Ok(Self {
+            uri: UolString::decode(reader)?,
+        })
+    }
+}
+
+impl Encode for UolObject {
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    where
+        W: Write + Seek,
+        E: Encryptor,
+    {
+        0u8.encode(writer)?;
+        0x73u8.encode(writer)?;
         self.uri.encode(writer)
     }
 }
 
-impl encode::SizeHint for Uol {
+impl encode::SizeHint for UolObject {
     #[inline]
     fn size_hint(&self) -> u32 {
-        1 + self.uri.size_hint()
+        2 + self.uri.size_hint()
     }
 }
