@@ -319,7 +319,7 @@ where
     // Include content metadata here
     let (calc_size, calc_checksum) = match cursor.get() {
         Node::Package { .. } => (
-            calc_size + num_content.len() as i32 + content_ref.size_hint(),
+            calc_size + num_content.len() as i32 + content_ref.size_hint() as i32,
             calc_checksum
                 + num_content
                     .iter()
@@ -331,7 +331,7 @@ where
                     .sum::<Wrapping<i32>>(),
         ),
         Node::Image { image, .. } => (
-            *image.size()? + content_ref.size_hint(),
+            *image.size()? + content_ref.size_hint() as i32,
             Wrapping(*image.checksum()?)
                 + content_data
                     .iter()
@@ -365,7 +365,7 @@ where
 
     // Get num content dn update next_offset
     let num_content = cursor.children().count() as i32;
-    let header_size = WzInt::from(num_content).size_hint();
+    let header_size = WzInt::from(num_content).size_hint() as i32;
     let next_offset = WzOffset::from(next_offset + header_size as u32);
 
     if num_content > 0 {
@@ -391,7 +391,7 @@ where
                     *offset,
                 )),
             };
-            metadata_size = metadata_size + content_ref.size_hint();
+            metadata_size = metadata_size + content_ref.size_hint() as i32;
             count = count - 1;
             if count <= 0 {
                 break;

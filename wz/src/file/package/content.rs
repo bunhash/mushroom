@@ -118,7 +118,7 @@ impl Encode for ContentRef {
 
 impl encode::SizeHint for ContentRef {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         match &self {
             ContentRef::Package(ref data) => 3u8.size_hint() + data.size_hint(),
             ContentRef::Image(ref data) => 4u8.size_hint() + data.size_hint(),
@@ -217,7 +217,7 @@ impl Encode for Metadata {
 
 impl encode::SizeHint for Metadata {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         self.name.size_hint()
             + self.size.size_hint()
             + self.checksum.size_hint()

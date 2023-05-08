@@ -35,7 +35,7 @@ pub enum ContentRef {
     /// Complex object
     Object {
         name: Uol,
-        size: i32,
+        size: u32,
         offset: WzOffset,
     },
 }
@@ -74,10 +74,7 @@ impl Decode for ContentRef {
                 value: Uol::decode(reader)?,
             }),
             9 => {
-                let size = i32::decode(reader)?;
-                if size.is_negative() {
-                    return Err(decode::Error::InvalidLength(size));
-                }
+                let size = u32::decode(reader)?;
                 let offset = reader.position()?;
                 reader.seek(offset + size)?;
                 Ok(Self::Object { name, size, offset })
@@ -129,7 +126,7 @@ impl Encode for ContentRef {
 
 impl encode::SizeHint for ContentRef {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         match self {
             ContentRef::Null { name } => name.size_hint(),
             ContentRef::Short { name, value } => name.size_hint() + value.size_hint(),
@@ -138,7 +135,7 @@ impl encode::SizeHint for ContentRef {
             ContentRef::Float { name, value } => name.size_hint() + value.size_hint(),
             ContentRef::Double { name, value } => name.size_hint() + value.size_hint(),
             ContentRef::String { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Object { name, size, .. } => name.size_hint() + size,
+            ContentRef::Object { name, size, .. } => name.size_hint() as u32 + size,
         }
     }
 }

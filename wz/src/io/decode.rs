@@ -30,6 +30,9 @@ pub enum Error {
     /// Invalid Object type
     InvalidObjectType(String),
 
+    /// Invalid Object
+    InvalidObject,
+
     /// The offset is invalid (likely negative)
     InvalidOffset(i32),
 
@@ -54,6 +57,7 @@ impl fmt::Display for Error {
             }
             Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
             Error::InvalidObjectType(t) => write!(f, "Invalid object type: `{}`", t),
+            Error::InvalidObject => write!(f, "Invalid object"),
             Error::InvalidOffset(o) => write!(f, "Invalid offset: `{}`", o),
             Error::InvalidUol(u) => write!(f, "Invalid UOL: `{}`", u),
             Error::Utf8(e) => write!(f, "UTF-8: {}", e),

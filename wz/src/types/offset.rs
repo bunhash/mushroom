@@ -104,7 +104,7 @@ impl Encode for WzOffset {
 
 impl encode::SizeHint for WzOffset {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         4
     }
 }

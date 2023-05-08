@@ -45,8 +45,8 @@ impl Encode for CString {
 
 impl encode::SizeHint for CString {
     #[inline]
-    fn size_hint(&self) -> i32 {
-        self.0.len() as i32 + 1
+    fn size_hint(&self) -> u32 {
+        self.0.len() as u32 + 1
     }
 }
 
@@ -127,8 +127,8 @@ impl Encode for WzString {
 
 impl encode::SizeHint for WzString {
     #[inline]
-    fn size_hint(&self) -> i32 {
-        let length = self.0.len() as i32;
+    fn size_hint(&self) -> u32 {
+        let length = self.0.len() as u32;
 
         // If length is 0 just write 0 and be done with it
         if length == 0 {
@@ -138,14 +138,14 @@ impl encode::SizeHint for WzString {
         // If everything is ASCII, encode as UTF-8, else Unicode
         if self.0.is_ascii() {
             // length CAN equal i8::MAX here as the 2s compliment is not i8::MIN
-            if length > (i8::MAX as i32) {
+            if length > (i8::MAX as u32) {
                 5 + length
             } else {
                 1 + length
             }
         } else {
             // If lenth is equal to i8::MAX it will be treated as a long-length marker
-            if length >= (i8::MAX as i32) {
+            if length >= (i8::MAX as u32) {
                 5 + (length * 2)
             } else {
                 1 + (length * 2)

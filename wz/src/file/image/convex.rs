@@ -1,4 +1,4 @@
-//! WZ Image Property Type
+//! WZ Convex2D Type
 
 use crate::{
     file::image::ContentRef,
@@ -13,11 +13,11 @@ use std::{
 
 /// A property contains a list of contents--similar to package.
 #[derive(Debug)]
-pub struct Property {
+pub struct Convex2D {
     contents: Vec<ContentRef>,
 }
 
-impl Property {
+impl Convex2D {
     /// Returns the number of contents
     pub fn num_contents(&self) -> usize {
         self.contents.len()
@@ -29,13 +29,12 @@ impl Property {
     }
 }
 
-impl Decode for Property {
+impl Decode for Convex2D {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
         D: Decryptor,
     {
-        u16::decode(reader)?;
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
             return Err(decode::Error::InvalidLength(*num_contents));
@@ -49,7 +48,7 @@ impl Decode for Property {
     }
 }
 
-impl Encode for Property {
+impl Encode for Convex2D {
     fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,

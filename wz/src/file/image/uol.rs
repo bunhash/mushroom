@@ -113,8 +113,8 @@ impl Decode for Uol {
             // points to the offset of where the first (?) occurance is. Another compression
             // mechanism.
             1 | 0x1b => {
-                let pos = reader.position()?;
                 let offset = WzOffset::from(u32::decode(reader)?);
+                let pos = reader.position()?;
                 reader.seek(offset)?;
                 let uri = WzString::decode(reader)?;
                 reader.seek(pos)?;
@@ -138,7 +138,7 @@ impl Encode for Uol {
 
 impl encode::SizeHint for Uol {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         1 + self.uri.size_hint()
     }
 }

@@ -46,5 +46,5 @@ impl From<io::ErrorKind> for Error {
 
 /// Internal trait for quicker size estimation
 pub(crate) trait SizeHint {
-    fn size_hint(&self) -> i32;
+    fn size_hint(&self) -> u32;
 }

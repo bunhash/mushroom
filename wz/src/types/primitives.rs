@@ -26,7 +26,7 @@ impl Encode for i8 {
 
 impl encode::SizeHint for i8 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         1
     }
 }
@@ -55,7 +55,7 @@ impl Encode for i16 {
 
 impl encode::SizeHint for i16 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         2
     }
 }
@@ -84,7 +84,7 @@ impl Encode for i32 {
 
 impl encode::SizeHint for i32 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         4
     }
 }
@@ -113,7 +113,7 @@ impl Encode for i64 {
 
 impl encode::SizeHint for i64 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         8
     }
 }
@@ -140,7 +140,7 @@ impl Encode for u8 {
 
 impl encode::SizeHint for u8 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         1
     }
 }
@@ -169,7 +169,7 @@ impl Encode for u16 {
 
 impl encode::SizeHint for u16 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         2
     }
 }
@@ -198,7 +198,7 @@ impl Encode for u32 {
 
 impl encode::SizeHint for u32 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         4
     }
 }
@@ -227,7 +227,7 @@ impl Encode for u64 {
 
 impl encode::SizeHint for u64 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         8
     }
 }
@@ -266,7 +266,7 @@ impl Encode for f32 {
 
 impl encode::SizeHint for f32 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         if *self as u32 == 0 {
             1
         } else {
@@ -299,7 +299,7 @@ impl Encode for f64 {
 
 impl encode::SizeHint for f64 {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         8
     }
 }

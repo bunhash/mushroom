@@ -30,7 +30,7 @@ impl Decode for WzInt {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
             i8::MIN => i32::decode(reader)?,
-            _ => check as i32,
+            v => v as i32,
         }))
     }
 }
@@ -52,7 +52,7 @@ impl Encode for WzInt {
 
 impl encode::SizeHint for WzInt {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
             5
         } else {
@@ -84,7 +84,7 @@ impl Decode for WzLong {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
             i8::MIN => i64::decode(reader)?,
-            _ => check as i64,
+            v => v as i64,
         }))
     }
 }
@@ -106,7 +106,7 @@ impl Encode for WzLong {
 
 impl encode::SizeHint for WzLong {
     #[inline]
-    fn size_hint(&self) -> i32 {
+    fn size_hint(&self) -> u32 {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
             9
         } else {
