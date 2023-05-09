@@ -26,16 +26,12 @@ struct Cli {
     verbose: bool,
 
     /// The target file is an image
-    #[arg(short, long, default_value_t = false, requires = "version")]
+    #[arg(short, long, default_value_t = false)]
     image: bool,
 
     /// Expect encrypted GMS strings
     #[arg(short, long, value_enum, default_value_t = Key::None)]
     key: Key,
-
-    /// Absolute position used in parsing images
-    #[arg(short, long, default_value_t = 60)]
-    position: i32,
 
     /// The version of WZ package. Required if create. Overrides the WZ version otherwise.
     #[arg(short = 'm', long)]
@@ -93,15 +89,9 @@ fn main() -> Result<()> {
         } else if action.list {
             unimplemented!()
         } else if action.extract {
-            unimplemented!()
+            wzimage::do_extract(&args.file, args.verbose, args.key)?;
         } else if action.debug {
-            wzimage::do_debug(
-                &args.file,
-                &args.directory,
-                args.key,
-                args.position,
-                args.version.unwrap(),
-            )?;
+            wzimage::do_debug(&args.file, &args.directory, args.key)?;
         } else if action.list_file {
             unimplemented!()
         }

@@ -4,7 +4,7 @@
 
 use crate::map::{ChildNames, Children, Error, MapNode};
 use indextree::{Arena, DebugPrettyPrint, NodeId};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::Debug};
 
 /// A cursor with read-only access to the contents of the [`Map`](crate::map::Map)
 #[derive(Debug)]
@@ -155,6 +155,17 @@ impl<'a, T> Cursor<'a, T> {
             }
             None => Err(Error::NoParent),
         }
+    }
+
+    /// Walks the map depth-first
+    pub fn walk<E>(&self, mut closure: impl FnMut(Cursor<T>) -> Result<(), E>) -> Result<(), E>
+    where
+        E: Debug,
+    {
+        for id in self.position.descendants(&self.arena) {
+            closure(Cursor::new(id, &self.arena))?;
+        }
+        Ok(())
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.

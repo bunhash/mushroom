@@ -1,55 +1,72 @@
 //! Parsing of WZ images
 
 use crate::{file_name, Key};
-use crypto::{checksum, Decryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
+use crypto::{Decryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
-    io::{BufReader, ErrorKind, Read, Seek},
+    io::{BufReader, Read, Seek},
     path::{Path, PathBuf},
 };
 use wz::{
-    archive,
-    error::{Error, Result, WzError},
+    error::{Error, Result},
     file::{image::Node, Image},
-    io::{xml::writer::XmlWriter, DummyDecryptor, WzReader},
+    io::{DummyDecryptor, WzReader},
+    map::Cursor,
 };
 
-pub(crate) fn do_debug(
-    filename: &PathBuf,
-    directory: &Option<String>,
-    key: Key,
-    position: i32,
-    version: u16,
-) -> Result<()> {
+mod extract;
+
+use extract::extract_image_from_map;
+
+pub(crate) fn do_extract(filename: &PathBuf, verbose: bool, key: Key) -> Result<()> {
     let name = file_name(&filename)?;
     let file = BufReader::new(fs::File::open(&filename)?);
-    let (_, version_checksum) = checksum(&version.to_string());
+    let result = match key {
+        Key::Gms => extract(
+            name,
+            WzReader::new(0, 0, file, KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
+            verbose,
+        ),
+        Key::Kms => extract(
+            name,
+            WzReader::new(0, 0, file, KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
+            verbose,
+        ),
+        Key::None => extract(name, WzReader::new(0, 0, file, DummyDecryptor), verbose),
+    };
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("{} failed: {:?}", filename.display(), e);
+            Ok(())
+        }
+    }
+}
+
+fn extract<R, D>(name: &str, mut reader: WzReader<R, D>, verbose: bool) -> Result<()>
+where
+    R: Read + Seek,
+    D: Decryptor,
+{
+    let image = Image::parse(name, &mut reader)?;
+    extract_image_from_map(image.map())
+}
+
+pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key) -> Result<()> {
+    let name = file_name(&filename)?;
+    let file = BufReader::new(fs::File::open(&filename)?);
     let result = match key {
         Key::Gms => debug(
             name,
-            WzReader::new(
-                position,
-                version_checksum,
-                file,
-                KeyStream::new(&TRIMMED_KEY, &GMS_IV),
-            ),
+            WzReader::new(0, 0, file, KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
             directory,
         ),
         Key::Kms => debug(
             name,
-            WzReader::new(
-                position,
-                version_checksum,
-                file,
-                KeyStream::new(&TRIMMED_KEY, &KMS_IV),
-            ),
+            WzReader::new(0, 0, file, KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
             directory,
         ),
-        Key::None => debug(
-            name,
-            WzReader::new(position, version_checksum, file, DummyDecryptor),
-            directory,
-        ),
+        Key::None => debug(name, WzReader::new(0, 0, file, DummyDecryptor), directory),
     };
     match result {
         Ok(_) => Ok(()),
@@ -67,10 +84,6 @@ where
 {
     let image = Image::parse(name, &mut reader)?;
     let map = image.map();
-    let mut writer = XmlWriter::new(std::io::stdout());
-    writer.write(&mut map.cursor())?;
-    println!("");
-    /*
     let mut cursor = match directory {
         // Find the optional directory
         Some(ref path) => {
@@ -100,6 +113,5 @@ where
             cursor.next_sibling()?;
         }
     }
-    */
     Ok(())
 }

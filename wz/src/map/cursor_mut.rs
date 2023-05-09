@@ -3,7 +3,7 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{ChildNames, Children, Error, MapNode},
+    map::{ChildNames, Children, Cursor, Error, MapNode},
     types::WzString,
 };
 use indextree::{Arena, DebugPrettyPrint, NodeId};
@@ -163,6 +163,22 @@ impl<'a, T> CursorMut<'a, T> {
         }
     }
 
+    /// Walks the map depth-first
+    pub fn walk<E>(&self, mut closure: impl FnMut(Cursor<T>) -> Result<(), E>) -> Result<(), E>
+    where
+        E: Debug,
+    {
+        for id in self.position.descendants(&self.arena) {
+            closure(Cursor::new(id, &self.arena))?;
+        }
+        Ok(())
+    }
+
+    /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
+    pub fn debug_pretty_print(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
+        self.position.debug_pretty_print(&self.arena)
+    }
+
     // *** Mutable Functions *** //
 
     /// Renames the node at the current position. Errors when a child with the new name already
@@ -245,11 +261,6 @@ impl<'a, T> CursorMut<'a, T> {
         let id = self.get_id(self.position, name)?;
         id.remove_subtree(&mut self.arena);
         Ok(self)
-    }
-
-    /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
-    pub fn debug_pretty_print(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
-        self.position.debug_pretty_print(&self.arena)
     }
 
     // *** PRIVATES *** //

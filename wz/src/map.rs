@@ -84,14 +84,11 @@ impl<T> Map<T> {
     }
 
     /// Walks the map depth-first
-    pub fn walk<E>(&self, mut closure: impl FnMut(Cursor<T>) -> Result<(), E>) -> Result<(), E>
+    pub fn walk<E>(&self, closure: impl FnMut(Cursor<T>) -> Result<(), E>) -> Result<(), E>
     where
         E: Debug,
     {
-        for id in self.root.descendants(&self.arena) {
-            closure(Cursor::new(id, &self.arena))?;
-        }
-        Ok(())
+        self.cursor().walk(closure)
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.

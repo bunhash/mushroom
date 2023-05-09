@@ -79,6 +79,7 @@ impl Decode for Canvas {
         u8::decode(reader)?;
         let mut data = vec![0u8; length];
         reader.read_exact(&mut data)?;
+        reader.decrypt(&mut data);
         Ok(Self {
             width,
             height,

@@ -25,6 +25,18 @@ impl Sound {
             data,
         }
     }
+
+    pub fn duration(&self) -> WzInt {
+        self.duration
+    }
+
+    pub fn header(&self) -> &[u8] {
+        &self.header
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
 }
 
 impl fmt::Debug for Sound {

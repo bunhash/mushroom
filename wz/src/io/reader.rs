@@ -200,7 +200,7 @@ where
     /// the amount of bytes required to convert to utf8.
     pub fn read_utf8_bytes(&mut self, len: usize) -> Result<Vec<u8>, Error> {
         let mut buf = self.read_vec(len)?;
-        self.decryptor.decrypt(&mut buf);
+        self.decrypt(&mut buf);
         let mut mask = 0xaa;
         Ok(buf
             .iter()
@@ -219,7 +219,7 @@ where
     /// conversion but will read the amount of bytes required to convert to unicode.
     pub fn read_unicode_bytes(&mut self, len: usize) -> Result<Vec<u16>, Error> {
         let mut buf = self.read_vec(len * 2)?;
-        self.decryptor.decrypt(&mut buf);
+        self.decrypt(&mut buf);
         let mut mask: u16 = 0xaaaa;
         Ok(buf
             .chunks(2)
@@ -233,6 +233,11 @@ where
                 wchar
             })
             .collect())
+    }
+
+    /// Decrypts a vector of bytes
+    pub fn decrypt(&mut self, bytes: &mut Vec<u8>) {
+        self.decryptor.decrypt(bytes)
     }
 }
 

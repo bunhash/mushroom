@@ -22,6 +22,26 @@ impl Canvas {
             data,
         }
     }
+
+    pub fn width(&self) -> WzInt {
+        self.width
+    }
+
+    pub fn height(&self) -> WzInt {
+        self.height
+    }
+
+    pub fn format(&self) -> WzInt {
+        self.format
+    }
+
+    pub fn mag_level(&self) -> u8 {
+        self.mag_level
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
 }
 
 impl fmt::Debug for Canvas {
