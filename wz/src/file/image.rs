@@ -4,7 +4,7 @@ use crate::{
     error::{Result, WzError},
     io::{decode, Decode, WzReader},
     map::{CursorMut, Map},
-    types::{WzInt, WzLong, WzOffset, WzString},
+    types::{WzInt, WzOffset, WzString},
 };
 use crypto::Decryptor;
 use std::io::{Read, Seek};
@@ -19,7 +19,7 @@ pub use canvas::Canvas;
 pub use node::Node;
 pub use sound::Sound;
 pub use uol::{UolObject, UolString};
-pub use vector::Vector2D;
+pub use vector::Vector;
 
 pub mod raw;
 
@@ -35,13 +35,14 @@ impl Image {
         D: Decryptor,
     {
         let mut map = Map::new(WzString::from(name), Node::Property);
-        let name = UolString::decode(reader)?;
-        if name != "Property" {
-            return Err(WzError::InvalidImage.into());
+        let object = raw::Object::decode(reader)?;
+        match &object {
+            raw::Object::Property(p) => {
+                map_property_to(p, reader, &mut map.cursor_mut())?;
+                Ok(Self { map })
+            }
+            _ => Err(WzError::InvalidImage.into()),
         }
-        let property = raw::Property::decode(reader)?;
-        map_property_to(&property, reader, &mut map.cursor_mut())?;
-        Ok(Self { map })
     }
 
     pub fn map(&self) -> &Map<Node> {
@@ -125,8 +126,8 @@ where
                 cursor.parent()?;
             }
         }
-        raw::Object::Convex2D => {
-            cursor.create(WzString::from(name), Node::Convex2D)?;
+        raw::Object::Convex => {
+            cursor.create(WzString::from(name), Node::Convex)?;
             cursor.move_to(name)?;
             let num_objects = WzInt::decode(reader)?;
             if num_objects.is_negative() {
@@ -138,8 +139,8 @@ where
             }
             cursor.parent()?;
         }
-        raw::Object::Vector2D(v) => {
-            cursor.create(WzString::from(name), Node::Vector2D(*v))?;
+        raw::Object::Vector(v) => {
+            cursor.create(WzString::from(name), Node::Vector(*v))?;
         }
         raw::Object::Uol(u) => {
             cursor.create(WzString::from(name), Node::Uol(u.clone()))?;

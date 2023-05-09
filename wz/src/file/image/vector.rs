@@ -1,25 +1,25 @@
-//! Parsed Vector2D type
+//! Parsed Vector type
 
 use crate::{
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
     types::WzInt,
 };
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Vector2D {
+pub struct Vector {
     x: WzInt,
     y: WzInt,
 }
 
-impl Vector2D {
+impl Vector {
     pub fn new(x: WzInt, y: WzInt) -> Self {
         Self { x, y }
     }
 }
 
-impl Decode for Vector2D {
+impl Decode for Vector {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
     where
         R: Read + Seek,
@@ -32,7 +32,7 @@ impl Decode for Vector2D {
     }
 }
 
-impl Encode for Vector2D {
+impl Encode for Vector {
     fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
     where
         W: Write + Seek,
@@ -43,8 +43,22 @@ impl Encode for Vector2D {
     }
 }
 
-impl encode::SizeHint for Vector2D {
+impl encode::SizeHint for Vector {
     fn size_hint(&self) -> u32 {
         self.x.size_hint() + self.y.size_hint()
+    }
+}
+
+impl ToXml for Vector {
+    fn tag(&self) -> &'static str {
+        "vector"
+    }
+
+    fn attributes(&self, name: &str) -> Vec<(String, String)> {
+        vec![
+            (String::from("name"), name.to_string()),
+            (String::from("x"), self.x.to_string()),
+            (String::from("y"), self.y.to_string()),
+        ]
     }
 }

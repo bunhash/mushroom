@@ -1,7 +1,7 @@
 //! WZ Image UOLs
 
 use crate::{
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
     types::{WzOffset, WzString},
 };
 use crypto::{Decryptor, Encryptor};
@@ -127,6 +127,19 @@ impl encode::SizeHint for UolString {
     }
 }
 
+impl ToXml for UolString {
+    fn tag(&self) -> &'static str {
+        "string"
+    }
+
+    fn attributes(&self, name: &str) -> Vec<(String, String)> {
+        vec![
+            (String::from("name"), name.to_string()),
+            (String::from("value"), self.as_ref().to_string()),
+        ]
+    }
+}
+
 /// Defines a UOL object and how to encode/decode it
 ///
 /// UOLs are a URI formatted path specifyig where the "borrowed" content actually resides. This is
@@ -222,7 +235,6 @@ impl Decode for UolObject {
         D: Decryptor,
     {
         u8::decode(reader)?;
-        let check = u8::decode(reader)?;
         Ok(Self {
             uri: UolString::decode(reader)?,
         })
@@ -245,5 +257,18 @@ impl encode::SizeHint for UolObject {
     #[inline]
     fn size_hint(&self) -> u32 {
         2 + self.uri.size_hint()
+    }
+}
+
+impl ToXml for UolObject {
+    fn tag(&self) -> &'static str {
+        "uol"
+    }
+
+    fn attributes(&self, name: &str) -> Vec<(String, String)> {
+        vec![
+            (String::from("name"), name.to_string()),
+            (String::from("value"), self.as_ref().to_string()),
+        ]
     }
 }

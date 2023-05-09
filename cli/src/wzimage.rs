@@ -11,7 +11,7 @@ use wz::{
     archive,
     error::{Error, Result, WzError},
     file::{image::Node, Image},
-    io::{DummyDecryptor, WzReader},
+    io::{xml::writer::XmlWriter, DummyDecryptor, WzReader},
 };
 
 pub(crate) fn do_debug(
@@ -66,8 +66,11 @@ where
     D: Decryptor,
 {
     let image = Image::parse(name, &mut reader)?;
-    /*
     let map = image.map();
+    let mut writer = XmlWriter::new(std::io::stdout());
+    writer.write(&mut map.cursor())?;
+    println!("");
+    /*
     let mut cursor = match directory {
         // Find the optional directory
         Some(ref path) => {
@@ -75,7 +78,10 @@ where
             map.cursor_at(&path)?
         }
         // Get the root
-        None => map.cursor(),
+        None => {
+            println!("{:?}", map.debug_pretty_print());
+            return Ok(());
+        }
     };
 
     // Print the directory and its immediate children

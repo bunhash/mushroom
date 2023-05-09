@@ -3,7 +3,7 @@
 use crate::{
     file::image::{
         raw::{Canvas, Property},
-        Sound, UolObject, UolString, Vector2D,
+        Sound, UolObject, Vector,
     },
     io::{decode, encode, Decode, Encode, WzReader, WzWriter},
     types::{WzOffset, WzString},
@@ -21,10 +21,10 @@ pub enum Object {
     Canvas(Canvas),
 
     /// Shape2D#Convex2D
-    Convex2D,
+    Convex,
 
     /// Shape2D#Vector2D
-    Vector2D(Vector2D),
+    Vector(Vector),
 
     /// UOL object
     Uol(UolObject),
@@ -54,8 +54,8 @@ impl Decode for Object {
         match typename.as_ref() {
             "Property" => Ok(Self::Property(Property::decode(reader)?)),
             "Canvas" => Ok(Self::Canvas(Canvas::decode(reader)?)),
-            "Shape2D#Convex2D" => Ok(Self::Convex2D),
-            "Shape2D#Vector2D" => Ok(Self::Vector2D(Vector2D::decode(reader)?)),
+            "Shape2D#Convex2D" => Ok(Self::Convex),
+            "Shape2D#Vector2D" => Ok(Self::Vector(Vector::decode(reader)?)),
             "UOL" => Ok(Self::Uol(UolObject::decode(reader)?)),
             "Sound_DX8" => Ok(Self::Sound(Sound::decode(reader)?)),
             t => Err(decode::Error::InvalidObjectType(String::from(t))),

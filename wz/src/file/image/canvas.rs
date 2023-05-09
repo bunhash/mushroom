@@ -1,6 +1,6 @@
 //! Parsed Canvas type
 
-use crate::types::WzInt;
+use crate::{io::xml::writer::ToXml, types::WzInt};
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -31,5 +31,19 @@ impl fmt::Debug for Canvas {
             "Canvas {{ width: {:?}, height: {:?}, format: {:?}, mag_level: {:?}, data: [..] }}",
             self.width, self.height, self.format, self.mag_level,
         )
+    }
+}
+
+impl ToXml for Canvas {
+    fn tag(&self) -> &'static str {
+        "canvas"
+    }
+
+    fn attributes(&self, name: &str) -> Vec<(String, String)> {
+        vec![
+            (String::from("name"), name.to_string()),
+            (String::from("width"), self.width.to_string()),
+            (String::from("height"), self.height.to_string()),
+        ]
     }
 }

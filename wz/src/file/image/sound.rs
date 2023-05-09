@@ -1,7 +1,7 @@
 //! Parsed Sound type
 
 use crate::{
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
     types::WzInt,
 };
 use crypto::{Decryptor, Encryptor};
@@ -82,5 +82,15 @@ impl encode::SizeHint for Sound {
             + self.duration.size_hint()
             + self.header.len() as u32
             + self.data.len() as u32
+    }
+}
+
+impl ToXml for Sound {
+    fn tag(&self) -> &'static str {
+        "sound"
+    }
+
+    fn attributes(&self, name: &str) -> Vec<(String, String)> {
+        vec![(String::from("name"), name.to_string())]
     }
 }
