@@ -9,6 +9,8 @@ path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
+deflate = { version = "1.0.0" }
 indextree = { version = "4.6.0" }
+inflate = { version = "0.4.5" }
 crypto = { version = "0.1.0", path = "../crypto" }
 xml-rs = { version = "0.8.8" }

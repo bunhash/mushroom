@@ -49,7 +49,7 @@ where
     D: Decryptor,
 {
     let image = Image::parse(name, &mut reader)?;
-    extract_image_from_map(image.map())
+    extract_image_from_map(image.map(), verbose)
 }
 
 pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key) -> Result<()> {

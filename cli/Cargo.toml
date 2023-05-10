@@ -10,4 +10,5 @@ path = "src/wz.rs"
 [dependencies]
 clap = { version = "4.2.4", features = ["derive"] }
 crypto = { version = "0.1.0", path = "../crypto" }
+image = { version = "0.24.6" }
 wz = { version = "0.1.0", path = "../wz" }

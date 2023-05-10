@@ -1,6 +1,10 @@
 //! Parsed Canvas type
 
-use crate::{io::xml::writer::ToXml, types::WzInt};
+use crate::{
+    io::{decode, xml::writer::ToXml},
+    types::WzInt,
+};
+use inflate::inflate_bytes_zlib;
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -41,6 +45,13 @@ impl Canvas {
 
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+
+    pub fn decompressed_data(&self) -> Result<Vec<u8>, decode::Error> {
+        match inflate_bytes_zlib(&self.data) {
+            Ok(d) => Ok(d),
+            Err(e) => Err(decode::Error::Inflate(e)),
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 //! Decoder Trait
 
-use crate::io::WzReader;
+use crate::{io::WzReader, types::WzInt};
 use crypto::Decryptor;
 use std::{
     fmt,
@@ -21,11 +21,17 @@ pub trait Decode {
 /// Decode Error Types
 #[derive(Debug)]
 pub enum Error {
+    /// Inflate error
+    Inflate(String),
+
     /// Content Type is unknown
     InvalidContentType(u8),
 
     /// The length is invalid (likely negative)
     InvalidLength(i32),
+
+    /// Invalid Image type
+    InvalidImageType(WzInt, u8),
 
     /// Invalid Object type
     InvalidObjectType(String),
@@ -52,9 +58,11 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::Inflate(s) => write!(f, "Inflate: {}", s),
             Error::InvalidContentType(t) => {
                 write!(f, "Package ContentType is invalid `{}`", t)
             }
+            Error::InvalidImageType(b, b2) => write!(f, "Invalid image type: `({}, {})`", **b, b2),
             Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
             Error::InvalidObjectType(t) => write!(f, "Invalid object type: `{}`", t),
             Error::InvalidObject => write!(f, "Invalid object"),

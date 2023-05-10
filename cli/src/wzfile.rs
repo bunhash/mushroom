@@ -15,9 +15,9 @@ use wz::{
     Archive, Builder, List,
 };
 
-mod image;
+mod imagepath;
 
-use image::ImagePath;
+use imagepath::ImagePath;
 
 pub(crate) fn do_create(
     file: &PathBuf,
