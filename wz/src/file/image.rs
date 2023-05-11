@@ -1,15 +1,15 @@
 //! WZ Image
 
 use crate::{
-    error::{Result, WzError},
-    io::{decode, Decode, WzReader},
+    error::{DecodeError, ImageError, Result},
+    io::{Decode, WzReader},
     map::{CursorMut, Map},
     types::{WzInt, WzOffset, WzString},
 };
 use crypto::Decryptor;
 use std::io::{Read, Seek};
 
-mod canvas;
+pub mod canvas;
 mod node;
 mod sound;
 mod uol;
@@ -41,7 +41,7 @@ impl Image {
                 map_property_to(p, reader, &mut map.cursor_mut())?;
                 Ok(Self { map })
             }
-            _ => Err(WzError::InvalidImage.into()),
+            _ => Err(ImageError::ImageRoot.into()),
         }
     }
 
@@ -116,7 +116,7 @@ where
                     c.width(),
                     c.height(),
                     c.format(),
-                    c.mag_level(),
+                    c.format2(),
                     Vec::from(c.data()),
                 )),
             )?;
@@ -131,7 +131,7 @@ where
             cursor.move_to(name)?;
             let num_objects = WzInt::decode(reader)?;
             if num_objects.is_negative() {
-                return Err(decode::Error::InvalidLength(*num_objects).into());
+                return Err(DecodeError::Length(*num_objects).into());
             }
             let num_objects = *num_objects as usize;
             for i in 0..num_objects {

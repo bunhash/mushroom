@@ -2,7 +2,10 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::map::{ChildNames, Children, Error, MapNode};
+use crate::{
+    error::MapError,
+    map::{ChildNames, Children, MapNode},
+};
 use indextree::{Arena, DebugPrettyPrint, NodeId};
 use std::{collections::VecDeque, fmt::Debug};
 
@@ -72,13 +75,13 @@ impl<'a, T> Cursor<'a, T> {
     }
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
-    pub fn move_to(&mut self, name: &str) -> Result<&mut Self, Error> {
+    pub fn move_to(&mut self, name: &str) -> Result<&mut Self, MapError> {
         self.position = self.get_id(self.position, name)?;
         Ok(self)
     }
 
     /// Moves the cursor to the first child.
-    pub fn first_child(&mut self) -> Result<&mut Self, Error> {
+    pub fn first_child(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -89,12 +92,12 @@ impl<'a, T> Cursor<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoChildren),
+            None => Err(MapError::NoChildren),
         }
     }
 
     /// Moves the cursor to the last child.
-    pub fn last_child(&mut self) -> Result<&mut Self, Error> {
+    pub fn last_child(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -105,12 +108,12 @@ impl<'a, T> Cursor<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoChildren),
+            None => Err(MapError::NoChildren),
         }
     }
 
     /// Moves the cursor to the previous sibling node
-    pub fn previous_sibling(&mut self) -> Result<&mut Self, Error> {
+    pub fn previous_sibling(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -121,12 +124,12 @@ impl<'a, T> Cursor<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoSibling),
+            None => Err(MapError::NoSibling),
         }
     }
 
     /// Moves the cursor to the next sibling node
-    pub fn next_sibling(&mut self) -> Result<&mut Self, Error> {
+    pub fn next_sibling(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -137,12 +140,12 @@ impl<'a, T> Cursor<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoSibling),
+            None => Err(MapError::NoSibling),
         }
     }
 
     /// Moves the cursor to the parent. Errors when already at the root node.
-    pub fn parent(&mut self) -> Result<&mut Self, Error> {
+    pub fn parent(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -153,7 +156,7 @@ impl<'a, T> Cursor<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoParent),
+            None => Err(MapError::NoParent),
         }
     }
 
@@ -175,7 +178,7 @@ impl<'a, T> Cursor<'a, T> {
 
     // *** PRIVATES *** //
 
-    fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, Error> {
+    fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, MapError> {
         match position
             .children(self.arena)
             .filter(|id| {
@@ -190,7 +193,7 @@ impl<'a, T> Cursor<'a, T> {
             .next()
         {
             Some(id) => Ok(id),
-            None => Err(Error::NotFound(String::from(name))),
+            None => Err(MapError::NotFound(String::from(name))),
         }
     }
 }

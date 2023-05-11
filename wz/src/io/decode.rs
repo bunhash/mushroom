@@ -1,100 +1,15 @@
 //! Decoder Trait
 
-use crate::{io::WzReader, types::WzInt};
+use crate::{error::Result, io::WzReader};
 use crypto::Decryptor;
-use std::{
-    fmt,
-    io::{self, Read, Seek},
-    string,
-};
+use std::io::{Read, Seek};
 
 /// Trait for decoding objects
 pub trait Decode {
     /// Decodes objects
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
         Self: Sized;
-}
-
-/// Decode Error Types
-#[derive(Debug)]
-pub enum Error {
-    /// Inflate error
-    Inflate(String),
-
-    /// Content Type is unknown
-    InvalidContentType(u8),
-
-    /// The length is invalid (likely negative)
-    InvalidLength(i32),
-
-    /// Invalid Image type
-    InvalidImageType(WzInt, u8),
-
-    /// Invalid Object type
-    InvalidObjectType(String),
-
-    /// Invalid Object
-    InvalidObject,
-
-    /// The offset is invalid (likely negative)
-    InvalidOffset(i32),
-
-    /// Invalid UOL
-    InvalidUol(u8),
-
-    /// Unable to decode UTF-8
-    Utf8(string::FromUtf8Error),
-
-    /// Unable to decode Unicode
-    Unicode(string::FromUtf16Error),
-
-    /// IO error
-    Io(io::ErrorKind),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Inflate(s) => write!(f, "Inflate: {}", s),
-            Error::InvalidContentType(t) => {
-                write!(f, "Package ContentType is invalid `{}`", t)
-            }
-            Error::InvalidImageType(b, b2) => write!(f, "Invalid image type: `({}, {})`", **b, b2),
-            Error::InvalidLength(l) => write!(f, "Invalid length: `{}`", l),
-            Error::InvalidObjectType(t) => write!(f, "Invalid object type: `{}`", t),
-            Error::InvalidObject => write!(f, "Invalid object"),
-            Error::InvalidOffset(o) => write!(f, "Invalid offset: `{}`", o),
-            Error::InvalidUol(u) => write!(f, "Invalid UOL: `{}`", u),
-            Error::Utf8(e) => write!(f, "UTF-8: {}", e),
-            Error::Unicode(e) => write!(f, "Unicode: {}", e),
-            Error::Io(kind) => write!(f, "IO: {}", kind),
-        }
-    }
-}
-
-impl From<string::FromUtf8Error> for Error {
-    fn from(other: string::FromUtf8Error) -> Self {
-        Error::Utf8(other)
-    }
-}
-
-impl From<string::FromUtf16Error> for Error {
-    fn from(other: string::FromUtf16Error) -> Self {
-        Error::Unicode(other)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(other: io::Error) -> Self {
-        Error::Io(other.kind())
-    }
-}
-
-impl From<io::ErrorKind> for Error {
-    fn from(other: io::ErrorKind) -> Self {
-        Error::Io(other)
-    }
 }

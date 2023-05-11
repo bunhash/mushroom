@@ -1,8 +1,9 @@
 //! WZ Image Canvas
 
 use crate::{
+    error::{CanvasError, DecodeError, Result},
     file::image::raw::Property,
-    io::{decode, Decode, WzReader},
+    io::{Decode, WzReader},
     types::WzInt,
 };
 use crypto::Decryptor;
@@ -13,7 +14,7 @@ pub struct Canvas {
     width: WzInt,
     height: WzInt,
     format: WzInt,
-    mag_level: u8,
+    format2: u8,
     data: Vec<u8>,
     property: Option<Property>,
 }
@@ -35,8 +36,8 @@ impl Canvas {
     }
 
     /// Returns the MagLevel
-    pub fn mag_level(&self) -> u8 {
-        self.mag_level
+    pub fn format2(&self) -> u8 {
+        self.format2
     }
 
     /// Returns the data
@@ -51,7 +52,7 @@ impl Canvas {
 }
 
 impl Decode for Canvas {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -64,16 +65,14 @@ impl Decode for Canvas {
         let width = WzInt::decode(reader)?;
         let height = WzInt::decode(reader)?;
         if width > 0x10000 || height > 0x10000 {
-            return Err(decode::Error::InvalidObject);
+            return Err(CanvasError::TooBig(*width as u32, *height as u32).into());
         }
         let format = WzInt::decode(reader)?;
-        let mag_level = u8::decode(reader)?;
-        if i32::decode(reader)? != 0 {
-            return Err(decode::Error::InvalidObject);
-        }
+        let format2 = u8::decode(reader)?;
+        i32::decode(reader)?;
         let length = i32::decode(reader)?;
         if length.is_negative() {
-            return Err(decode::Error::InvalidLength(length));
+            return Err(DecodeError::Length(length).into());
         }
         let length = length as usize - 1;
         u8::decode(reader)?;
@@ -90,7 +89,7 @@ impl Decode for Canvas {
             width,
             height,
             format,
-            mag_level,
+            format2,
             data,
             property,
         })

@@ -1,7 +1,7 @@
 //! WZ File Archive
 
 use crate::{
-    error::{Result, WzError},
+    error::{Result, PackageError},
     file::{package::ContentRef, Header, Package},
     io::{Decode, WzReader},
     map::{CursorMut, Map},
@@ -62,7 +62,7 @@ where
         let absolute_position = header.absolute_position;
         let (version_hash, version_checksum) = checksum(&version.to_string());
         if version_hash != header.version_hash {
-            Err(WzError::InvalidChecksum.into())
+            Err(PackageError::Checksum.into())
         } else {
             Ok(Self {
                 header,
@@ -116,7 +116,7 @@ where
                 return Ok(inner);
             }
         }
-        Err(WzError::BruteForceChecksum.into())
+        Err(PackageError::BruteForceChecksum.into())
     }
 
     fn map_package_to(

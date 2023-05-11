@@ -1,7 +1,8 @@
 //! Parsed Sound type
 
 use crate::{
-    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
+    error::{DecodeError, Result},
+    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
     types::WzInt,
 };
 use crypto::{Decryptor, Encryptor};
@@ -50,7 +51,7 @@ impl fmt::Debug for Sound {
 }
 
 impl Decode for Sound {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -58,7 +59,7 @@ impl Decode for Sound {
         u8::decode(reader)?;
         let data_length = WzInt::decode(reader)?;
         if data_length.is_negative() {
-            return Err(decode::Error::InvalidLength(*data_length));
+            return Err(DecodeError::Length(*data_length).into());
         }
         let data_length = *data_length as usize;
         let duration = WzInt::decode(reader)?;
@@ -75,7 +76,7 @@ impl Decode for Sound {
 }
 
 impl Encode for Sound {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -88,7 +89,7 @@ impl Encode for Sound {
     }
 }
 
-impl encode::SizeHint for Sound {
+impl SizeHint for Sound {
     fn size_hint(&self) -> u32 {
         1 + WzInt::from(self.data.len() as i32).size_hint()
             + self.duration.size_hint()

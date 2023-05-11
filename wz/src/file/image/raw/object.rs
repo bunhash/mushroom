@@ -1,11 +1,12 @@
 //! WZ Property Object
 
 use crate::{
+    error::{ImageError, Result},
     file::image::{
         raw::{Canvas, Property},
         Sound, UolObject, Vector,
     },
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, WzReader, WzWriter},
     types::{WzOffset, WzString},
 };
 use crypto::{Decryptor, Encryptor};
@@ -34,7 +35,7 @@ pub enum Object {
 }
 
 impl Decode for Object {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -49,7 +50,7 @@ impl Decode for Object {
                 reader.seek(pos)?;
                 typename
             }
-            t => return Err(decode::Error::InvalidUol(t)),
+            t => return Err(ImageError::UolType(t).into()),
         };
         match typename.as_ref() {
             "Property" => Ok(Self::Property(Property::decode(reader)?)),
@@ -58,13 +59,13 @@ impl Decode for Object {
             "Shape2D#Vector2D" => Ok(Self::Vector(Vector::decode(reader)?)),
             "UOL" => Ok(Self::Uol(UolObject::decode(reader)?)),
             "Sound_DX8" => Ok(Self::Sound(Sound::decode(reader)?)),
-            t => Err(decode::Error::InvalidObjectType(String::from(t))),
+            t => Err(ImageError::ObjectType(String::from(t)).into()),
         }
     }
 }
 
 impl Encode for Object {
-    fn encode<W, E>(&self, _writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, _writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,

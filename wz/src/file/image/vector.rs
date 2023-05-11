@@ -1,7 +1,8 @@
 //! Parsed Vector type
 
 use crate::{
-    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
+    error::Result,
+    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
     types::WzInt,
 };
 use crypto::{Decryptor, Encryptor};
@@ -20,7 +21,7 @@ impl Vector {
 }
 
 impl Decode for Vector {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -33,7 +34,7 @@ impl Decode for Vector {
 }
 
 impl Encode for Vector {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -43,7 +44,7 @@ impl Encode for Vector {
     }
 }
 
-impl encode::SizeHint for Vector {
+impl SizeHint for Vector {
     fn size_hint(&self) -> u32 {
         self.x.size_hint() + self.y.size_hint()
     }

@@ -3,7 +3,8 @@
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
 use crate::{
-    map::{ChildNames, Children, Cursor, Error, MapNode},
+    error::MapError,
+    map::{ChildNames, Children, Cursor, MapNode},
     types::WzString,
 };
 use indextree::{Arena, DebugPrettyPrint, NodeId};
@@ -78,13 +79,13 @@ impl<'a, T> CursorMut<'a, T> {
     }
 
     /// Moves the cursor to the child with the given name. Errors when the child does not exist.
-    pub fn move_to(&mut self, name: &str) -> Result<&mut Self, Error> {
+    pub fn move_to(&mut self, name: &str) -> Result<&mut Self, MapError> {
         self.position = self.get_id(self.position, name)?;
         Ok(self)
     }
 
     /// Moves the cursor to the first child.
-    pub fn first_child(&mut self) -> Result<&mut Self, Error> {
+    pub fn first_child(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -95,12 +96,12 @@ impl<'a, T> CursorMut<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoChildren),
+            None => Err(MapError::NoChildren),
         }
     }
 
     /// Moves the cursor to the last child.
-    pub fn last_child(&mut self) -> Result<&mut Self, Error> {
+    pub fn last_child(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -111,12 +112,12 @@ impl<'a, T> CursorMut<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoChildren),
+            None => Err(MapError::NoChildren),
         }
     }
 
     /// Moves the cursor to the previous sibling node
-    pub fn previous_sibling(&mut self) -> Result<&mut Self, Error> {
+    pub fn previous_sibling(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -127,12 +128,12 @@ impl<'a, T> CursorMut<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoSibling),
+            None => Err(MapError::NoSibling),
         }
     }
 
     /// Moves the cursor to the next sibling node
-    pub fn next_sibling(&mut self) -> Result<&mut Self, Error> {
+    pub fn next_sibling(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -143,12 +144,12 @@ impl<'a, T> CursorMut<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoSibling),
+            None => Err(MapError::NoSibling),
         }
     }
 
     /// Moves the cursor to the parent. Errors when already at the root node.
-    pub fn parent(&mut self) -> Result<&mut Self, Error> {
+    pub fn parent(&mut self) -> Result<&mut Self, MapError> {
         match self
             .arena
             .get(self.position)
@@ -159,7 +160,7 @@ impl<'a, T> CursorMut<'a, T> {
                 self.position = id;
                 Ok(self)
             }
-            None => Err(Error::NoParent),
+            None => Err(MapError::NoParent),
         }
     }
 
@@ -183,9 +184,9 @@ impl<'a, T> CursorMut<'a, T> {
 
     /// Renames the node at the current position. Errors when a child with the new name already
     /// exists.
-    pub fn rename(&mut self, name: WzString) -> Result<&mut Self, Error> {
+    pub fn rename(&mut self, name: WzString) -> Result<&mut Self, MapError> {
         if self.has_child(name.as_ref()) {
-            Err(Error::Duplicate(name.as_ref().to_string()))
+            Err(MapError::Duplicate(name.as_ref().to_string()))
         } else {
             self.arena
                 .get_mut(self.position)
@@ -208,9 +209,9 @@ impl<'a, T> CursorMut<'a, T> {
 
     /// Creates a new child at the current position. Errors when a child with the provided name
     /// already exists.
-    pub fn create(&mut self, name: WzString, data: T) -> Result<&mut Self, Error> {
+    pub fn create(&mut self, name: WzString, data: T) -> Result<&mut Self, MapError> {
         if self.has_child(name.as_ref()) {
-            Err(Error::Duplicate(name.as_ref().to_string()))
+            Err(MapError::Duplicate(name.as_ref().to_string()))
         } else {
             let node = self.arena.new_node(MapNode::new(name, data));
             self.position.append(node, &mut self.arena);
@@ -222,7 +223,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// child to a clipboard. If the clipboard already contains a node previously cut, that node
     /// will be purged from the map. Errors when the child does not exist. If an error occurs, the
     /// clipboard will remain unchanged.
-    pub fn cut(&mut self, name: &str) -> Result<&mut Self, Error> {
+    pub fn cut(&mut self, name: &str) -> Result<&mut Self, MapError> {
         let id = self.get_id(self.position, name)?;
         id.detach(&mut self.arena);
         if let Some(to_delete) = self.clipboard {
@@ -234,7 +235,7 @@ impl<'a, T> CursorMut<'a, T> {
 
     /// Pastes the contents of the clipboard at the current position. Errors when the clipboard is
     /// empty or another node with the same name exists.
-    pub fn paste(&mut self) -> Result<&mut Self, Error> {
+    pub fn paste(&mut self) -> Result<&mut Self, MapError> {
         match self.clipboard {
             Some(id) => {
                 let name = self
@@ -245,19 +246,19 @@ impl<'a, T> CursorMut<'a, T> {
                     .name
                     .as_ref();
                 if self.get_id(self.position, name).is_ok() {
-                    return Err(Error::Duplicate(name.to_string()));
+                    return Err(MapError::Duplicate(name.to_string()));
                 }
                 self.position.append(id, &mut self.arena);
                 self.clipboard = None;
                 Ok(self)
             }
-            None => Err(Error::ClipboardEmpty),
+            None => Err(MapError::ClipboardEmpty),
         }
     }
 
     /// Deletes the child with the given name and all of its contents. Errors when the child with
     /// the provided name does not exist.
-    pub fn delete(&mut self, name: &str) -> Result<&mut Self, Error> {
+    pub fn delete(&mut self, name: &str) -> Result<&mut Self, MapError> {
         let id = self.get_id(self.position, name)?;
         id.remove_subtree(&mut self.arena);
         Ok(self)
@@ -265,7 +266,7 @@ impl<'a, T> CursorMut<'a, T> {
 
     // *** PRIVATES *** //
 
-    fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, Error> {
+    fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, MapError> {
         match position
             .children(self.arena)
             .filter(|id| {
@@ -280,7 +281,7 @@ impl<'a, T> CursorMut<'a, T> {
             .next()
         {
             Some(id) => Ok(id),
-            None => Err(Error::NotFound(String::from(name))),
+            None => Err(MapError::NotFound(String::from(name))),
         }
     }
 }
@@ -288,10 +289,7 @@ impl<'a, T> CursorMut<'a, T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        map::{Error, Map},
-        types::WzString,
-    };
+    use crate::{error::MapError, map::Map, types::WzString};
 
     #[test]
     fn add_nodes() {
@@ -303,8 +301,8 @@ mod tests {
             .create(WzString::from("n1_2"), 3500)
             .expect("error creating n1_2");
         match cursor.create(WzString::from("n1_2"), 0) {
-            Err(Error::Duplicate(_)) => {}
-            _ => panic!("should have failed with Error::Duplicate"),
+            Err(MapError::Duplicate(_)) => {}
+            _ => panic!("should have failed with MapError::Duplicate"),
         }
         assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_1", "n1_2"]);
     }
@@ -321,8 +319,8 @@ mod tests {
             .delete("n1_1")
             .expect("should have deleted n1_1");
         match cursor.delete("n1_1") {
-            Err(Error::NotFound(_)) => {}
-            r => panic!("expected Error::NotFound, found {:?}", r),
+            Err(MapError::NotFound(_)) => {}
+            r => panic!("expected MapError::NotFound, found {:?}", r),
         }
         assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_2"]);
     }
@@ -370,8 +368,8 @@ mod tests {
             .expect("should paste n1_1");
         assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_1"]);
         match cursor.paste() {
-            Err(Error::ClipboardEmpty) => {}
-            r => panic!("expected Error::ClipboardEmpty, found {:?}", r),
+            Err(MapError::ClipboardEmpty) => {}
+            r => panic!("expected MapError::ClipboardEmpty, found {:?}", r),
         }
         cursor
             .parent()
@@ -383,8 +381,8 @@ mod tests {
             .move_to("n1_2")
             .expect("error moving to n1_2");
         match cursor.paste() {
-            Err(Error::Duplicate(_)) => {}
-            r => panic!("expected Error::Duplicate, found {:?}", r),
+            Err(MapError::Duplicate(_)) => {}
+            r => panic!("expected MapError::Duplicate, found {:?}", r),
         }
     }
 

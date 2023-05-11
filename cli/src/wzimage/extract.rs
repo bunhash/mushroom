@@ -1,16 +1,20 @@
 //! Custom Image exporter
 
-use image::{ImageBuffer, ImageFormat, Rgba};
+use image::{ImageFormat, Rgba, RgbaImage};
 use std::{borrow::Cow, fs, io::Write, path::Path};
 use wz::{
-    error::Result,
-    file::image::Node,
-    io::xml::{
-        attribute::Attribute,
-        namespace::Namespace,
-        writer::{EmitterConfig, EventWriter, ToXml, XmlEvent},
+    error::{Error, Result},
+    file::image::{Canvas, Node},
+    io::{
+        decode,
+        xml::{
+            attribute::Attribute,
+            namespace::Namespace,
+            writer::{EmitterConfig, EventWriter, ToXml, XmlEvent},
+        },
     },
     map::{Cursor, Map},
+    types::WzInt,
 };
 
 pub(crate) fn extract_image_from_map(map: &Map<Node>, verbose: bool) -> Result<()> {
@@ -75,12 +79,7 @@ where
             if verbose {
                 println!("{}", &png_out);
             }
-            let data = v.decompressed_data()?;
-            let img = encode_image(*v.width() as u32, *v.height() as u32, data.as_slice());
-            if let Err(e) = img.save_with_format(&png_out, ImageFormat::Png) {
-                panic!("Image Error: {}", e);
-            }
-            //fs::write(&png_out, data)?;
+            v.save_to_disk(&png_out, ImageFormat::Png)?;
         }
         Node::Sound(v) => {
             let res_dir = format!("{}/res", &image_dir);
@@ -136,19 +135,4 @@ where
     }
     writer.write(XmlEvent::end_element())?;
     Ok(())
-}
-
-fn encode_image(width: u32, height: u32, bytes: &[u8]) -> ImageBuffer<Rgba<u16>, Vec<u16>> {
-    let data = bytes
-        .chunks(8)
-        .map(|byte| {
-            let b = u16::from_le_bytes([byte[0], byte[1]]);
-            let g = u16::from_le_bytes([byte[2], byte[3]]);
-            let r = u16::from_le_bytes([byte[4], byte[5]]);
-            let a = u16::from_le_bytes([byte[6], byte[7]]);
-            [r, g, b, a]
-        })
-        .flatten()
-        .collect::<Vec<u16>>();
-    ImageBuffer::from_raw(width, height, data).unwrap()
 }

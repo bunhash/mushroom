@@ -1,7 +1,8 @@
 //! WZ Image UOLs
 
 use crate::{
-    io::{decode, encode, xml::writer::ToXml, Decode, Encode, WzReader, WzWriter},
+    error::{ImageError, Result},
+    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
     types::{WzOffset, WzString},
 };
 use crypto::{Decryptor, Encryptor};
@@ -88,7 +89,7 @@ impl PartialEq<UolString> for &str {
 }
 
 impl Decode for UolString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -104,13 +105,13 @@ impl Decode for UolString {
                 reader.seek(pos)?;
                 Ok(Self(string))
             }
-            u => Err(decode::Error::InvalidUol(u)),
+            u => Err(ImageError::UolType(u).into()),
         }
     }
 }
 
 impl Encode for UolString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -120,7 +121,7 @@ impl Encode for UolString {
     }
 }
 
-impl encode::SizeHint for UolString {
+impl SizeHint for UolString {
     #[inline]
     fn size_hint(&self) -> u32 {
         1 + self.0.size_hint()
@@ -229,7 +230,7 @@ impl PartialEq<UolObject> for &str {
 }
 
 impl Decode for UolObject {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -242,7 +243,7 @@ impl Decode for UolObject {
 }
 
 impl Encode for UolObject {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -253,7 +254,7 @@ impl Encode for UolObject {
     }
 }
 
-impl encode::SizeHint for UolObject {
+impl SizeHint for UolObject {
     #[inline]
     fn size_hint(&self) -> u32 {
         2 + self.uri.size_hint()

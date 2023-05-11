@@ -1,12 +1,12 @@
 //! WZ Archive Builder
 
 use crate::{
-    error::{Result, WzError},
+    error::{PackageError, Result},
     file::{
         package::{ContentRef, Metadata},
         Header,
     },
-    io::{encode::SizeHint, DummyEncryptor, Encode, WzWriter},
+    io::{DummyEncryptor, Encode, SizeHint, WzWriter},
     map::{Cursor, CursorMut, Map},
     types::{WzInt, WzOffset, WzString},
 };
@@ -119,14 +119,14 @@ where
         let path = Path::new(path);
         let parent = match path.parent() {
             Some(p) => p,
-            None => return Err(WzError::InvalidPathName.into()),
+            None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
         };
         let name = match path.file_name() {
             Some(name) => match name.to_str() {
                 Some(name) => name,
-                None => return Err(WzError::InvalidPathName.into()),
+                None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
             },
-            None => return Err(WzError::InvalidPathName.into()),
+            None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
         };
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
@@ -160,7 +160,7 @@ where
         let absolute_position = header.absolute_position;
         let (version_hash, version_checksum) = checksum(&version.to_string());
         if version_hash != header.version_hash {
-            return Err(WzError::InvalidChecksum.into());
+            return Err(PackageError::Checksum.into());
         }
         self.calculate_metadata(absolute_position, version_checksum)?;
 
@@ -188,12 +188,12 @@ where
         let mut cursor = self.map.cursor_mut();
         let path = match Path::new(path).strip_prefix(cursor.name()) {
             Ok(p) => p,
-            Err(_) => return Err(WzError::MultipleRoots.into()),
+            Err(_) => return Err(PackageError::MultipleRoots.into()),
         };
         for part in path.iter() {
             let name = match part.to_str() {
                 Some(n) => n,
-                None => return Err(WzError::InvalidPathName.into()),
+                None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
             };
             if !cursor.has_child(name) {
                 cursor.create(

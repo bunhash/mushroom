@@ -1,6 +1,9 @@
 //! WZ String Formats
 
-use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    error::{DecodeError, Result},
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+};
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},
@@ -16,7 +19,7 @@ impl_str!(CString);
 impl_str_eq!(CString, &'a String, String, &'a str, str);
 
 impl Decode for CString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -33,7 +36,7 @@ impl Decode for CString {
 }
 
 impl Encode for CString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -43,7 +46,7 @@ impl Encode for CString {
     }
 }
 
-impl encode::SizeHint for CString {
+impl SizeHint for CString {
     #[inline]
     fn size_hint(&self) -> u32 {
         self.0.len() as u32 + 1
@@ -59,7 +62,7 @@ impl_str!(WzString);
 impl_str_eq!(WzString, &'a String, String, &'a str, str);
 
 impl Decode for WzString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -72,7 +75,7 @@ impl Decode for WzString {
         };
         // Sanity check
         if length <= 0 {
-            return Err(decode::Error::InvalidLength(length).into());
+            return Err(DecodeError::Length(length).into());
         }
         Ok(Self(if check < 0 {
             // UTF-8
@@ -85,7 +88,7 @@ impl Decode for WzString {
 }
 
 impl Encode for WzString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -125,7 +128,7 @@ impl Encode for WzString {
     }
 }
 
-impl encode::SizeHint for WzString {
+impl SizeHint for WzString {
     #[inline]
     fn size_hint(&self) -> u32 {
         let length = self.0.len() as u32;

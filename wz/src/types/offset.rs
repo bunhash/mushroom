@@ -1,6 +1,9 @@
 //! WZ Offset Structure
 
-use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    error::Result,
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+};
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},
@@ -70,7 +73,7 @@ impl WzOffset {
 }
 
 impl Decode for WzOffset {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -87,7 +90,7 @@ impl Decode for WzOffset {
 }
 
 impl Encode for WzOffset {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -102,7 +105,7 @@ impl Encode for WzOffset {
     }
 }
 
-impl encode::SizeHint for WzOffset {
+impl SizeHint for WzOffset {
     #[inline]
     fn size_hint(&self) -> u32 {
         4

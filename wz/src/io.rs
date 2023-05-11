@@ -1,12 +1,13 @@
 //! WZ IO
 
+mod decode;
+mod encode;
 mod reader;
 mod writer;
 
-pub mod decode;
-pub mod encode;
-
 pub mod xml;
+
+pub(crate) use encode::SizeHint;
 
 pub use decode::Decode;
 pub use encode::Encode;

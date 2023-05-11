@@ -1,7 +1,8 @@
 //! Content Metadata
 
 use crate::{
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    error::{DecodeError, PackageError, Result},
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
     types::{WzInt, WzOffset, WzString},
 };
 use crypto::{Decryptor, Encryptor};
@@ -45,7 +46,7 @@ impl ContentRef {
 }
 
 impl Decode for ContentRef {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -77,7 +78,7 @@ impl Decode for ContentRef {
                 WzInt::decode(reader)?,
                 WzOffset::decode(reader)?,
             ),
-            t => return Err(decode::Error::InvalidContentType(t)),
+            t => return Err(PackageError::ContentType(t).into()),
         };
         match tag {
             3 => Ok(ContentRef::Package(Metadata {
@@ -92,13 +93,13 @@ impl Decode for ContentRef {
                 checksum,
                 offset,
             })),
-            t => Err(decode::Error::InvalidContentType(t)),
+            t => Err(PackageError::ContentType(t).into()),
         }
     }
 }
 
 impl Encode for ContentRef {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -116,7 +117,7 @@ impl Encode for ContentRef {
     }
 }
 
-impl encode::SizeHint for ContentRef {
+impl SizeHint for ContentRef {
     #[inline]
     fn size_hint(&self) -> u32 {
         match &self {
@@ -168,17 +169,14 @@ impl Metadata {
         self.offset
     }
 
-    fn dereference_name<R, D>(
-        offset: i32,
-        reader: &mut WzReader<R, D>,
-    ) -> Result<(u8, WzString), decode::Error>
+    fn dereference_name<R, D>(offset: i32, reader: &mut WzReader<R, D>) -> Result<(u8, WzString)>
     where
         R: Read + Seek,
         D: Decryptor,
     {
         if offset.is_negative() {
             // sanity check
-            return Err(decode::Error::InvalidOffset(offset));
+            return Err(DecodeError::Offset(offset).into());
         }
 
         // Get current position
@@ -197,13 +195,13 @@ impl Metadata {
         // Sanity check to ensure the tag is valid
         match tag {
             3 | 4 => Ok((tag, name)),
-            t => Err(decode::Error::InvalidContentType(t)),
+            t => Err(PackageError::ContentType(t).into()),
         }
     }
 }
 
 impl Encode for Metadata {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -215,7 +213,7 @@ impl Encode for Metadata {
     }
 }
 
-impl encode::SizeHint for Metadata {
+impl SizeHint for Metadata {
     #[inline]
     fn size_hint(&self) -> u32 {
         self.name.size_hint()

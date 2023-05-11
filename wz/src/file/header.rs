@@ -1,8 +1,8 @@
 //! WZ Archive Header
 
 use crate::{
-    error::{self, WzError},
-    io::{encode, Encode, WzWriter},
+    error::{PackageError, Result},
+    io::{Encode, WzWriter},
     types::CString,
 };
 use crypto::{checksum, Encryptor};
@@ -45,7 +45,7 @@ impl Header {
     }
 
     /// Reads the header at the beginning of the WZ archive
-    pub fn from_reader<R>(reader: &mut R) -> error::Result<Header>
+    pub fn from_reader<R>(reader: &mut R) -> Result<Header>
     where
         R: Read,
     {
@@ -57,7 +57,7 @@ impl Header {
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
         if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
-            return Err(WzError::InvalidHeader.into());
+            return Err(PackageError::Header.into());
         }
 
         // Read the size
@@ -70,7 +70,7 @@ impl Header {
         absolute_position.copy_from_slice(&data[12..16]);
         let absolute_position = i32::from_le_bytes(absolute_position);
         if absolute_position.is_negative() {
-            return Err(WzError::InvalidHeader.into());
+            return Err(PackageError::Header.into());
         }
 
         // Read the description
@@ -78,7 +78,7 @@ impl Header {
         reader.read_exact(&mut description)?;
         let description = CString::from(match String::from_utf8(description) {
             Ok(s) => s,
-            Err(_) => return Err(WzError::InvalidHeader.into()),
+            Err(_) => return Err(PackageError::Header.into()),
         });
 
         // Skip the null
@@ -113,7 +113,7 @@ impl Header {
 
 impl Encode for Header {
     /// Encodes objects
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,

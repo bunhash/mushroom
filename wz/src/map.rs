@@ -1,21 +1,18 @@
 //! Generic map of WZ Package and Image structures
 
-use crate::types::WzString;
+use crate::{error::MapError, types::WzString};
 
 use indextree::{Arena, NodeId};
 
 mod children;
 mod cursor;
 mod cursor_mut;
-mod error;
 mod metadata;
 mod node;
-mod size_hint;
 
 pub use children::{ChildNames, Children};
 pub use cursor::Cursor;
 pub use cursor_mut::CursorMut;
-pub use error::Error;
 pub use indextree::DebugPrettyPrint;
 pub use node::MapNode;
 
@@ -48,12 +45,12 @@ impl<T> Map<T> {
     }
 
     /// Creates a cursor inside the root that has read-only access to the map data
-    pub fn cursor_at<'a>(&'a self, uri: &[&str]) -> Result<Cursor<'a, T>, Error> {
+    pub fn cursor_at<'a>(&'a self, uri: &[&str]) -> Result<Cursor<'a, T>, MapError> {
         Ok(Cursor::new(self.get_id(uri)?, &self.arena))
     }
 
     /// Creates a cursor inside the root that has mutable access to the map data
-    pub fn cursor_mut_at<'a>(&'a mut self, uri: &[&str]) -> Result<CursorMut<'a, T>, Error> {
+    pub fn cursor_mut_at<'a>(&'a mut self, uri: &[&str]) -> Result<CursorMut<'a, T>, MapError> {
         Ok(CursorMut::new(self.get_id(uri)?, &mut self.arena))
     }
 
@@ -68,13 +65,13 @@ impl<T> Map<T> {
     }
 
     /// Renames the root node
-    pub fn rename(&mut self, name: WzString) -> Result<(), Error> {
+    pub fn rename(&mut self, name: WzString) -> Result<(), MapError> {
         self.cursor_mut().rename(name)?;
         Ok(())
     }
 
     /// Gets the data at the uri path. Errors when the node does not exist.
-    pub fn get(&self, uri: &[&str]) -> Result<&T, Error> {
+    pub fn get(&self, uri: &[&str]) -> Result<&T, MapError> {
         Ok(&self
             .arena
             .get(self.get_id(uri)?)
@@ -98,9 +95,9 @@ impl<T> Map<T> {
 
     // *** PRIVATES *** //
 
-    fn get_id(&self, uri: &[&str]) -> Result<NodeId, Error> {
+    fn get_id(&self, uri: &[&str]) -> Result<NodeId, MapError> {
         if uri.len() == 0 {
-            Err(Error::InvalidPath)
+            Err(MapError::Path(uri.join("/")))
         } else {
             if uri[0] == self.name() {
                 let mut cursor = self.cursor();
@@ -109,7 +106,7 @@ impl<T> Map<T> {
                 }
                 Ok(cursor.position)
             } else {
-                Err(Error::NotFound(String::from(uri[0])))
+                Err(MapError::NotFound(String::from(uri[0])))
             }
         }
     }

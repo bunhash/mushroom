@@ -1,8 +1,9 @@
 //! WZ Image Property Type
 
 use crate::{
+    error::{DecodeError, Result},
     file::image::raw::ContentRef,
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, WzReader, WzWriter},
     types::WzInt,
 };
 use crypto::{Decryptor, Encryptor};
@@ -30,7 +31,7 @@ impl Property {
 }
 
 impl Decode for Property {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -38,7 +39,7 @@ impl Decode for Property {
         u16::decode(reader)?;
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
-            return Err(decode::Error::InvalidLength(*num_contents));
+            return Err(DecodeError::Length(*num_contents).into());
         }
         let num_contents = *num_contents as usize;
         let mut contents = Vec::with_capacity(num_contents);
@@ -50,7 +51,7 @@ impl Decode for Property {
 }
 
 impl Encode for Property {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,

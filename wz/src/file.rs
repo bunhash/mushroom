@@ -5,6 +5,6 @@ mod header;
 pub mod image;
 pub mod package;
 
+pub use self::image::Image;
 pub use header::Header;
-pub use image::Image;
 pub use package::Package;

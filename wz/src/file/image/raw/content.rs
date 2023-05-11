@@ -1,8 +1,9 @@
 //! Object in a WZ image
 
 use crate::{
+    error::{ImageError, Result},
     file::image::UolString,
-    io::{decode, encode, Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
     types::{WzInt, WzLong, WzOffset},
 };
 use crypto::{Decryptor, Encryptor};
@@ -41,7 +42,7 @@ pub enum ContentRef {
 }
 
 impl Decode for ContentRef {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -79,13 +80,13 @@ impl Decode for ContentRef {
                 reader.seek(offset + size)?;
                 Ok(Self::Object { name, size, offset })
             }
-            t => Err(decode::Error::InvalidContentType(t)),
+            t => Err(ImageError::PropertyType(t).into()),
         }
     }
 }
 
 impl Encode for ContentRef {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -124,7 +125,7 @@ impl Encode for ContentRef {
     }
 }
 
-impl encode::SizeHint for ContentRef {
+impl SizeHint for ContentRef {
     #[inline]
     fn size_hint(&self) -> u32 {
         match self {

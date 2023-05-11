@@ -10,7 +10,7 @@ use std::{
 use wz::{
     error::{Error, Result},
     file::{image::Node, Image},
-    io::{DummyDecryptor, WzReader},
+    io::{decode, DummyDecryptor, WzReader},
     map::Cursor,
 };
 
@@ -84,34 +84,46 @@ where
 {
     let image = Image::parse(name, &mut reader)?;
     let map = image.map();
-    let mut cursor = match directory {
-        // Find the optional directory
-        Some(ref path) => {
-            let path = path.split("/").collect::<Vec<&str>>();
-            map.cursor_at(&path)?
-        }
-        // Get the root
-        None => {
-            println!("{:?}", map.debug_pretty_print());
-            return Ok(());
-        }
+    map.walk(|cursor| match cursor.get() {
+        Node::Canvas(v) => match *v.format() {
+            1 | 2 => Ok::<(), Error>(()),
+            _ => {
+                println!("{}", name);
+                Err(decode::Error::InvalidImageType(v.format()).into())
+            }
+        },
+        _ => Ok::<(), Error>(()),
+    })?;
+    /*
+       let mut cursor = match directory {
+    // Find the optional directory
+    Some(ref path) => {
+    let path = path.split("/").collect::<Vec<&str>>();
+    map.cursor_at(&path)?
+    }
+    // Get the root
+    None => {
+    println!("{:?}", map.debug_pretty_print());
+    return Ok(());
+    }
     };
 
     // Print the directory and its immediate children
     println!("{:?} : {:?}", cursor.name(), cursor.get());
     let mut num_children = cursor.children().count();
     if num_children > 0 {
-        cursor.first_child()?;
-        loop {
-            if num_children <= 1 {
-                println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
-                break;
-            } else {
-                println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
-            }
-            num_children = num_children - 1;
-            cursor.next_sibling()?;
-        }
+    cursor.first_child()?;
+    loop {
+    if num_children <= 1 {
+    println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
+    break;
+    } else {
+    println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
     }
+    num_children = num_children - 1;
+    cursor.next_sibling()?;
+    }
+    }
+    */
     Ok(())
 }

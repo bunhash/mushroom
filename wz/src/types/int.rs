@@ -1,6 +1,9 @@
 //! WZ Int and Long Formats
 
-use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    error::Result,
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+};
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},
@@ -22,7 +25,7 @@ impl_conversions!(WzInt, i32, u32);
 impl_conversions!(WzInt, i32, u64);
 
 impl Decode for WzInt {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -36,7 +39,7 @@ impl Decode for WzInt {
 }
 
 impl Encode for WzInt {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -50,7 +53,7 @@ impl Encode for WzInt {
     }
 }
 
-impl encode::SizeHint for WzInt {
+impl SizeHint for WzInt {
     #[inline]
     fn size_hint(&self) -> u32 {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
@@ -76,7 +79,7 @@ impl_conversions!(WzLong, i64, u32);
 impl_conversions!(WzLong, i64, u64);
 
 impl Decode for WzLong {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -90,7 +93,7 @@ impl Decode for WzLong {
 }
 
 impl Encode for WzLong {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -104,7 +107,7 @@ impl Encode for WzLong {
     }
 }
 
-impl encode::SizeHint for WzLong {
+impl SizeHint for WzLong {
     #[inline]
     fn size_hint(&self) -> u32 {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {

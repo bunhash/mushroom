@@ -1,11 +1,14 @@
 //! Primitive WZ Formats
 
-use crate::io::{decode, encode, Decode, Encode, WzReader, WzWriter};
+use crate::{
+    error::Result,
+    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+};
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
 
 impl Decode for i8 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -15,7 +18,7 @@ impl Decode for i8 {
 }
 
 impl Encode for i8 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -24,7 +27,7 @@ impl Encode for i8 {
     }
 }
 
-impl encode::SizeHint for i8 {
+impl SizeHint for i8 {
     #[inline]
     fn size_hint(&self) -> u32 {
         1
@@ -32,7 +35,7 @@ impl encode::SizeHint for i8 {
 }
 
 impl Decode for i16 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -44,7 +47,7 @@ impl Decode for i16 {
 }
 
 impl Encode for i16 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -53,7 +56,7 @@ impl Encode for i16 {
     }
 }
 
-impl encode::SizeHint for i16 {
+impl SizeHint for i16 {
     #[inline]
     fn size_hint(&self) -> u32 {
         2
@@ -61,7 +64,7 @@ impl encode::SizeHint for i16 {
 }
 
 impl Decode for i32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -73,7 +76,7 @@ impl Decode for i32 {
 }
 
 impl Encode for i32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -82,7 +85,7 @@ impl Encode for i32 {
     }
 }
 
-impl encode::SizeHint for i32 {
+impl SizeHint for i32 {
     #[inline]
     fn size_hint(&self) -> u32 {
         4
@@ -90,7 +93,7 @@ impl encode::SizeHint for i32 {
 }
 
 impl Decode for i64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -102,7 +105,7 @@ impl Decode for i64 {
 }
 
 impl Encode for i64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -111,7 +114,7 @@ impl Encode for i64 {
     }
 }
 
-impl encode::SizeHint for i64 {
+impl SizeHint for i64 {
     #[inline]
     fn size_hint(&self) -> u32 {
         8
@@ -119,7 +122,7 @@ impl encode::SizeHint for i64 {
 }
 
 impl Decode for u8 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -129,7 +132,7 @@ impl Decode for u8 {
 }
 
 impl Encode for u8 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -138,7 +141,7 @@ impl Encode for u8 {
     }
 }
 
-impl encode::SizeHint for u8 {
+impl SizeHint for u8 {
     #[inline]
     fn size_hint(&self) -> u32 {
         1
@@ -146,7 +149,7 @@ impl encode::SizeHint for u8 {
 }
 
 impl Decode for u16 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -158,7 +161,7 @@ impl Decode for u16 {
 }
 
 impl Encode for u16 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -167,7 +170,7 @@ impl Encode for u16 {
     }
 }
 
-impl encode::SizeHint for u16 {
+impl SizeHint for u16 {
     #[inline]
     fn size_hint(&self) -> u32 {
         2
@@ -175,7 +178,7 @@ impl encode::SizeHint for u16 {
 }
 
 impl Decode for u32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -187,7 +190,7 @@ impl Decode for u32 {
 }
 
 impl Encode for u32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -196,7 +199,7 @@ impl Encode for u32 {
     }
 }
 
-impl encode::SizeHint for u32 {
+impl SizeHint for u32 {
     #[inline]
     fn size_hint(&self) -> u32 {
         4
@@ -204,7 +207,7 @@ impl encode::SizeHint for u32 {
 }
 
 impl Decode for u64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -216,7 +219,7 @@ impl Decode for u64 {
 }
 
 impl Encode for u64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -225,7 +228,7 @@ impl Encode for u64 {
     }
 }
 
-impl encode::SizeHint for u64 {
+impl SizeHint for u64 {
     #[inline]
     fn size_hint(&self) -> u32 {
         8
@@ -233,7 +236,7 @@ impl encode::SizeHint for u64 {
 }
 
 impl Decode for f32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -250,7 +253,7 @@ impl Decode for f32 {
 }
 
 impl Encode for f32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -264,7 +267,7 @@ impl Encode for f32 {
     }
 }
 
-impl encode::SizeHint for f32 {
+impl SizeHint for f32 {
     #[inline]
     fn size_hint(&self) -> u32 {
         if *self as u32 == 0 {
@@ -276,7 +279,7 @@ impl encode::SizeHint for f32 {
 }
 
 impl Decode for f64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self, decode::Error>
+    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -288,7 +291,7 @@ impl Decode for f64 {
 }
 
 impl Encode for f64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<(), encode::Error>
+    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
@@ -297,7 +300,7 @@ impl Encode for f64 {
     }
 }
 
-impl encode::SizeHint for f64 {
+impl SizeHint for f64 {
     #[inline]
     fn size_hint(&self) -> u32 {
         8

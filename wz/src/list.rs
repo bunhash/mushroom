@@ -1,6 +1,9 @@
 //! List.wz Decoder
 
-use crate::io::{decode, Decode, DummyDecryptor, WzReader};
+use crate::{
+    error::{Error, Result},
+    io::{Decode, DummyDecryptor, WzReader},
+};
 use crypto::Decryptor;
 use std::{
     fs::File,
@@ -13,7 +16,7 @@ pub struct List {
 }
 
 impl List {
-    pub fn parse<D>(file: File, mut decryptor: D) -> Result<Self, decode::Error>
+    pub fn parse<D>(file: File, mut decryptor: D) -> Result<Self>
     where
         D: Decryptor,
     {
@@ -22,7 +25,7 @@ impl List {
         loop {
             let length = match u32::decode(&mut reader) {
                 Ok(n) => n,
-                Err(decode::Error::Io(ErrorKind::UnexpectedEof)) => break,
+                Err(Error::Io(ErrorKind::UnexpectedEof)) => break,
                 Err(e) => return Err(e),
             };
             strings.push(read_unicode_bytes(
@@ -49,7 +52,7 @@ fn read_unicode_bytes<D>(
     reader: &mut WzReader<BufReader<File>, DummyDecryptor>,
     decryptor: &mut D,
     len: usize,
-) -> Result<String, decode::Error>
+) -> Result<String>
 where
     D: Decryptor,
 {
