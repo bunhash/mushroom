@@ -3,7 +3,7 @@
 use crate::{
     error::{DecodeError, PackageError, Result},
     io::{Decode, Encode, SizeHint, WzReader, WzWriter},
-    types::{WzInt, WzOffset, WzString},
+    types::{WzInt, WzOffset},
 };
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -73,7 +73,7 @@ impl Decode for ContentRef {
             }
             3 | 4 => (
                 tag,
-                WzString::decode(reader)?,
+                String::decode(reader)?,
                 WzInt::decode(reader)?,
                 WzInt::decode(reader)?,
                 WzOffset::decode(reader)?,
@@ -131,7 +131,7 @@ impl SizeHint for ContentRef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
     /// Name of the content
-    pub(crate) name: WzString,
+    pub(crate) name: String,
 
     /// Size of the content
     pub(crate) size: WzInt,
@@ -144,7 +144,7 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn new(name: WzString, size: WzInt, checksum: WzInt, offset: WzOffset) -> Self {
+    pub fn new(name: String, size: WzInt, checksum: WzInt, offset: WzOffset) -> Self {
         Self {
             name,
             size,
@@ -169,7 +169,7 @@ impl Metadata {
         self.offset
     }
 
-    fn dereference_name<R, D>(offset: i32, reader: &mut WzReader<R, D>) -> Result<(u8, WzString)>
+    fn dereference_name<R, D>(offset: i32, reader: &mut WzReader<R, D>) -> Result<(u8, String)>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -187,7 +187,7 @@ impl Metadata {
 
         // Read the "real" tag and name
         let tag = reader.read_byte()?;
-        let name = WzString::decode(reader)?;
+        let name = String::decode(reader)?;
 
         // Seek back
         reader.seek(pos)?;

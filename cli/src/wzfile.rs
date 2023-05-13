@@ -9,7 +9,7 @@ use std::{
 };
 use wz::{
     archive,
-    error::{Error, Result, WzError},
+    error::{Error, PackageError, Result},
     file::Header,
     io::{DummyDecryptor, DummyEncryptor},
     Archive, Builder, List,
@@ -27,15 +27,15 @@ pub(crate) fn do_create(
     version: u16,
 ) -> Result<()> {
     // Remove the WZ archive if it exists
-    if Path::new(&file).is_file() {
-        fs::remove_file(&file)?;
+    if Path::new(file).is_file() {
+        fs::remove_file(file)?;
     }
-    let file = fs::File::create(&file)?;
+    let file = fs::File::create(file)?;
 
     // Get the target directory and ensure it is actually a directory
     let path = PathBuf::from(&directory);
     if !path.is_dir() {
-        return Err(WzError::InvalidPackage.into());
+        return Err(PackageError::PathName(path.to_string_lossy().into()).into());
     }
     let target = file_name(&path)?;
     if verbose {
@@ -69,7 +69,7 @@ fn recursive_do_create(
     builder: &mut Builder<ImagePath>,
     verbose: bool,
 ) -> Result<()> {
-    for file in fs::read_dir(&current)? {
+    for file in fs::read_dir(current)? {
         let path = file?.path();
         let stripped_path = path.strip_prefix(parent).expect("prefix should exist");
         if verbose {
@@ -86,8 +86,8 @@ fn recursive_do_create(
 }
 
 pub(crate) fn do_list(file: &PathBuf, key: Key, version: Option<u16>) -> Result<()> {
-    let name = file_name(&file)?;
-    let file = fs::File::open(&file)?;
+    let name = file_name(file)?;
+    let file = fs::File::open(file)?;
 
     // Map the WZ archive
     let map = match key {
@@ -120,8 +120,8 @@ pub(crate) fn do_extract(
     key: Key,
     version: Option<u16>,
 ) -> Result<()> {
-    let filename = file_name(&file)?;
-    let file = fs::File::open(&file)?;
+    let filename = file_name(file)?;
+    let file = fs::File::open(file)?;
     match key {
         Key::Gms => extract(
             filename,
@@ -189,8 +189,8 @@ pub(crate) fn do_debug(
     key: Key,
     version: Option<u16>,
 ) -> Result<()> {
-    let name = file_name(&file)?;
-    let file = fs::File::open(&file)?;
+    let name = file_name(file)?;
+    let file = fs::File::open(file)?;
     match key {
         Key::Gms => match version {
             Some(v) => debug(
@@ -237,7 +237,7 @@ where
     let mut cursor = match directory {
         // Find the optional directory
         Some(ref path) => {
-            let path = path.split("/").collect::<Vec<&str>>();
+            let path = path.split('/').collect::<Vec<&str>>();
             map.cursor_at(&path)?
         }
         // Get the root
@@ -256,7 +256,7 @@ where
             } else {
                 println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
             }
-            num_children = num_children - 1;
+            num_children -= 1;
             cursor.next_sibling()?;
         }
     }
@@ -264,7 +264,7 @@ where
 }
 
 pub(crate) fn do_list_file(file: &PathBuf, key: Key) -> Result<()> {
-    let file = fs::File::open(&file)?;
+    let file = fs::File::open(file)?;
     let list = match key {
         Key::Gms => List::parse(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
         Key::Kms => List::parse(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,

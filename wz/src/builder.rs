@@ -8,7 +8,7 @@ use crate::{
     },
     io::{DummyEncryptor, Encode, SizeHint, WzWriter},
     map::{Cursor, CursorMut, Map},
-    types::{WzInt, WzOffset, WzString},
+    types::{WzInt, WzOffset},
 };
 use crypto::{checksum, Encryptor};
 use std::{
@@ -73,7 +73,7 @@ where
     pub fn new(name: &str) -> Self {
         Self {
             map: Map::new(
-                WzString::from(name),
+                String::from(name),
                 Node::Package {
                     size: WzInt::from(0),
                     checksum: WzInt::from(0),
@@ -130,7 +130,7 @@ where
         };
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
-            WzString::from(name),
+            String::from(name),
             Node::Image {
                 image,
                 offset: WzOffset::from(0),
@@ -197,7 +197,7 @@ where
             };
             if !cursor.has_child(name) {
                 cursor.create(
-                    WzString::from(name),
+                    String::from(name),
                     Node::Package {
                         size: WzInt::from(0),
                         checksum: WzInt::from(0),
@@ -274,10 +274,10 @@ where
             // Calculate the checksum of the child and get its encoded size
             let (child_size, child_checksum) =
                 recursive_calculate_size_and_checksum(absolute_position, version_checksum, cursor)?;
-            calc_size = calc_size + *child_size;
-            calc_checksum = calc_checksum + Wrapping(*child_checksum);
-            num_children = num_children - 1;
-            if num_children <= 0 {
+            calc_size += *child_size;
+            calc_checksum += Wrapping(*child_checksum);
+            num_children -= 1;
+            if num_children == 0 {
                 break;
             }
             cursor.next_sibling()?;
@@ -300,7 +300,7 @@ where
     };
 
     // Encode the content metadata
-    let name = WzString::from(cursor.name());
+    let name = String::from(cursor.name());
     let content_ref = match cursor.get() {
         Node::Package {
             size,
@@ -358,9 +358,9 @@ where
 
     // Calculate the sibling offset and return the number of children
     let next_offset = match cursor.get() {
-        Node::Package { size, .. } => *current_offset + u32::from(*size),
+        Node::Package { size, .. } => *current_offset + **size as u32,
         // If it is an image, return the next offset and stop here. Image's have no children.
-        Node::Image { ref image, .. } => return Ok(current_offset + *image.size()? as u32),
+        Node::Image { ref image, .. } => return Ok(current_offset + (*image.size()?).into()),
     };
 
     // Get num content dn update next_offset
@@ -374,7 +374,7 @@ where
         let mut count = num_content;
         cursor.first_child()?;
         loop {
-            let name = WzString::from(cursor.name());
+            let name = String::from(cursor.name());
             let content_ref = match cursor.get() {
                 Node::Package {
                     ref size,
@@ -391,8 +391,8 @@ where
                     *offset,
                 )),
             };
-            metadata_size = metadata_size + content_ref.size_hint() as i32;
-            count = count - 1;
+            metadata_size += content_ref.size_hint() as i32;
+            count -= 1;
             if count <= 0 {
                 break;
             }
@@ -401,12 +401,12 @@ where
         cursor.parent()?;
 
         // Modify children. The order is always the order of insertion.
-        let mut child_offset = WzOffset::from(current_offset + metadata_size);
+        let mut child_offset = current_offset + metadata_size.into();
         let mut count = num_content;
         cursor.first_child()?;
         loop {
             child_offset = recursive_calculate_offset(child_offset, cursor)?;
-            count = count - 1;
+            count -= 1;
             if count <= 0 {
                 break;
             }
@@ -439,7 +439,7 @@ where
         let mut count = num_content;
         cursor.first_child()?;
         loop {
-            let name = WzString::from(cursor.name());
+            let name = String::from(cursor.name());
             let content_ref = match cursor.get() {
                 Node::Package {
                     ref size,
@@ -457,7 +457,7 @@ where
                 )),
             };
             content_ref.encode(writer)?;
-            count = count - 1;
+            count -= 1;
             if count <= 0 {
                 break;
             }
@@ -470,7 +470,7 @@ where
         cursor.first_child()?;
         loop {
             recursive_save(cursor, writer)?;
-            count = count - 1;
+            count -= 1;
             if count <= 0 {
                 break;
             }

@@ -19,7 +19,7 @@ pub trait ToXml {
 
     /// Any raw text to be appended as a child
     fn text(&self) -> Option<&str> {
-        return None;
+        None
     }
 }
 
@@ -80,8 +80,8 @@ where
             cursor.first_child()?;
             loop {
                 self.write(cursor)?;
-                num_children = num_children - 1;
-                if num_children <= 0 {
+                num_children -= 1;
+                if num_children == 0 {
                     break;
                 }
                 cursor.next_sibling()?;
@@ -99,7 +99,6 @@ mod tests {
     use crate::{
         io::xml::writer::{EmitterConfig, ToXml, XmlWriter},
         map::Map,
-        types::WzString,
     };
     use std::io::Cursor;
 
@@ -117,20 +116,20 @@ mod tests {
     }
 
     fn make_map() -> Map<i32> {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(String::from("n1"), 100);
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(String::from("n1_1"), 150)
             .expect("error creating n1_1")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_1_1"), 155)
+            .create(String::from("n1_1_1"), 155)
             .expect("error creating n1_1_1")
-            .create(WzString::from("n1_1_2"), 175)
+            .create(String::from("n1_1_2"), 175)
             .expect("error creating n1_1_1")
             .move_to("n1_1_1")
             .expect("error moving into n1_1_1")
-            .create(WzString::from("n1_1_1_1"), 255)
+            .create(String::from("n1_1_1_1"), 255)
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");

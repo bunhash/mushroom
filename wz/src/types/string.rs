@@ -1,67 +1,13 @@
-//! WZ String Formats
+//! WZ String Format
 
 use crate::{
     error::{DecodeError, Result},
     io::{Decode, Encode, SizeHint, WzReader, WzWriter},
 };
 use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    ops::{Deref, DerefMut},
-};
+use std::io::{Read, Seek, Write};
 
-/// Defines how to encode/decode a C-style string
-#[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct CString(String);
-
-impl_str!(CString);
-
-impl_str_eq!(CString, &'a String, String, &'a str, str);
-
-impl Decode for CString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let mut buf = Vec::new();
-        loop {
-            match reader.read_byte()? {
-                0 => break,
-                b => buf.push(b),
-            }
-        }
-        Ok(Self(String::from_utf8(buf)?))
-    }
-}
-
-impl Encode for CString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
-    where
-        W: Write + Seek,
-        E: Encryptor,
-    {
-        writer.write_all(self.as_bytes())?;
-        writer.write_byte(0)
-    }
-}
-
-impl SizeHint for CString {
-    #[inline]
-    fn size_hint(&self) -> u32 {
-        self.0.len() as u32 + 1
-    }
-}
-
-/// Defines a WZ-STRING structure and how to encode/decode it
-#[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct WzString(String);
-
-impl_str!(WzString);
-
-impl_str_eq!(WzString, &'a String, String, &'a str, str);
-
-impl Decode for WzString {
+impl Decode for String {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
     where
         R: Read + Seek,
@@ -70,30 +16,30 @@ impl Decode for WzString {
         let check = i8::decode(reader)?;
         let length = match check {
             i8::MIN | i8::MAX => i32::decode(reader)?,
-            0 => return Ok(Self(String::from(""))),
+            0 => return Ok(String::from("")),
             _ => (check as i32).wrapping_abs(),
         };
         // Sanity check
         if length <= 0 {
             return Err(DecodeError::Length(length).into());
         }
-        Ok(Self(if check < 0 {
+        Ok(if check < 0 {
             // UTF-8
-            String::from_utf8(reader.read_utf8_bytes(length as usize)?)?
+            String::from_utf8_lossy(reader.read_utf8_bytes(length as usize)?.as_slice()).into()
         } else {
             // Unicode
-            String::from_utf16(reader.read_unicode_bytes(length as usize)?.as_slice())?
-        }))
+            String::from_utf16_lossy(reader.read_unicode_bytes(length as usize)?.as_slice())
+        })
     }
 }
 
-impl Encode for WzString {
+impl Encode for String {
     fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
     where
         W: Write + Seek,
         E: Encryptor,
     {
-        let length = self.0.len() as i32;
+        let length = self.len() as i32;
 
         // If length is 0 just write 0 and be done with it
         if length == 0 {
@@ -101,7 +47,7 @@ impl Encode for WzString {
         }
 
         // If everything is ASCII, encode as UTF-8, else Unicode
-        if self.0.is_ascii() {
+        if self.is_ascii() {
             // Write the length
             // length CAN equal i8::MAX here as the 2s compliment is not i8::MIN
             if length > (i8::MAX as i32) {
@@ -128,10 +74,10 @@ impl Encode for WzString {
     }
 }
 
-impl SizeHint for WzString {
+impl SizeHint for String {
     #[inline]
     fn size_hint(&self) -> u32 {
-        let length = self.0.len() as u32;
+        let length = self.len() as u32;
 
         // If length is 0 just write 0 and be done with it
         if length == 0 {
@@ -139,7 +85,7 @@ impl SizeHint for WzString {
         }
 
         // If everything is ASCII, encode as UTF-8, else Unicode
-        if self.0.is_ascii() {
+        if self.is_ascii() {
             // length CAN equal i8::MAX here as the 2s compliment is not i8::MIN
             if length > (i8::MAX as u32) {
                 5 + length

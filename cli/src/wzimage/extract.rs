@@ -1,17 +1,14 @@
 //! Custom Image exporter
 
-use image::{ImageFormat, Rgba, RgbaImage};
+use image::ImageFormat;
 use std::{borrow::Cow, fs, io::Write, path::Path};
 use wz::{
     error::{Error, Result},
     file::image::{Canvas, Node},
-    io::{
-        decode,
-        xml::{
-            attribute::Attribute,
-            namespace::Namespace,
-            writer::{EmitterConfig, EventWriter, ToXml, XmlEvent},
-        },
+    io::xml::{
+        attribute::Attribute,
+        namespace::Namespace,
+        writer::{EmitterConfig, EventWriter, ToXml, XmlEvent},
     },
     map::{Cursor, Map},
     types::WzInt,
@@ -42,8 +39,8 @@ pub(crate) fn extract_image_from_map(map: &Map<Node>, verbose: bool) -> Result<(
                 println!("{}", path);
             }
             recursive_extract(&image_dir, &mut writer, &mut cursor, verbose)?;
-            num_children = num_children - 1;
-            if num_children <= 0 {
+            num_children -= 1;
+            if num_children == 0 {
                 break;
             }
             cursor.next_sibling()?;
@@ -76,6 +73,7 @@ where
                     .attr("format", &v.format().to_string()),
             )?;
             let png_out = format!("{}/{}", &image_dir, &res_path);
+            println!("Name: {} -- Format: {}", &png_out, *v.format());
             if verbose {
                 println!("{}", &png_out);
             }
@@ -125,8 +123,8 @@ where
         cursor.first_child()?;
         loop {
             recursive_extract(image_dir, writer, cursor, verbose)?;
-            num_children = num_children - 1;
-            if num_children <= 0 {
+            num_children -= 1;
+            if num_children == 0 {
                 break;
             }
             cursor.next_sibling()?;

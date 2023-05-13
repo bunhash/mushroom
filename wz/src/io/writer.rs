@@ -156,7 +156,7 @@ where
             };
             src.read_exact(&mut buf[0..to_read])?;
             self.write_all(&buf[0..to_read])?;
-            remaining = remaining - to_read;
+            remaining -= to_read;
         }
         Ok(())
     }
@@ -184,10 +184,7 @@ where
             .iter()
             .map(|b| {
                 let c = b ^ mask;
-                mask = match mask.checked_add(1) {
-                    Some(v) => v,
-                    None => 0,
-                };
+                mask = mask.checked_add(1).unwrap_or(0);
                 c
             })
             .collect();
@@ -201,15 +198,11 @@ where
         let mut mask: u16 = 0xaaaa;
         let mut buf = bytes
             .iter()
-            .map(|c| {
+            .flat_map(|c| {
                 let wchar = c ^ mask;
-                mask = match mask.checked_add(1) {
-                    Some(v) => v,
-                    None => 0,
-                };
+                mask = mask.checked_add(1).unwrap_or(0);
                 wchar.to_le_bytes()
             })
-            .flatten()
             .collect();
         self.encryptor.encrypt(&mut buf);
         self.write_all(&buf)

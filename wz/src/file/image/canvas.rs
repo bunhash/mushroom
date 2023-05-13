@@ -10,14 +10,17 @@ use inflate::inflate_bytes_zlib;
 use std::{fmt, path::Path};
 
 mod conversions;
+mod dxt;
 
-use conversions::{from_bgra4444, from_rgb565};
+pub(crate) use conversions::*;
+pub(crate) use dxt::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Canvas {
     width: WzInt,
     height: WzInt,
     format: WzInt,
+    format2: u8,
     data: Vec<u8>,
 }
 
@@ -26,7 +29,8 @@ impl Canvas {
         Self {
             width,
             height,
-            format: format + format2,
+            format,
+            format2,
             data,
         }
     }
@@ -40,7 +44,7 @@ impl Canvas {
     }
 
     pub fn format(&self) -> WzInt {
-        self.format
+        self.format + self.format2.into()
     }
 
     pub fn data(&self) -> &[u8] {
@@ -55,7 +59,7 @@ impl Canvas {
     }
 
     pub fn image_buffer(&self) -> Result<RgbaImage> {
-        encode_image(&self)
+        encode_image(self)
     }
 
     pub fn save_to_disk<S>(&self, path: &S, format: ImageFormat) -> Result<()>
@@ -94,15 +98,16 @@ fn encode_image(canvas: &Canvas) -> Result<RgbaImage> {
     let width = *canvas.width() as u32;
     let height = *canvas.height() as u32;
     let data = canvas.decompressed_data()?;
-    let data = match *canvas.format() {
-        1 => from_bgra4444(data),
-        2 => data,
-        513 => from_rgb565(data),
-        t => return Err(CanvasError::EncodingFormat(WzInt::from(t)).into()),
-    };
     let data_len = data.len();
-    match RgbaImage::from_raw(width, height, data) {
-        Some(img) => Ok(img),
-        None => Err(CanvasError::SizeMismatch(width, height, data_len).into()),
+    match *canvas.format() {
+        1 => from_bgra4444(width, height, data),
+        2 => match RgbaImage::from_raw(width, height, data) {
+            Some(img) => Ok(img),
+            None => Err(CanvasError::SizeMismatch(width, height, data_len).into()),
+        },
+        513 => from_rgb565(width, height, data),
+        517 => expand_rgb565(width, height, data),
+        1026 => from_dxt3(width, height, data),
+        t => Err(CanvasError::EncodingFormat(WzInt::from(t)).into()),
     }
 }

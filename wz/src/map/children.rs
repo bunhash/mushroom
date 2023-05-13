@@ -29,7 +29,7 @@ impl<'a, T> Iterator for ChildNames<'a, T> {
                 .expect("node should exist")
                 .get()
                 .name
-                .as_ref(),
+                .as_str(),
         )
     }
 }

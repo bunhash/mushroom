@@ -3,7 +3,6 @@
 use crate::{
     error::{PackageError, Result},
     io::{Encode, WzWriter},
-    types::CString,
 };
 use crypto::{checksum, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -24,7 +23,7 @@ pub struct Header {
     pub absolute_position: i32,
 
     /// Description of the WZ package. Should be "Package file v1.0 Copyright 2002 Wizet, ZMS"
-    pub description: CString,
+    pub description: String,
 
     /// Encrypted version (not really encrypted since it is irreversable. More like a checksum or
     /// non-cryptographic hash.
@@ -39,7 +38,7 @@ impl Header {
             identifier: [0x50, 0x4b, 0x47, 0x31],
             size: 0,
             absolute_position: 60,
-            description: CString::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
+            description: String::from("Package file v1.0 Copyright 2002 Wizet, ZMS"),
             version_hash,
         }
     }
@@ -56,7 +55,7 @@ impl Header {
         // Read the identifier
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
-        if &identifier != &[0x50, 0x4b, 0x47, 0x31] {
+        if identifier != [0x50, 0x4b, 0x47, 0x31] {
             return Err(PackageError::Header.into());
         }
 
@@ -76,10 +75,10 @@ impl Header {
         // Read the description
         let mut description = vec![0u8; (absolute_position as usize) - 17];
         reader.read_exact(&mut description)?;
-        let description = CString::from(match String::from_utf8(description) {
+        let description = match String::from_utf8(description) {
             Ok(s) => s,
             Err(_) => return Err(PackageError::Header.into()),
-        });
+        };
 
         // Skip the null
         let mut skip = [0];
@@ -121,7 +120,8 @@ impl Encode for Header {
         writer.write_all(&self.identifier)?;
         self.size.encode(writer)?;
         self.absolute_position.encode(writer)?;
-        self.description.encode(writer)?;
+        writer.write_all(self.description.as_bytes())?;
+        writer.write_byte(0)?;
         self.version_hash.encode(writer)
     }
 }

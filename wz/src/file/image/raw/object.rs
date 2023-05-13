@@ -7,7 +7,7 @@ use crate::{
         Sound, UolObject, Vector,
     },
     io::{Decode, Encode, WzReader, WzWriter},
-    types::{WzOffset, WzString},
+    types::WzOffset,
 };
 use crypto::{Decryptor, Encryptor};
 use std::io::{Read, Seek, Write};
@@ -41,12 +41,12 @@ impl Decode for Object {
         D: Decryptor,
     {
         let typename = match u8::decode(reader)? {
-            0x73 => WzString::decode(reader)?,
+            0x73 => String::decode(reader)?,
             0x1b => {
                 let offset = WzOffset::from(u32::decode(reader)?);
                 let pos = reader.position()?;
                 reader.seek(offset)?;
-                let typename = WzString::decode(reader)?;
+                let typename = String::decode(reader)?;
                 reader.seek(pos)?;
                 typename
             }

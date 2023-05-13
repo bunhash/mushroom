@@ -1,11 +1,11 @@
 //! WZ File Archive
 
 use crate::{
-    error::{Result, PackageError},
+    error::{PackageError, Result},
     file::{package::ContentRef, Header, Package},
     io::{Decode, WzReader},
     map::{CursorMut, Map},
-    types::{WzInt, WzOffset, WzString},
+    types::{WzInt, WzOffset},
 };
 use crypto::{checksum, Decryptor};
 use std::{fs::File, io::BufReader};
@@ -78,7 +78,7 @@ where
 
     /// Maps the archive contents. The root will be named `name`
     pub fn map(&mut self, name: &str) -> Result<Map<Node>> {
-        let name = WzString::from(name);
+        let name = String::from(name);
         let mut map = Map::new(name, Node::Package);
         self.inner.seek_to_start()?;
         Archive::map_package_to(&mut self.inner, &mut map.cursor_mut())?;
@@ -127,7 +127,7 @@ where
         for content in package.contents() {
             match &content {
                 ContentRef::Package(ref data) => {
-                    cursor.create(WzString::from(data.name()), Node::Package)?;
+                    cursor.create(String::from(data.name()), Node::Package)?;
                     cursor.move_to(data.name.as_ref())?;
                     reader.seek(data.offset())?;
                     Archive::map_package_to(reader, cursor)?;
@@ -135,7 +135,7 @@ where
                 }
                 ContentRef::Image(ref data) => {
                     cursor.create(
-                        WzString::from(data.name()),
+                        String::from(data.name()),
                         Node::Image {
                             offset: data.offset(),
                             size: data.size(),

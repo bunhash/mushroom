@@ -31,7 +31,7 @@ impl<'a, T> Cursor<'a, T> {
                     .expect("pwd() node should exist")
                     .get()
                     .name
-                    .as_ref(),
+                    .as_str(),
             );
         }
         path.into()
@@ -55,13 +55,12 @@ impl<'a, T> Cursor<'a, T> {
 
     /// Returns the name of the current position
     pub fn name(&'a self) -> &'a str {
-        &self
-            .arena
+        self.arena
             .get(self.position)
             .expect("get() node should exist")
             .get()
             .name
-            .as_ref()
+            .as_str()
     }
 
     /// Returns the data at the current position
@@ -165,33 +164,29 @@ impl<'a, T> Cursor<'a, T> {
     where
         E: Debug,
     {
-        for id in self.position.descendants(&self.arena) {
-            closure(Cursor::new(id, &self.arena))?;
+        for id in self.position.descendants(self.arena) {
+            closure(Cursor::new(id, self.arena))?;
         }
         Ok(())
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
     pub fn debug_pretty_print(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
-        self.position.debug_pretty_print(&self.arena)
+        self.position.debug_pretty_print(self.arena)
     }
 
     // *** PRIVATES *** //
 
     fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, MapError> {
-        match position
-            .children(self.arena)
-            .filter(|id| {
-                self.arena
-                    .get(*id)
-                    .expect("child position should exist")
-                    .get()
-                    .name
-                    .as_ref()
-                    == name
-            })
-            .next()
-        {
+        match position.children(self.arena).find(|id| {
+            self.arena
+                .get(*id)
+                .expect("child position should exist")
+                .get()
+                .name
+                .as_str()
+                == name
+        }) {
             Some(id) => Ok(id),
             None => Err(MapError::NotFound(String::from(name))),
         }

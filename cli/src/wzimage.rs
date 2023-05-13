@@ -8,9 +8,9 @@ use std::{
     path::{Path, PathBuf},
 };
 use wz::{
-    error::{Error, Result},
+    error::{CanvasError, Error, Result},
     file::{image::Node, Image},
-    io::{decode, DummyDecryptor, WzReader},
+    io::{DummyDecryptor, WzReader},
     map::Cursor,
 };
 
@@ -19,8 +19,8 @@ mod extract;
 use extract::extract_image_from_map;
 
 pub(crate) fn do_extract(filename: &PathBuf, verbose: bool, key: Key) -> Result<()> {
-    let name = file_name(&filename)?;
-    let file = BufReader::new(fs::File::open(&filename)?);
+    let name = file_name(filename)?;
+    let file = BufReader::new(fs::File::open(filename)?);
     let result = match key {
         Key::Gms => extract(
             name,
@@ -53,8 +53,8 @@ where
 }
 
 pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key) -> Result<()> {
-    let name = file_name(&filename)?;
-    let file = BufReader::new(fs::File::open(&filename)?);
+    let name = file_name(filename)?;
+    let file = BufReader::new(fs::File::open(filename)?);
     let result = match key {
         Key::Gms => debug(
             name,
@@ -77,7 +77,7 @@ pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key)
     }
 }
 
-fn debug<R, D>(name: &str, mut reader: WzReader<R, D>, directory: &Option<String>) -> Result<()>
+fn debug<R, D>(name: &str, mut reader: WzReader<R, D>, _directory: &Option<String>) -> Result<()>
 where
     R: Read + Seek,
     D: Decryptor,
@@ -86,11 +86,8 @@ where
     let map = image.map();
     map.walk(|cursor| match cursor.get() {
         Node::Canvas(v) => match *v.format() {
-            1 | 2 => Ok::<(), Error>(()),
-            _ => {
-                println!("{}", name);
-                Err(decode::Error::InvalidImageType(v.format()).into())
-            }
+            1 | 2 | 513 | 1026 => Ok::<(), Error>(()),
+            _ => Err(CanvasError::EncodingFormat(v.format()).into()),
         },
         _ => Ok::<(), Error>(()),
     })?;

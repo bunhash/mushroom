@@ -7,22 +7,23 @@ use crate::{
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},
-    ops::{Add, Deref, DerefMut, Sub},
+    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
 };
 
 /// Defines a WZ-INT structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzInt(i32);
 
-impl_primitive!(WzInt, i32);
-impl_conversions!(WzInt, i32, i8);
-impl_conversions!(WzInt, i32, i16);
-impl_conversions!(WzInt, i32, i32);
-impl_conversions!(WzInt, i32, i64);
-impl_conversions!(WzInt, i32, u8);
-impl_conversions!(WzInt, i32, u16);
-impl_conversions!(WzInt, i32, u32);
-impl_conversions!(WzInt, i32, u64);
+impl_num!(WzInt, i32);
+impl_from!(WzInt, i8, i32);
+impl_from!(WzInt, i16, i32);
+impl_from!(WzInt, i32, i32);
+impl_from!(WzInt, i64, i32);
+impl_from!(WzInt, u8, i32);
+impl_from!(WzInt, u16, i32);
+impl_from!(WzInt, u32, i32);
+impl_from!(WzInt, u64, i32);
+impl_from!(WzInt, usize, i32);
 
 impl Decode for WzInt {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
@@ -68,15 +69,16 @@ impl SizeHint for WzInt {
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzLong(i64);
 
-impl_primitive!(WzLong, i64);
-impl_conversions!(WzLong, i64, i8);
-impl_conversions!(WzLong, i64, i16);
-impl_conversions!(WzLong, i64, i32);
-impl_conversions!(WzLong, i64, i64);
-impl_conversions!(WzLong, i64, u8);
-impl_conversions!(WzLong, i64, u16);
-impl_conversions!(WzLong, i64, u32);
-impl_conversions!(WzLong, i64, u64);
+impl_num!(WzLong, i64);
+impl_from!(WzLong, i8, i64);
+impl_from!(WzLong, i16, i64);
+impl_from!(WzLong, i32, i64);
+impl_from!(WzLong, i64, i64);
+impl_from!(WzLong, u8, i64);
+impl_from!(WzLong, u16, i64);
+impl_from!(WzLong, u32, i64);
+impl_from!(WzLong, u64, i64);
+impl_from!(WzLong, usize, i64);
 
 impl Decode for WzLong {
     fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>

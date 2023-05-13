@@ -1,7 +1,10 @@
 //! WZ CLI Tool
 
 use clap::{Args, Parser, ValueEnum};
-use std::{io::ErrorKind, path::PathBuf};
+use std::{
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 use wz::error::Result;
 
 mod wzfile;
@@ -69,13 +72,13 @@ enum Key {
     None,
 }
 
-fn file_name(path: &PathBuf) -> Result<&str> {
+fn file_name(path: &Path) -> Result<&str> {
     match path.file_name() {
         Some(name) => match name.to_str() {
             Some(name) => Ok(name),
-            None => return Err(ErrorKind::NotFound.into()),
+            None => Err(ErrorKind::NotFound.into()),
         },
-        None => return Err(ErrorKind::NotFound.into()),
+        None => Err(ErrorKind::NotFound.into()),
     }
 }
 
@@ -95,24 +98,22 @@ fn main() -> Result<()> {
         } else if action.list_file {
             unimplemented!()
         }
-    } else {
-        if action.create {
-            wzfile::do_create(
-                &args.file,
-                &args.directory.unwrap(),
-                args.verbose,
-                args.key,
-                args.version.unwrap(),
-            )?;
-        } else if action.list {
-            wzfile::do_list(&args.file, args.key, args.version)?;
-        } else if action.extract {
-            wzfile::do_extract(&args.file, args.verbose, args.key, args.version)?;
-        } else if action.debug {
-            wzfile::do_debug(&args.file, &args.directory, args.key, args.version)?;
-        } else if action.list_file {
-            wzfile::do_list_file(&args.file, args.key)?;
-        }
+    } else if action.create {
+        wzfile::do_create(
+            &args.file,
+            &args.directory.unwrap(),
+            args.verbose,
+            args.key,
+            args.version.unwrap(),
+        )?;
+    } else if action.list {
+        wzfile::do_list(&args.file, args.key, args.version)?;
+    } else if action.extract {
+        wzfile::do_extract(&args.file, args.verbose, args.key, args.version)?;
+    } else if action.debug {
+        wzfile::do_debug(&args.file, &args.directory, args.key, args.version)?;
+    } else if action.list_file {
+        wzfile::do_list_file(&args.file, args.key)?;
     }
     Ok(())
 }

@@ -1,6 +1,6 @@
 //! Generic map of WZ Package and Image structures
 
-use crate::{error::MapError, types::WzString};
+use crate::error::MapError;
 
 use indextree::{Arena, NodeId};
 
@@ -28,24 +28,24 @@ pub struct Map<T> {
 
 impl<T> Map<T> {
     /// Creates a new map with the provided root data
-    pub fn new(name: WzString, data: T) -> Self {
+    pub fn new(name: String, data: T) -> Self {
         let mut arena = Arena::new();
         let root = arena.new_node(MapNode::new(name, data));
         Self { arena, root }
     }
 
     /// Creates a cursor inside the root that has read-only access to the map data
-    pub fn cursor<'a>(&'a self) -> Cursor<'a, T> {
+    pub fn cursor(&self) -> Cursor<'_, T> {
         Cursor::new(self.root, &self.arena)
     }
 
     /// Creates a cursor inside the root that has mutable access to the map data
-    pub fn cursor_mut<'a>(&'a mut self) -> CursorMut<'a, T> {
+    pub fn cursor_mut(&mut self) -> CursorMut<'_, T> {
         CursorMut::new(self.root, &mut self.arena)
     }
 
     /// Creates a cursor inside the root that has read-only access to the map data
-    pub fn cursor_at<'a>(&'a self, uri: &[&str]) -> Result<Cursor<'a, T>, MapError> {
+    pub fn cursor_at(&self, uri: &[&str]) -> Result<Cursor<'_, T>, MapError> {
         Ok(Cursor::new(self.get_id(uri)?, &self.arena))
     }
 
@@ -65,7 +65,7 @@ impl<T> Map<T> {
     }
 
     /// Renames the root node
-    pub fn rename(&mut self, name: WzString) -> Result<(), MapError> {
+    pub fn rename(&mut self, name: String) -> Result<(), MapError> {
         self.cursor_mut().rename(name)?;
         Ok(())
     }
@@ -89,25 +89,23 @@ impl<T> Map<T> {
     }
 
     /// Creates a printable string of the tree structure. To be used in `{:?}` formatting.
-    pub fn debug_pretty_print<'a>(&'a self) -> DebugPrettyPrint<'a, MapNode<T>> {
+    pub fn debug_pretty_print(&self) -> DebugPrettyPrint<'_, MapNode<T>> {
         self.root.debug_pretty_print(&self.arena)
     }
 
     // *** PRIVATES *** //
 
     fn get_id(&self, uri: &[&str]) -> Result<NodeId, MapError> {
-        if uri.len() == 0 {
+        if uri.is_empty() {
             Err(MapError::Path(uri.join("/")))
-        } else {
-            if uri[0] == self.name() {
-                let mut cursor = self.cursor();
-                for name in &uri[1..] {
-                    cursor.move_to(name)?;
-                }
-                Ok(cursor.position)
-            } else {
-                Err(MapError::NotFound(String::from(uri[0])))
+        } else if uri[0] == self.name() {
+            let mut cursor = self.cursor();
+            for name in &uri[1..] {
+                cursor.move_to(name)?;
             }
+            Ok(cursor.position)
+        } else {
+            Err(MapError::NotFound(String::from(uri[0])))
         }
     }
 }
@@ -115,15 +113,15 @@ impl<T> Map<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{map::Map, types::WzString};
+    use crate::{map::Map, types::String};
 
     #[test]
     fn make_map() {
-        let mut map = Map::new(WzString::from("root"), 100);
+        let mut map = Map::new(String::from("root"), 100);
         let mut cursor = map.cursor_mut();
         assert_eq!(cursor.name(), "root");
         cursor
-            .rename(WzString::from("n1"))
+            .rename(String::from("n1"))
             .expect("rename should work");
         assert_eq!(cursor.name(), "n1");
         let children: &[&str] = &[];
@@ -134,21 +132,21 @@ mod tests {
 
     #[test]
     fn get_uri() {
-        let mut map = Map::new(WzString::from("n1"), 100);
+        let mut map = Map::new(String::from("n1"), 100);
         // arena ownership moves to cursor in the next line.
         let mut cursor = map.cursor_mut();
         cursor
-            .create(WzString::from("n1_1"), 150)
+            .create(String::from("n1_1"), 150)
             .expect("error creating n1_1")
             .move_to("n1_1")
             .expect("error moving into n1_1")
-            .create(WzString::from("n1_1_1"), 155)
+            .create(String::from("n1_1_1"), 155)
             .expect("error creating n1_1_1")
-            .create(WzString::from("n1_1_2"), 175)
+            .create(String::from("n1_1_2"), 175)
             .expect("error creating n1_1_1")
             .move_to("n1_1_1")
             .expect("error moving into n1_1_1")
-            .create(WzString::from("n1_1_1_1"), 255)
+            .create(String::from("n1_1_1_1"), 255)
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");

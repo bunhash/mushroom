@@ -24,7 +24,7 @@ impl KeyStream {
     /// Creates a new [`KeyStream`]
     pub fn new(key: &[u8; 32], iv: &[u8; 4]) -> Self {
         KeyStream {
-            cipher: Aes256::new(&GenericArray::from_slice(key)),
+            cipher: Aes256::new(GenericArray::from_slice(key)),
             stream: Vec::new(),
             block: Block::clone_from_slice(iv.repeat(4).as_slice()),
         }
@@ -33,6 +33,11 @@ impl KeyStream {
     /// Returns the current length of the key stream
     pub fn len(&self) -> usize {
         self.stream.len()
+    }
+
+    /// Returns true if length is 0
+    pub fn is_empty(&self) -> bool {
+        self.stream.is_empty()
     }
 
     /// Returns an immutable iterator over the bytes in the key stream
@@ -60,9 +65,8 @@ impl KeyStream {
     pub fn xor(&mut self, input: &mut Vec<u8>) {
         let input_len = input.len();
         self.grow(input_len);
-        for i in 0..input_len {
-            let val = input[i];
-            input[i] = val ^ self.stream[i];
+        for (i, val) in input.iter_mut().enumerate() {
+            *val ^= self.stream[i]
         }
     }
 }

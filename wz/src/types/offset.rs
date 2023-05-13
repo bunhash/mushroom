@@ -7,22 +7,23 @@ use crate::{
 use crypto::{Decryptor, Encryptor};
 use std::{
     io::{Read, Seek, Write},
-    ops::{Add, Deref, DerefMut, Sub},
+    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
 };
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzOffset(u32);
 
-impl_primitive!(WzOffset, u32);
-impl_conversions!(WzOffset, u32, u8);
-impl_conversions!(WzOffset, u32, u16);
-impl_conversions!(WzOffset, u32, u32);
-impl_conversions!(WzOffset, u32, u64);
-impl_conversions!(WzOffset, u32, i8);
-impl_conversions!(WzOffset, u32, i16);
-impl_conversions!(WzOffset, u32, i32);
-impl_conversions!(WzOffset, u32, i64);
+impl_num!(WzOffset, u32);
+impl_from!(WzOffset, i8, u32);
+impl_from!(WzOffset, i16, u32);
+impl_from!(WzOffset, i32, u32);
+impl_from!(WzOffset, i64, u32);
+impl_from!(WzOffset, u8, u32);
+impl_from!(WzOffset, u16, u32);
+impl_from!(WzOffset, u32, u32);
+impl_from!(WzOffset, u64, u32);
+impl_from!(WzOffset, usize, u32);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information

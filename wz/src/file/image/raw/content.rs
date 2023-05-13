@@ -77,7 +77,7 @@ impl Decode for ContentRef {
             9 => {
                 let size = u32::decode(reader)?;
                 let offset = reader.position()?;
-                reader.seek(offset + size)?;
+                reader.seek(offset + size.into())?;
                 Ok(Self::Object { name, size, offset })
             }
             t => Err(ImageError::PropertyType(t).into()),
@@ -136,7 +136,7 @@ impl SizeHint for ContentRef {
             ContentRef::Float { name, value } => name.size_hint() + value.size_hint(),
             ContentRef::Double { name, value } => name.size_hint() + value.size_hint(),
             ContentRef::String { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Object { name, size, .. } => name.size_hint() as u32 + size,
+            ContentRef::Object { name, size, .. } => name.size_hint() + size,
         }
     }
 }

@@ -167,7 +167,7 @@ where
             };
             self.read_exact(&mut buf[0..to_read])?;
             dest.write_all(&buf[0..to_read])?;
-            remaining = remaining - to_read;
+            remaining -= to_read;
         }
         Ok(())
     }
@@ -206,10 +206,7 @@ where
             .iter()
             .map(|b| {
                 let c = b ^ mask;
-                mask = match mask.checked_add(1) {
-                    Some(v) => v,
-                    None => 0,
-                };
+                mask = mask.checked_add(1).unwrap_or(0);
                 c
             })
             .collect())
@@ -226,10 +223,7 @@ where
             .map(|c| {
                 let wchar = u16::from_le_bytes([c[0], c[1]]);
                 let wchar = wchar ^ mask;
-                mask = match mask.checked_add(1) {
-                    Some(v) => v,
-                    None => 0,
-                };
+                mask = mask.checked_add(1).unwrap_or(0);
                 wchar
             })
             .collect())

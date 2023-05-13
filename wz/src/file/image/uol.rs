@@ -3,7 +3,7 @@
 use crate::{
     error::{ImageError, Result},
     io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
-    types::{WzOffset, WzString},
+    types::WzOffset,
 };
 use crypto::{Decryptor, Encryptor};
 use std::{
@@ -14,23 +14,17 @@ use std::{
 /// This is just a deduplicated string. WZ Images will use an offset to point to the string value
 /// instead of encoding the same string multiple times.
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
-pub struct UolString(WzString);
+pub struct UolString(String);
 
 impl UolString {
-    /// Consumes the UolString and returns the inner WzString
-    pub fn into_wz_string(self) -> WzString {
+    /// Consumes the UolString and returns the inner String
+    pub fn into_string(self) -> String {
         self.0
     }
 }
 
 impl From<String> for UolString {
     fn from(other: String) -> Self {
-        Self(WzString::from(other))
-    }
-}
-
-impl From<WzString> for UolString {
-    fn from(other: WzString) -> Self {
         Self(other)
     }
 }
@@ -50,19 +44,19 @@ impl DerefMut for UolString {
 
 impl AsRef<str> for UolString {
     fn as_ref(&self) -> &str {
-        self.deref().as_ref()
+        self.deref()
     }
 }
 
 impl AsMut<str> for UolString {
     fn as_mut(&mut self) -> &mut str {
-        self.deref_mut().as_mut()
+        self.deref_mut()
     }
 }
 
 impl From<&str> for UolString {
     fn from(other: &str) -> Self {
-        Self(WzString::from(other))
+        Self(String::from(other))
     }
 }
 
@@ -71,20 +65,12 @@ impl PartialEq<&str> for UolString {
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_ref(), &other[..])
     }
-    #[inline]
-    fn ne(&self, other: &&str) -> bool {
-        PartialEq::ne(self.as_ref(), &other[..])
-    }
 }
 
 impl PartialEq<UolString> for &str {
     #[inline]
     fn eq(&self, other: &UolString) -> bool {
         PartialEq::eq(&self[..], other.as_ref())
-    }
-    #[inline]
-    fn ne(&self, other: &UolString) -> bool {
-        PartialEq::ne(&self[..], other.as_ref())
     }
 }
 
@@ -96,12 +82,12 @@ impl Decode for UolString {
     {
         let check = u8::decode(reader)?;
         match check {
-            0 => Ok(Self(WzString::decode(reader)?)),
+            0 => Ok(Self(String::decode(reader)?)),
             1 => {
                 let offset = WzOffset::from(u32::decode(reader)?);
                 let pos = reader.position()?;
                 reader.seek(offset)?;
-                let string = WzString::decode(reader)?;
+                let string = String::decode(reader)?;
                 reader.seek(pos)?;
                 Ok(Self(string))
             }
@@ -152,22 +138,14 @@ pub struct UolObject {
 }
 
 impl UolObject {
-    /// Consumes the UolObject and returns the inner WzString
-    pub fn into_wz_string(self) -> WzString {
-        self.uri.into_wz_string()
+    /// Consumes the UolObject and returns the inner String
+    pub fn into_string(self) -> String {
+        self.uri.into_string()
     }
 }
 
 impl From<String> for UolObject {
     fn from(other: String) -> Self {
-        Self {
-            uri: UolString::from(other),
-        }
-    }
-}
-
-impl From<WzString> for UolObject {
-    fn from(other: WzString) -> Self {
         Self {
             uri: UolString::from(other),
         }
@@ -189,13 +167,13 @@ impl DerefMut for UolObject {
 
 impl AsRef<str> for UolObject {
     fn as_ref(&self) -> &str {
-        self.deref().as_ref()
+        self.deref()
     }
 }
 
 impl AsMut<str> for UolObject {
     fn as_mut(&mut self) -> &mut str {
-        self.deref_mut().as_mut()
+        self.deref_mut()
     }
 }
 
@@ -212,20 +190,12 @@ impl PartialEq<&str> for UolObject {
     fn eq(&self, other: &&str) -> bool {
         PartialEq::eq(self.as_ref(), &other[..])
     }
-    #[inline]
-    fn ne(&self, other: &&str) -> bool {
-        PartialEq::ne(self.as_ref(), &other[..])
-    }
 }
 
 impl PartialEq<UolObject> for &str {
     #[inline]
     fn eq(&self, other: &UolObject) -> bool {
         PartialEq::eq(&self[..], other.as_ref())
-    }
-    #[inline]
-    fn ne(&self, other: &UolObject) -> bool {
-        PartialEq::ne(&self[..], other.as_ref())
     }
 }
 
