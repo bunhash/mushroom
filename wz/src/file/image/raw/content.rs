@@ -3,11 +3,9 @@
 use crate::{
     error::{ImageError, Result},
     file::image::UolString,
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
     types::{WzInt, WzLong, WzOffset},
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 /// Represents the contents of a [`Property`](crate::file::image::Property)
 #[derive(Debug)]
@@ -42,10 +40,9 @@ pub enum ContentRef {
 }
 
 impl Decode for ContentRef {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let name = UolString::decode(reader)?;
         match u8::decode(reader)? {
@@ -86,10 +83,9 @@ impl Decode for ContentRef {
 }
 
 impl Encode for ContentRef {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         match self {
             ContentRef::Null { name } => name.encode(writer),

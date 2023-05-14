@@ -2,11 +2,9 @@
 
 use crate::{
     error::Result,
-    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
     types::WzInt,
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Vector {
@@ -21,10 +19,9 @@ impl Vector {
 }
 
 impl Decode for Vector {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         Ok(Self {
             x: WzInt::decode(reader)?,
@@ -34,10 +31,9 @@ impl Decode for Vector {
 }
 
 impl Encode for Vector {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         self.x.encode(writer)?;
         self.y.encode(writer)

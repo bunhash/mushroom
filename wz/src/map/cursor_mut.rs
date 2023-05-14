@@ -284,7 +284,7 @@ impl<'a, T> CursorMut<'a, T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{error::MapError, map::Map, types::String};
+    use crate::{error::MapError, map::Map};
 
     #[test]
     fn add_nodes() {

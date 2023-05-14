@@ -2,14 +2,11 @@
 
 use crate::{
     error::Result,
+    io::{DummyDecryptor, WzRead},
     types::{WzInt, WzOffset},
 };
 use crypto::{Decryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
-
-mod dummy_decryptor;
-
-pub use self::dummy_decryptor::DummyDecryptor;
 
 /// Wraps a reader into a WZ decoder. Used in [`Decode`](crate::io::Decode) trait
 ///
@@ -104,55 +101,52 @@ where
         }
     }
 
-    /// Returns the absolute position of the WZ archive
-    pub fn absolute_position(&self) -> i32 {
-        self.absolute_position
-    }
-
-    /// Returns the version checksum of the WZ archive
-    pub fn version_checksum(&self) -> u32 {
-        self.version_checksum
-    }
-
     /// Consumes the WzReader and returns the underlying reader
     pub fn into_inner(self) -> R {
         self.reader
     }
+}
 
-    /// Sets the version_checksum
-    pub(crate) fn set_version_checksum(&mut self, version_checksum: u32) {
+impl<R, D> WzRead for WzReader<R, D>
+where
+    R: Read + Seek,
+    D: Decryptor,
+{
+    fn absolute_position(&self) -> i32 {
+        self.absolute_position
+    }
+
+    fn version_checksum(&self) -> u32 {
+        self.version_checksum
+    }
+
+    fn set_version_checksum(&mut self, version_checksum: u32) {
         self.version_checksum = version_checksum;
     }
 
-    /// Get the position within the input
-    pub fn position(&mut self) -> Result<WzOffset> {
+    fn position(&mut self) -> Result<WzOffset> {
         Ok(WzOffset::from(self.reader.stream_position()?))
     }
 
-    /// Seek to position
-    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+    fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
         Ok(WzOffset::from(
             self.reader.seek(SeekFrom::Start(*pos as u64))?,
         ))
     }
 
-    /// Read into the buffer. Raises the underlying `Read` trait
-    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         Ok(self.reader.read(buf)?)
     }
 
-    /// Read exact into buffer. Raises the underlying `Read` trait
-    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         Ok(self.reader.read_exact(buf)?)
     }
 
-    /// Reads until EOF. Raises the underlying `Read` trait
-    pub fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         Ok(self.reader.read_to_end(buf)?)
     }
 
-    /// Copies `size` bytes starting at `offset` to the destination
-    pub fn copy_to<W>(&mut self, dest: &mut W, offset: WzOffset, size: WzInt) -> Result<()>
+    fn copy_to<W>(&mut self, dest: &mut W, offset: WzOffset, size: WzInt) -> Result<()>
     where
         W: Write,
     {
@@ -172,65 +166,7 @@ where
         Ok(())
     }
 
-    /// Seek to start after the version checksum (absolute_position + 2)
-    pub fn seek_to_start(&mut self) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.absolute_position() + 2))
-    }
-
-    /// Seek from absolute position
-    pub fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.absolute_position() as u32 + offset))
-    }
-
-    /// Reads a single byte and updates the cursor position
-    pub fn read_byte(&mut self) -> Result<u8> {
-        let mut buf = [0];
-        self.read_exact(&mut buf)?;
-        Ok(buf[0])
-    }
-
-    /// Attempts to read input into a byte vecotr
-    pub fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
-        let mut data = vec![0u8; len];
-        self.read_exact(&mut data)?;
-        Ok(data)
-    }
-
-    /// Reads a string as if it were utf8. This function does not do UTF-8 conversion but will read
-    /// the amount of bytes required to convert to utf8.
-    pub fn read_utf8_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
-        let mut buf = self.read_vec(len)?;
-        self.decrypt(&mut buf);
-        let mut mask = 0xaa;
-        Ok(buf
-            .iter()
-            .map(|b| {
-                let c = b ^ mask;
-                mask = mask.checked_add(1).unwrap_or(0);
-                c
-            })
-            .collect())
-    }
-
-    /// Reads a string as if it were unicode (or wchar). This function does not do unicode
-    /// conversion but will read the amount of bytes required to convert to unicode.
-    pub fn read_unicode_bytes(&mut self, len: usize) -> Result<Vec<u16>> {
-        let mut buf = self.read_vec(len * 2)?;
-        self.decrypt(&mut buf);
-        let mut mask: u16 = 0xaaaa;
-        Ok(buf
-            .chunks(2)
-            .map(|c| {
-                let wchar = u16::from_le_bytes([c[0], c[1]]);
-                let wchar = wchar ^ mask;
-                mask = mask.checked_add(1).unwrap_or(0);
-                wchar
-            })
-            .collect())
-    }
-
-    /// Decrypts a vector of bytes
-    pub fn decrypt(&mut self, bytes: &mut Vec<u8>) {
+    fn decrypt(&mut self, bytes: &mut Vec<u8>) {
         self.decryptor.decrypt(bytes)
     }
 }

@@ -2,14 +2,10 @@
 
 use crate::{
     error::{ImageError, Result},
-    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
     types::WzOffset,
 };
-use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 /// This is just a deduplicated string. WZ Images will use an offset to point to the string value
 /// instead of encoding the same string multiple times.
@@ -75,10 +71,9 @@ impl PartialEq<UolString> for &str {
 }
 
 impl Decode for UolString {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let check = u8::decode(reader)?;
         match check {
@@ -97,10 +92,9 @@ impl Decode for UolString {
 }
 
 impl Encode for UolString {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         0u8.encode(writer)?;
         self.0.encode(writer)
@@ -200,10 +194,9 @@ impl PartialEq<UolObject> for &str {
 }
 
 impl Decode for UolObject {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         u8::decode(reader)?;
         Ok(Self {
@@ -213,10 +206,9 @@ impl Decode for UolObject {
 }
 
 impl Encode for UolObject {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         0u8.encode(writer)?;
         0x73u8.encode(writer)?;

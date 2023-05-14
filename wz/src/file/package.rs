@@ -2,14 +2,10 @@
 
 use crate::{
     error::{DecodeError, Result},
-    io::{Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, WzRead, WzWrite},
     types::WzInt,
 };
-use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    slice::Iter,
-};
+use std::slice::Iter;
 
 mod content;
 
@@ -46,10 +42,9 @@ impl Package {
 }
 
 impl Decode for Package {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
@@ -65,10 +60,9 @@ impl Decode for Package {
 }
 
 impl Encode for Package {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         let num_contents = WzInt::from(self.contents.len() as i32);
         num_contents.encode(writer)?;

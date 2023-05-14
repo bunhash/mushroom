@@ -6,11 +6,9 @@ use crate::{
         raw::{Canvas, Property},
         Sound, UolObject, Vector,
     },
-    io::{Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, WzRead, WzWrite},
     types::WzOffset,
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 /// These are just complex structures compared to the primitive values contained in WZ properties
 #[derive(Debug)]
@@ -35,10 +33,9 @@ pub enum Object {
 }
 
 impl Decode for Object {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let typename = match u8::decode(reader)? {
             0x73 => String::decode(reader)?,
@@ -65,10 +62,9 @@ impl Decode for Object {
 }
 
 impl Encode for Object {
-    fn encode<W, E>(&self, _writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, _writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         unimplemented!()
     }

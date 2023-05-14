@@ -2,14 +2,11 @@
 
 use crate::{
     error::Result,
+    io::{DummyEncryptor, WzWrite},
     types::{WzInt, WzOffset},
 };
 use crypto::{Encryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
-
-mod dummy_encryptor;
-
-pub use self::dummy_encryptor::DummyEncryptor;
 
 /// Wraps a writer into a WZ encoder. Used in [`Encode`](crate::io::Encode) trait
 ///
@@ -104,45 +101,44 @@ where
         }
     }
 
-    /// Returns the absolution position of the WZ archive
-    pub fn absolute_position(&self) -> i32 {
-        self.absolute_position
-    }
-
-    /// Returns the version checksum of the WZ archive
-    pub fn version_checksum(&self) -> u32 {
-        self.version_checksum
-    }
-
     /// Consumes the WzWriter and returns the underlying writer
     pub fn into_inner(self) -> W {
         self.writer
     }
+}
 
-    /// Get the position within the input
-    pub fn position(&mut self) -> Result<WzOffset> {
+impl<W, E> WzWrite for WzWriter<W, E>
+where
+    W: Write + Seek,
+    E: Encryptor,
+{
+    fn absolute_position(&self) -> i32 {
+        self.absolute_position
+    }
+
+    fn version_checksum(&self) -> u32 {
+        self.version_checksum
+    }
+
+    fn position(&mut self) -> Result<WzOffset> {
         Ok(WzOffset::from(self.writer.stream_position()?))
     }
 
-    /// Seek to position
-    pub fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
+    fn seek(&mut self, pos: WzOffset) -> Result<WzOffset> {
         Ok(WzOffset::from(
             self.writer.seek(SeekFrom::Start(*pos as u64))?,
         ))
     }
 
-    /// Write the buffer. Raises the underlying `Write` trait
-    pub fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
         Ok(self.writer.write(buf)?)
     }
 
-    /// Write all of the buffer. Raises the underlying `Write` trait
-    pub fn write_all(&mut self, buf: &[u8]) -> Result<()> {
+    fn write_all(&mut self, buf: &[u8]) -> Result<()> {
         Ok(self.writer.write_all(buf)?)
     }
 
-    /// Copies `size` bytes from `src` to this writer
-    pub fn copy_from<R>(&mut self, src: &mut R, size: WzInt) -> Result<()>
+    fn copy_from<R>(&mut self, src: &mut R, size: WzInt) -> Result<()>
     where
         R: Read,
     {
@@ -161,51 +157,8 @@ where
         Ok(())
     }
 
-    /// Seek to start after the version checksum (absolute_position + 2)
-    pub fn seek_to_start(&mut self) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.absolute_position() + 2))
-    }
-
-    /// Seek from absolute position
-    pub fn seek_from_start(&mut self, offset: u32) -> Result<WzOffset> {
-        self.seek(WzOffset::from(self.absolute_position() as u32 + offset))
-    }
-
-    /// Writes a single byte
-    pub fn write_byte(&mut self, byte: u8) -> Result<()> {
-        self.write_all(&[byte])
-    }
-
-    /// Writes a UTF-8 string. This function does not do UTF-8 conversion but will write the proper
-    /// WZ encoding of the bytes.
-    pub fn write_utf8_bytes(&mut self, bytes: &[u8]) -> Result<()> {
-        let mut mask = 0xaa;
-        let mut buf = bytes
-            .iter()
-            .map(|b| {
-                let c = b ^ mask;
-                mask = mask.checked_add(1).unwrap_or(0);
-                c
-            })
-            .collect();
-        self.encryptor.encrypt(&mut buf);
-        self.write_all(&buf)
-    }
-
-    /// Writes a unicode string. This function does not do Unicode conversion but will write the
-    /// proper WZ encoding of the bytes.
-    pub fn write_unicode_bytes(&mut self, bytes: &[u16]) -> Result<()> {
-        let mut mask: u16 = 0xaaaa;
-        let mut buf = bytes
-            .iter()
-            .flat_map(|c| {
-                let wchar = c ^ mask;
-                mask = mask.checked_add(1).unwrap_or(0);
-                wchar.to_le_bytes()
-            })
-            .collect();
-        self.encryptor.encrypt(&mut buf);
-        self.write_all(&buf)
+    fn encrypt(&mut self, bytes: &mut Vec<u8>) {
+        self.encryptor.encrypt(bytes);
     }
 }
 

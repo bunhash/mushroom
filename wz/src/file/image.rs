@@ -2,12 +2,10 @@
 
 use crate::{
     error::{DecodeError, ImageError, Result},
-    io::{Decode, WzReader},
+    io::{Decode, WzRead},
     map::{CursorMut, Map},
     types::{WzInt, WzOffset},
 };
-use crypto::Decryptor;
-use std::io::{Read, Seek};
 
 pub mod canvas;
 mod node;
@@ -15,7 +13,7 @@ mod sound;
 mod uol;
 mod vector;
 
-pub use canvas::Canvas;
+pub use canvas::{Canvas, CanvasFormat};
 pub use node::Node;
 pub use sound::Sound;
 pub use uol::{UolObject, UolString};
@@ -29,10 +27,9 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn parse<R, D>(name: &str, reader: &mut WzReader<R, D>) -> Result<Self>
+    pub fn parse<R>(name: &str, reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut map = Map::new(String::from(name), Node::Property);
         let object = raw::Object::decode(reader)?;
@@ -50,14 +47,13 @@ impl Image {
     }
 }
 
-fn map_property_to<R, D>(
+fn map_property_to<R>(
     property: &raw::Property,
-    reader: &mut WzReader<R, D>,
+    reader: &mut R,
     cursor: &mut CursorMut<Node>,
 ) -> Result<()>
 where
-    R: Read + Seek,
-    D: Decryptor,
+    R: WzRead,
 {
     for content in property.contents() {
         match &content {
@@ -90,15 +86,14 @@ where
     Ok(())
 }
 
-fn map_object_to<R, D>(
+fn map_object_to<R>(
     name: &str,
     offset: WzOffset,
-    reader: &mut WzReader<R, D>,
+    reader: &mut R,
     cursor: &mut CursorMut<Node>,
 ) -> Result<()>
 where
-    R: Read + Seek,
-    D: Decryptor,
+    R: WzRead,
 {
     reader.seek(offset)?;
     let object = raw::Object::decode(reader)?;
@@ -116,7 +111,6 @@ where
                     c.width(),
                     c.height(),
                     c.format(),
-                    c.format2(),
                     Vec::from(c.data()),
                 )),
             )?;

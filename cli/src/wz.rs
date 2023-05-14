@@ -63,6 +63,10 @@ struct Action {
     /// Decode List.wz file
     #[arg(short = 'L')]
     list_file: bool,
+
+    /// Generate server XML files based on the wz archive
+    #[arg(short = 'S')]
+    server: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -114,6 +118,8 @@ fn main() -> Result<()> {
         wzfile::do_debug(&args.file, &args.directory, args.key, args.version)?;
     } else if action.list_file {
         wzfile::do_list_file(&args.file, args.key)?;
+    } else if action.server {
+        wzfile::do_server(&args.file, args.verbose, args.key, args.version)?;
     }
     Ok(())
 }

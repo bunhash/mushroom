@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum CanvasError {
     /// Unknown Canvas type
-    EncodingFormat(WzInt),
+    EncodingFormat(WzInt, u8),
 
     /// Image Errors
     Image(image::error::ImageError),
@@ -26,7 +26,9 @@ pub enum CanvasError {
 impl fmt::Display for CanvasError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EncodingFormat(t) => write!(f, "Unknown encoding format: `{}`", **t),
+            Self::EncodingFormat(t, t2) => {
+                write!(f, "Unknown encoding format: `({}, {})`", **t, *t2)
+            }
             Self::Image(e) => write!(f, "Image: {}", e),
             Self::Inflate(s) => write!(f, "Inflate: {}", s),
             Self::SizeMismatch(w, h, l) => write!(

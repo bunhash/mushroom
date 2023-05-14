@@ -2,16 +2,13 @@
 
 use crate::{
     error::{DecodeError, Result},
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 impl Decode for String {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let check = i8::decode(reader)?;
         let length = match check {
@@ -34,10 +31,9 @@ impl Decode for String {
 }
 
 impl Encode for String {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         let length = self.len() as i32;
 

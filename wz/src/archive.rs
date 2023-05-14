@@ -3,7 +3,7 @@
 use crate::{
     error::{PackageError, Result},
     file::{package::ContentRef, Header, Package},
-    io::{Decode, WzReader},
+    io::{Decode, WzRead, WzReader},
     map::{CursorMut, Map},
     types::{WzInt, WzOffset},
 };

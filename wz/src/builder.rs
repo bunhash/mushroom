@@ -13,7 +13,6 @@ use crate::{
 use crypto::{checksum, Encryptor};
 use std::{
     convert::AsRef,
-    ffi::OsStr,
     fs::File,
     io::{self, Seek, Write},
     num::Wrapping,
@@ -98,7 +97,7 @@ where
     /// Errors when `path` does not start with the root package name.
     pub fn add_package<S>(&mut self, path: &S) -> Result<()>
     where
-        S: AsRef<OsStr> + ?Sized,
+        S: AsRef<Path> + ?Sized,
     {
         self.make_package_path(path)?;
         Ok(())
@@ -114,19 +113,26 @@ where
     /// already exists at the specified `path`.
     pub fn add_image<S>(&mut self, path: &S, image: I) -> Result<()>
     where
-        S: AsRef<OsStr> + ?Sized,
+        S: AsRef<Path> + ?Sized,
     {
-        let path = Path::new(path);
-        let parent = match path.parent() {
+        let parent = match path.as_ref().parent() {
             Some(p) => p,
-            None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
+            None => {
+                return Err(PackageError::PathName(path.as_ref().to_string_lossy().into()).into())
+            }
         };
-        let name = match path.file_name() {
+        let name = match path.as_ref().file_name() {
             Some(name) => match name.to_str() {
                 Some(name) => name,
-                None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
+                None => {
+                    return Err(
+                        PackageError::PathName(path.as_ref().to_string_lossy().into()).into(),
+                    )
+                }
             },
-            None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
+            None => {
+                return Err(PackageError::PathName(path.as_ref().to_string_lossy().into()).into())
+            }
         };
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
@@ -183,10 +189,10 @@ where
 
     fn make_package_path<S>(&mut self, path: &S) -> Result<CursorMut<Node<I>>>
     where
-        S: AsRef<OsStr> + ?Sized,
+        S: AsRef<Path> + ?Sized,
     {
         let mut cursor = self.map.cursor_mut();
-        let path = match Path::new(path).strip_prefix(cursor.name()) {
+        let path = match path.as_ref().strip_prefix(cursor.name()) {
             Ok(p) => p,
             Err(_) => return Err(PackageError::MultipleRoots.into()),
         };

@@ -70,10 +70,9 @@ where
                 XmlEvent::start_element("canvas")
                     .attr("name", cursor.name())
                     .attr("src", &res_path)
-                    .attr("format", &v.format().to_string()),
+                    .attr("format", &v.format().to_int().to_string()),
             )?;
             let png_out = format!("{}/{}", &image_dir, &res_path);
-            println!("Name: {} -- Format: {}", &png_out, *v.format());
             if verbose {
                 println!("{}", &png_out);
             }

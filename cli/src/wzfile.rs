@@ -10,8 +10,8 @@ use std::{
 use wz::{
     archive,
     error::{Error, PackageError, Result},
-    file::Header,
-    io::{DummyDecryptor, DummyEncryptor},
+    file::{image::Image, Header},
+    io::{xml::writer::XmlWriter, DummyDecryptor, DummyEncryptor, WzImageReader, WzRead},
     Archive, Builder, List,
 };
 
@@ -274,4 +274,78 @@ pub(crate) fn do_list_file(file: &PathBuf, key: Key) -> Result<()> {
         println!("{}", s);
     }
     Ok(())
+}
+
+pub(crate) fn do_server(
+    file: &PathBuf,
+    verbose: bool,
+    key: Key,
+    version: Option<u16>,
+) -> Result<()> {
+    let filename = file_name(file)?;
+    let file = fs::File::open(file)?;
+    match key {
+        Key::Gms => server(
+            filename,
+            match version {
+                Some(v) => {
+                    Archive::open_as_version(file, v, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?
+                }
+                None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+            },
+            verbose,
+        ),
+        Key::Kms => server(
+            filename,
+            match version {
+                Some(v) => {
+                    Archive::open_as_version(file, v, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?
+                }
+                None => Archive::open(file, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+            },
+            verbose,
+        ),
+        Key::None => server(
+            filename,
+            match version {
+                Some(v) => Archive::open_as_version(file, v, DummyDecryptor)?,
+                None => Archive::open(file, DummyDecryptor)?,
+            },
+            verbose,
+        ),
+    }
+}
+
+fn server<D>(name: &str, mut archive: Archive<D>, verbose: bool) -> Result<()>
+where
+    D: Decryptor,
+{
+    let map = archive.map(&name)?;
+    let mut reader = archive.into_inner();
+    map.walk::<Error>(|cursor| {
+        match cursor.get() {
+            archive::Node::Package => {
+                let path = cursor.pwd().join("/");
+                if !Path::new(&path).is_dir() {
+                    fs::create_dir(&path)?;
+                }
+            }
+            archive::Node::Image { offset, size } => {
+                let path = format!("{}.xml", cursor.pwd().join("/"));
+                if Path::new(&path).is_file() {
+                    fs::remove_file(&path)?;
+                }
+                let mut image_reader = WzImageReader::new(&mut reader, *offset);
+                image_reader.seek_to_start()?;
+                let image = Image::parse(cursor.name(), &mut image_reader)?;
+                let map = image.map();
+                if verbose {
+                    println!("{}", path);
+                }
+                let mut writer = XmlWriter::new(fs::File::create(&path)?);
+                writer.write(&mut map.cursor())?;
+            }
+        }
+        Ok(())
+    })
 }

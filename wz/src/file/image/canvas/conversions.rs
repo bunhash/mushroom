@@ -1,7 +1,7 @@
 //! Compressed RGBA Pixel Type
 
 use crate::error::{CanvasError, Result};
-use image::{imageops::FilterType, DynamicImage, Rgba, RgbaImage};
+use image::{Pixel, Rgb, RgbaImage};
 
 const MAX_BGRA4444_SIZE: u8 = 15;
 const MAX_RGB565_RB: u8 = 31;
@@ -71,7 +71,7 @@ pub(crate) fn from_bgra4444(width: u32, height: u32, data: Vec<u8>) -> Result<Rg
 }
 
 /// DirectX DXGI_FORMAT_B4G4R4A4
-pub(crate) fn to_bgra4444(img: &RgbaImage) -> (u32, u32, Vec<u8>) {
+pub(crate) fn to_bgra4444(img: RgbaImage) -> (u32, u32, Vec<u8>) {
     (
         img.width(),
         img.height(),
@@ -101,7 +101,7 @@ pub(crate) fn from_rgb565(width: u32, height: u32, data: Vec<u8>) -> Result<Rgba
 }
 
 /// DirectX DXGI_FORMAT_B5G6R5
-pub(crate) fn to_rgb565(img: &RgbaImage) -> (u32, u32, Vec<u8>) {
+pub(crate) fn to_rgb565(img: RgbaImage) -> (u32, u32, Vec<u8>) {
     (
         img.width(),
         img.height(),
@@ -112,11 +112,45 @@ pub(crate) fn to_rgb565(img: &RgbaImage) -> (u32, u32, Vec<u8>) {
     )
 }
 
-/// This format just blows up an RGB565 image 16x
+/// This format just blows up an RGB565 image 16x. I assume repeating the pixel is faster than the
+/// standard resize algorithms.
 pub(crate) fn expand_rgb565(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
-    let img = from_rgb565(width / 16, height / 16, data)?;
-    println!("{:?}", img);
-    Ok(DynamicImage::ImageRgba8(img)
-        .resize(width, height, FilterType::Nearest)
-        .into_rgba8())
+    assert!(width % 16 == 0, "invalid expanded rgb565");
+    assert!(height % 16 == 0, "invalid expanded rgb565");
+    assert!(data.len() % 2 == 0, "invald rgb565 size");
+
+    let mut img = RgbaImage::new(width, height);
+
+    let width = width / 16;
+    let height = height / 16;
+
+    for y in 0..height {
+        for x in 0..width {
+            let ind = (((y * width) + x) * 2) as usize;
+            let pixel = Rgb(split565(u16::from_le_bytes([data[ind], data[ind + 1]]))).to_rgba();
+            for j in 0..16 {
+                for i in 0..16 {
+                    img.put_pixel((x * 16) + i, (y * 16) + j, pixel);
+                }
+            }
+        }
+    }
+
+    Ok(img)
+}
+
+/// This grabs a single pixel from every 16x16 block
+pub(crate) fn compress_rgb565(img: RgbaImage) -> (u32, u32, Vec<u8>) {
+    let (width, height) = img.dimensions();
+    assert!(width % 16 == 0, "invalid expanded rgb565");
+    assert!(height % 16 == 0, "invalid expanded rgb565");
+    let mut data = Vec::with_capacity((width * height / 256) as usize);
+    for y in (0..height).step_by(16) {
+        for x in (0..width).step_by(16) {
+            let ind = (((y * width) + x) * 4) as usize;
+            let b = &img.as_raw()[ind..ind + 4];
+            data.extend_from_slice(&join565(b[0], b[1], b[2]).to_le_bytes());
+        }
+    }
+    (width, height, data)
 }

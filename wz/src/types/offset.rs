@@ -2,13 +2,9 @@
 
 use crate::{
     error::Result,
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
 };
-use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
-};
+use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
 
 /// Defines a WZ-OFFSET structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -74,10 +70,9 @@ impl WzOffset {
 }
 
 impl Decode for WzOffset {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let position = reader.position()?;
         let encoded = u32::decode(reader)?;
@@ -91,10 +86,9 @@ impl Decode for WzOffset {
 }
 
 impl Encode for WzOffset {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         let position = writer.position()?;
         let encoded = self.encode_with(
@@ -127,19 +121,19 @@ mod tests {
 
         // Test conversions
         let wz_offset = WzOffset::from(test1);
-        assert_eq!(wz_offset, test1);
+        assert_eq!(wz_offset, WzOffset::from(test1));
         let wz_offset = WzOffset::from(test2);
-        assert_eq!(wz_offset, test2);
+        assert_eq!(wz_offset, WzOffset::from(test2));
         let wz_offset = WzOffset::from(test3);
-        assert_eq!(wz_offset, test3);
+        assert_eq!(wz_offset, WzOffset::from(test3));
         let wz_offset = WzOffset::from(test4); // truncated
-        assert_eq!(wz_offset, u32::MAX);
+        assert_eq!(wz_offset, WzOffset::from(u32::MAX));
 
         // Test Ord
         let wz_offset = WzOffset::from(17u32);
-        assert!(wz_offset > test1);
-        assert!(wz_offset > test2);
-        assert!(wz_offset < test3);
-        assert!(wz_offset < test4);
+        assert!(wz_offset > WzOffset::from(test1));
+        assert!(wz_offset > WzOffset::from(test2));
+        assert!(wz_offset < WzOffset::from(test3));
+        assert!(wz_offset < WzOffset::from(test4));
     }
 }

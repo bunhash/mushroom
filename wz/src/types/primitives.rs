@@ -2,26 +2,22 @@
 
 use crate::{
     error::Result,
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 impl Decode for i8 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         Ok(reader.read_byte()? as i8)
     }
 }
 
 impl Encode for i8 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_byte(*self as u8)
     }
@@ -35,10 +31,9 @@ impl SizeHint for i8 {
 }
 
 impl Decode for i16 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 2];
         reader.read_exact(&mut buf)?;
@@ -47,10 +42,9 @@ impl Decode for i16 {
 }
 
 impl Encode for i16 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -64,10 +58,9 @@ impl SizeHint for i16 {
 }
 
 impl Decode for i32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf)?;
@@ -76,10 +69,9 @@ impl Decode for i32 {
 }
 
 impl Encode for i32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -93,10 +85,9 @@ impl SizeHint for i32 {
 }
 
 impl Decode for i64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
@@ -105,10 +96,9 @@ impl Decode for i64 {
 }
 
 impl Encode for i64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -122,20 +112,18 @@ impl SizeHint for i64 {
 }
 
 impl Decode for u8 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         reader.read_byte()
     }
 }
 
 impl Encode for u8 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_byte(*self)
     }
@@ -149,10 +137,9 @@ impl SizeHint for u8 {
 }
 
 impl Decode for u16 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 2];
         reader.read_exact(&mut buf)?;
@@ -161,10 +148,9 @@ impl Decode for u16 {
 }
 
 impl Encode for u16 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -178,10 +164,9 @@ impl SizeHint for u16 {
 }
 
 impl Decode for u32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf)?;
@@ -190,10 +175,9 @@ impl Decode for u32 {
 }
 
 impl Encode for u32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -207,10 +191,9 @@ impl SizeHint for u32 {
 }
 
 impl Decode for u64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
@@ -219,10 +202,9 @@ impl Decode for u64 {
 }
 
 impl Encode for u64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -236,10 +218,9 @@ impl SizeHint for u64 {
 }
 
 impl Decode for f32 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         Ok(match reader.read_byte()? {
             0x80 => {
@@ -253,10 +234,9 @@ impl Decode for f32 {
 }
 
 impl Encode for f32 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         if *self as u32 == 0 {
             writer.write_byte(0)
@@ -279,10 +259,9 @@ impl SizeHint for f32 {
 }
 
 impl Decode for f64 {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
@@ -291,10 +270,9 @@ impl Decode for f64 {
 }
 
 impl Encode for f64 {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.to_le_bytes())
     }

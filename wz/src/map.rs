@@ -113,7 +113,7 @@ impl<T> Map<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{map::Map, types::String};
+    use crate::map::Map;
 
     #[test]
     fn make_map() {

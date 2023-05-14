@@ -2,11 +2,9 @@
 
 use crate::{
     error::{DecodeError, PackageError, Result},
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
     types::{WzInt, WzOffset},
 };
-use crypto::{Decryptor, Encryptor};
-use std::io::{Read, Seek, Write};
 
 /// Content Types
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,10 +44,9 @@ impl ContentRef {
 }
 
 impl Decode for ContentRef {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let tag = reader.read_byte()?;
         let (tag, name, size, checksum, offset) = match tag {
@@ -99,10 +96,9 @@ impl Decode for ContentRef {
 }
 
 impl Encode for ContentRef {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         match &self {
             ContentRef::Package(ref data) => {
@@ -169,10 +165,9 @@ impl Metadata {
         self.offset
     }
 
-    fn dereference_name<R, D>(offset: i32, reader: &mut WzReader<R, D>) -> Result<(u8, String)>
+    fn dereference_name<R>(offset: i32, reader: &mut R) -> Result<(u8, String)>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         if offset.is_negative() {
             // sanity check
@@ -201,10 +196,9 @@ impl Metadata {
 }
 
 impl Encode for Metadata {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         self.name.encode(writer)?;
         self.size.encode(writer)?;

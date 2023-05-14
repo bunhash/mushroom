@@ -1,16 +1,13 @@
 //! Encoder Trait
 
-use crate::{error::Result, io::WzWriter};
-use crypto::Encryptor;
-use std::io::{Seek, Write};
+use crate::{error::Result, io::WzWrite};
 
 /// Trait for encoding objects
 pub trait Encode {
     /// Encodes objects
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
         Self: Sized;
 }
 

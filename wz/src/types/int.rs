@@ -2,13 +2,9 @@
 
 use crate::{
     error::Result,
-    io::{Decode, Encode, SizeHint, WzReader, WzWriter},
+    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
 };
-use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
-};
+use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
 
 /// Defines a WZ-INT structure and how to encode/decode it
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -26,10 +22,9 @@ impl_from!(WzInt, u64, i32);
 impl_from!(WzInt, usize, i32);
 
 impl Decode for WzInt {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -40,10 +35,9 @@ impl Decode for WzInt {
 }
 
 impl Encode for WzInt {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
             writer.write_byte(i8::MIN as u8)?;
@@ -81,10 +75,9 @@ impl_from!(WzLong, u64, i64);
 impl_from!(WzLong, usize, i64);
 
 impl Decode for WzLong {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -95,10 +88,9 @@ impl Decode for WzLong {
 }
 
 impl Encode for WzLong {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
             writer.write_byte(i8::MIN as u8)?;
@@ -138,20 +130,20 @@ mod tests {
 
         // Test conversions
         let wz_int = WzInt::from(test1);
-        assert_eq!(wz_int, test1);
+        assert_eq!(wz_int, WzInt::from(test1));
         let wz_int = WzInt::from(test2);
-        assert_eq!(wz_int, test2);
+        assert_eq!(wz_int, WzInt::from(test2));
         let wz_int = WzInt::from(test3);
-        assert_eq!(wz_int, test3);
+        assert_eq!(wz_int, WzInt::from(test3));
         let wz_int = WzInt::from(test4); // truncated to be -1
-        assert_eq!(wz_int, -1);
+        assert_eq!(wz_int, WzInt::from(-1));
 
         // Test Ord
         let wz_int = WzInt::from(17);
-        assert!(wz_int > test1);
-        assert!(wz_int > test2);
-        assert!(wz_int < test3);
-        assert!(wz_int < test4);
+        assert!(wz_int > WzInt::from(test1));
+        assert!(wz_int > WzInt::from(test2));
+        assert!(wz_int < WzInt::from(test3));
+        assert!(wz_int > WzInt::from(test4));
     }
 
     #[test]
@@ -194,20 +186,20 @@ mod tests {
 
         // Test conversions
         let wz_long = WzLong::from(test1);
-        assert_eq!(wz_long, test1);
+        assert_eq!(wz_long, WzLong::from(test1));
         let wz_long = WzLong::from(test2);
-        assert_eq!(wz_long, test2);
+        assert_eq!(wz_long, WzLong::from(test2));
         let wz_long = WzLong::from(test3);
-        assert_eq!(wz_long, test3);
+        assert_eq!(wz_long, WzLong::from(test3));
         let wz_long = WzLong::from(test4);
-        assert_eq!(wz_long, test4);
+        assert_eq!(wz_long, WzLong::from(test4));
 
         // Test Ord
         let wz_long = WzLong::from(17);
-        assert!(wz_long > test1);
-        assert!(wz_long > test2);
-        assert!(wz_long < test3);
-        assert!(wz_long < test4);
+        assert!(wz_long > WzLong::from(test1));
+        assert!(wz_long > WzLong::from(test2));
+        assert!(wz_long < WzLong::from(test3));
+        assert!(wz_long < WzLong::from(test4));
     }
 
     #[test]
@@ -226,12 +218,12 @@ mod tests {
         let short_notation = vec![0x72];
         let mut reader = WzReader::unencrypted(0, 0, Cursor::new(short_notation));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
-        assert_eq!(wz_long, 0x72);
+        assert_eq!(wz_long, WzLong::from(0x72));
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
         let mut reader = WzReader::unencrypted(0, 0, Cursor::new(long_notation));
         let wz_long = WzLong::decode(&mut reader).expect("error reading from cursor");
-        assert_eq!(wz_long, 257);
+        assert_eq!(wz_long, WzLong::from(257));
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
         let mut reader = WzReader::unencrypted(0, 0, Cursor::new(failure));

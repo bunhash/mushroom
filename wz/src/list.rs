@@ -2,7 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    io::{Decode, DummyDecryptor, WzReader},
+    io::{Decode, DummyDecryptor, WzRead, WzReader},
 };
 use crypto::Decryptor;
 use std::{

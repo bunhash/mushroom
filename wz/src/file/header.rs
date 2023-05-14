@@ -2,10 +2,10 @@
 
 use crate::{
     error::{PackageError, Result},
-    io::{Encode, WzWriter},
+    io::{Encode, WzWrite},
 };
-use crypto::{checksum, Encryptor};
-use std::io::{Read, Seek, Write};
+use crypto::checksum;
+use std::io::Read;
 
 /// Header of the WZ archive
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,10 +112,9 @@ impl Header {
 
 impl Encode for Header {
     /// Encodes objects
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         writer.write_all(&self.identifier)?;
         self.size.encode(writer)?;

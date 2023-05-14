@@ -2,19 +2,16 @@
 
 use crate::{
     error::{CanvasError, DecodeError, Result},
-    file::image::raw::Property,
-    io::{Decode, WzReader},
+    file::image::{raw::Property, CanvasFormat},
+    io::{Decode, WzRead},
     types::WzInt,
 };
-use crypto::Decryptor;
-use std::io::{Read, Seek};
 
 #[derive(Debug)]
 pub struct Canvas {
     width: WzInt,
     height: WzInt,
-    format: WzInt,
-    format2: u8,
+    format: CanvasFormat,
     data: Vec<u8>,
     property: Option<Property>,
 }
@@ -31,13 +28,8 @@ impl Canvas {
     }
 
     /// Returns the format
-    pub fn format(&self) -> WzInt {
+    pub fn format(&self) -> CanvasFormat {
         self.format
-    }
-
-    /// Returns the MagLevel
-    pub fn format2(&self) -> u8 {
-        self.format2
     }
 
     /// Returns the data
@@ -52,10 +44,9 @@ impl Canvas {
 }
 
 impl Decode for Canvas {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         u8::decode(reader)?;
         let property = match u8::decode(reader)? {
@@ -67,8 +58,7 @@ impl Decode for Canvas {
         if width > 0x10000 || height > 0x10000 {
             return Err(CanvasError::TooBig(*width as u32, *height as u32).into());
         }
-        let format = WzInt::decode(reader)?;
-        let format2 = u8::decode(reader)?;
+        let format = CanvasFormat::decode(reader)?;
         i32::decode(reader)?;
         let length = i32::decode(reader)?;
         if length.is_negative() {
@@ -89,7 +79,6 @@ impl Decode for Canvas {
             width,
             height,
             format,
-            format2,
             data,
             property,
         })

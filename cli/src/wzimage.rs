@@ -77,50 +77,41 @@ pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key)
     }
 }
 
-fn debug<R, D>(name: &str, mut reader: WzReader<R, D>, _directory: &Option<String>) -> Result<()>
+fn debug<R, D>(name: &str, mut reader: WzReader<R, D>, directory: &Option<String>) -> Result<()>
 where
     R: Read + Seek,
     D: Decryptor,
 {
     let image = Image::parse(name, &mut reader)?;
     let map = image.map();
-    map.walk(|cursor| match cursor.get() {
-        Node::Canvas(v) => match *v.format() {
-            1 | 2 | 513 | 1026 => Ok::<(), Error>(()),
-            _ => Err(CanvasError::EncodingFormat(v.format()).into()),
-        },
-        _ => Ok::<(), Error>(()),
-    })?;
-    /*
-       let mut cursor = match directory {
-    // Find the optional directory
-    Some(ref path) => {
-    let path = path.split("/").collect::<Vec<&str>>();
-    map.cursor_at(&path)?
-    }
-    // Get the root
-    None => {
-    println!("{:?}", map.debug_pretty_print());
-    return Ok(());
-    }
+    let mut cursor = match directory {
+        // Find the optional directory
+        Some(ref path) => {
+            let path = path.split("/").collect::<Vec<&str>>();
+            map.cursor_at(&path)?
+        }
+        // Get the root
+        None => {
+            println!("{:?}", map.debug_pretty_print());
+            return Ok(());
+        }
     };
 
     // Print the directory and its immediate children
     println!("{:?} : {:?}", cursor.name(), cursor.get());
     let mut num_children = cursor.children().count();
     if num_children > 0 {
-    cursor.first_child()?;
-    loop {
-    if num_children <= 1 {
-    println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
-    break;
-    } else {
-    println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
+        cursor.first_child()?;
+        loop {
+            if num_children <= 1 {
+                println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
+                break;
+            } else {
+                println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
+            }
+            num_children = num_children - 1;
+            cursor.next_sibling()?;
+        }
     }
-    num_children = num_children - 1;
-    cursor.next_sibling()?;
-    }
-    }
-    */
     Ok(())
 }

@@ -3,14 +3,10 @@
 use crate::{
     error::{DecodeError, Result},
     file::image::raw::ContentRef,
-    io::{Decode, Encode, WzReader, WzWriter},
+    io::{Decode, Encode, WzRead, WzWrite},
     types::WzInt,
 };
-use crypto::{Decryptor, Encryptor};
-use std::{
-    io::{Read, Seek, Write},
-    slice::Iter,
-};
+use std::slice::Iter;
 
 /// A property contains a list of contents--similar to package.
 #[derive(Debug)]
@@ -31,10 +27,9 @@ impl Property {
 }
 
 impl Decode for Property {
-    fn decode<R, D>(reader: &mut WzReader<R, D>) -> Result<Self>
+    fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: Read + Seek,
-        D: Decryptor,
+        R: WzRead,
     {
         u16::decode(reader)?;
         let num_contents = WzInt::decode(reader)?;
@@ -51,10 +46,9 @@ impl Decode for Property {
 }
 
 impl Encode for Property {
-    fn encode<W, E>(&self, writer: &mut WzWriter<W, E>) -> Result<()>
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: Write + Seek,
-        E: Encryptor,
+        W: WzWrite,
     {
         let num_contents = WzInt::from(self.contents.len() as i32);
         num_contents.encode(writer)?;

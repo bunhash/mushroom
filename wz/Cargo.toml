@@ -9,10 +9,11 @@ path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
+crypto = { version = "0.1.0", path = "../crypto" }
 deflate = { version = "1.0.0" }
 image = { version = "0.24.6" }
 indextree = { version = "4.6.0" }
 inflate = { version = "0.4.5" }
 num = { version = "0.4.0" }
-crypto = { version = "0.1.0", path = "../crypto" }
+squish = { version = "1.0.0" }
 xml-rs = { version = "0.8.8" }
