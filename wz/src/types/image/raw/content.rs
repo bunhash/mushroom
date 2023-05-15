@@ -2,9 +2,8 @@
 
 use crate::{
     error::{ImageError, Result},
-    file::image::UolString,
     io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::{WzInt, WzLong, WzOffset},
+    types::{image::UolString, WzInt, WzLong, WzOffset},
 };
 
 /// Represents the contents of a [`Property`](crate::file::image::Property)

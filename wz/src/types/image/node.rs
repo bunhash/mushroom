@@ -1,9 +1,11 @@
 //! Image Node
 
 use crate::{
-    file::image::{Canvas, Sound, UolObject, UolString, Vector},
     io::xml::writer::ToXml,
-    types::{WzInt, WzLong},
+    types::{
+        image::{Canvas, Sound, UolObject, UolString, Vector},
+        WzInt, WzLong,
+    },
 };
 
 #[derive(Debug)]

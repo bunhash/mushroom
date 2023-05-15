@@ -2,9 +2,11 @@
 
 use crate::{
     error::{CanvasError, DecodeError, Result},
-    file::image::{raw::Property, CanvasFormat},
     io::{Decode, WzRead},
-    types::WzInt,
+    types::{
+        image::{raw::Property, CanvasFormat},
+        WzInt,
+    },
 };
 
 #[derive(Debug)]

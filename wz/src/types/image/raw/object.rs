@@ -2,12 +2,14 @@
 
 use crate::{
     error::{ImageError, Result},
-    file::image::{
-        raw::{Canvas, Property},
-        Sound, UolObject, Vector,
-    },
     io::{Decode, Encode, WzRead, WzWrite},
-    types::WzOffset,
+    types::{
+        image::{
+            raw::{Canvas, Property},
+            Sound, UolObject, Vector,
+        },
+        WzOffset,
+    },
 };
 
 /// These are just complex structures compared to the primitive values contained in WZ properties

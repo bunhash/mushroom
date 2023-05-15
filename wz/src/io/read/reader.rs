@@ -13,7 +13,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Header, io::WzReader};
+/// use wz::{io::WzReader, types::package::Header};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
 /// let header = Header::from_reader(&mut file).unwrap();
@@ -28,7 +28,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
-/// use wz::{file::Header, io::WzReader};
+/// use wz::{io::WzReader, types::package::Header};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
 /// let header = Header::from_reader(&mut file).unwrap();
@@ -174,7 +174,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{file::Header, io::WzReader};
+    use crate::{io::WzReader, types::package::Header};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 

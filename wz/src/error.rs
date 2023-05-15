@@ -7,6 +7,7 @@ mod decode;
 mod image;
 mod map;
 mod package;
+mod sound;
 mod xml;
 
 pub use self::image::ImageError;
@@ -15,6 +16,7 @@ pub use canvas::CanvasError;
 pub use decode::DecodeError;
 pub use map::MapError;
 pub use package::PackageError;
+pub use sound::SoundError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -39,6 +41,9 @@ pub enum Error {
     /// Package errors
     Package(PackageError),
 
+    /// Sound errors
+    Sound(SoundError),
+
     /// XML errors
     Xml(XmlError),
 }
@@ -52,6 +57,7 @@ impl fmt::Display for Error {
             Self::Io(kind) => write!(f, "IO: {}", kind),
             Self::Map(e) => write!(f, "Map: {}", e),
             Self::Package(e) => write!(f, "Package: {}", e),
+            Self::Sound(e) => write!(f, "Sound: {}", e),
             Self::Xml(e) => write!(f, "XML: {}", e),
         }
     }
@@ -114,6 +120,12 @@ impl From<MapError> for Error {
 impl From<PackageError> for Error {
     fn from(other: PackageError) -> Self {
         Error::Package(other)
+    }
+}
+
+impl From<SoundError> for Error {
+    fn from(other: SoundError) -> Self {
+        Error::Sound(other)
     }
 }
 

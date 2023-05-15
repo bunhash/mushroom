@@ -1,59 +1,66 @@
-//! WZ Image
+//! WZ Image Reader
 
 use crate::{
     error::{DecodeError, ImageError, Result},
-    io::{Decode, WzRead},
+    io::{Decode, WzRead, WzReader},
     map::{CursorMut, Map},
-    types::{WzInt, WzOffset},
+    types::{
+        image::{raw, Canvas, Node},
+        WzInt, WzOffset,
+    },
 };
+use crypto::Decryptor;
+use std::{fs::File, io::BufReader, path::Path};
 
-pub mod canvas;
-mod node;
-mod sound;
-mod uol;
-mod vector;
-
-pub use canvas::{Canvas, CanvasFormat};
-pub use node::Node;
-pub use sound::Sound;
-pub use uol::{UolObject, UolString};
-pub use vector::Vector;
-
-pub mod raw;
-
+/// Reads a WZ image.
 #[derive(Debug)]
-pub struct Image {
-    map: Map<Node>,
+pub struct Reader<D>
+where
+    D: Decryptor,
+{
+    inner: WzReader<BufReader<File>, D>,
 }
 
-impl Image {
-    pub fn parse<R>(name: &str, reader: &mut R) -> Result<Self>
+impl<D> Reader<D>
+where
+    D: Decryptor,
+{
+    /// Opens a WZ image
+    pub fn open<S>(path: S, decryptor: D) -> Result<Self>
     where
-        R: WzRead,
+        S: AsRef<Path>,
     {
+        let buf = BufReader::new(File::open(path)?);
+        let inner = WzReader::new(0, 0, buf, decryptor);
+        Ok(Self { inner })
+    }
+
+    /// Maps the archive contents. The root will be named `name`
+    pub fn map(&mut self, name: &str) -> Result<Map<Node>> {
         let mut map = Map::new(String::from(name), Node::Property);
-        let object = raw::Object::decode(reader)?;
+        let object = raw::Object::decode(&mut self.inner)?;
         match &object {
             raw::Object::Property(p) => {
-                map_property_to(p, reader, &mut map.cursor_mut())?;
-                Ok(Self { map })
+                map_property_to(p, &mut self.inner, &mut map.cursor_mut())?;
+                Ok(map)
             }
             _ => Err(ImageError::ImageRoot.into()),
         }
     }
 
-    pub fn map(&self) -> &Map<Node> {
-        &self.map
+    /// Consumes the archive and returns the inner reader
+    pub fn into_inner(self) -> WzReader<BufReader<File>, D> {
+        self.inner
     }
 }
 
-fn map_property_to<R>(
+fn map_property_to<D>(
     property: &raw::Property,
-    reader: &mut R,
+    reader: &mut WzReader<BufReader<File>, D>,
     cursor: &mut CursorMut<Node>,
 ) -> Result<()>
 where
-    R: WzRead,
+    D: Decryptor,
 {
     for content in property.contents() {
         match &content {
@@ -86,14 +93,14 @@ where
     Ok(())
 }
 
-fn map_object_to<R>(
+fn map_object_to<D>(
     name: &str,
     offset: WzOffset,
-    reader: &mut R,
+    reader: &mut WzReader<BufReader<File>, D>,
     cursor: &mut CursorMut<Node>,
 ) -> Result<()>
 where
-    R: WzRead,
+    D: Decryptor,
 {
     reader.seek(offset)?;
     let object = raw::Object::decode(reader)?;

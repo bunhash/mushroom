@@ -10,8 +10,9 @@ use std::{
 use wz::{
     archive,
     error::{Error, PackageError, Result},
-    file::{image::Image, Header},
+    image::map_image,
     io::{xml::writer::XmlWriter, DummyDecryptor, DummyEncryptor, WzImageReader, WzRead},
+    types::package::Header,
     Archive, Builder, List,
 };
 
@@ -320,7 +321,7 @@ fn server<D>(name: &str, mut archive: Archive<D>, verbose: bool) -> Result<()>
 where
     D: Decryptor,
 {
-    let map = archive.map(&name)?;
+    let map = archive.map(name)?;
     let mut reader = archive.into_inner();
     map.walk::<Error>(|cursor| {
         match cursor.get() {
@@ -330,15 +331,14 @@ where
                     fs::create_dir(&path)?;
                 }
             }
-            archive::Node::Image { offset, size } => {
+            archive::Node::Image { offset, .. } => {
                 let path = format!("{}.xml", cursor.pwd().join("/"));
                 if Path::new(&path).is_file() {
                     fs::remove_file(&path)?;
                 }
                 let mut image_reader = WzImageReader::new(&mut reader, *offset);
                 image_reader.seek_to_start()?;
-                let image = Image::parse(cursor.name(), &mut image_reader)?;
-                let map = image.map();
+                let map = map_image(cursor.name(), &mut image_reader)?;
                 if verbose {
                     println!("{}", path);
                 }

@@ -128,7 +128,7 @@ impl Encode for Header {
 #[cfg(test)]
 mod tests {
 
-    use crate::file::Header;
+    use crate::types::package::Header;
     use std::fs::File;
 
     #[test]

@@ -151,8 +151,8 @@ impl Canvas {
         decode_image(self)
     }
 
-    /// Saves the image to disk
-    pub fn save_to_disk<S>(&self, path: &S, format: ImageFormat) -> Result<()>
+    /// Saves the image to file
+    pub fn save_to_file<S>(&self, path: &S, format: ImageFormat) -> Result<()>
     where
         S: AsRef<Path>,
     {

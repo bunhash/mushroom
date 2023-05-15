@@ -5,13 +5,12 @@ use crypto::{Decryptor, KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
     io::{BufReader, Read, Seek},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use wz::{
-    error::{CanvasError, Error, Result},
-    file::{image::Node, Image},
+    error::Result,
+    image::map_image,
     io::{DummyDecryptor, WzReader},
-    map::Cursor,
 };
 
 mod extract;
@@ -48,8 +47,8 @@ where
     R: Read + Seek,
     D: Decryptor,
 {
-    let image = Image::parse(name, &mut reader)?;
-    extract_image_from_map(image.map(), verbose)
+    let map = map_image(name, &mut reader)?;
+    extract_image_from_map(&map, verbose)
 }
 
 pub(crate) fn do_debug(filename: &PathBuf, directory: &Option<String>, key: Key) -> Result<()> {
@@ -82,12 +81,11 @@ where
     R: Read + Seek,
     D: Decryptor,
 {
-    let image = Image::parse(name, &mut reader)?;
-    let map = image.map();
+    let map = map_image(name, &mut reader)?;
     let mut cursor = match directory {
         // Find the optional directory
         Some(ref path) => {
-            let path = path.split("/").collect::<Vec<&str>>();
+            let path = path.split('/').collect::<Vec<&str>>();
             map.cursor_at(&path)?
         }
         // Get the root
@@ -109,7 +107,7 @@ where
             } else {
                 println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
             }
-            num_children = num_children - 1;
+            num_children -= 1;
             cursor.next_sibling()?;
         }
     }

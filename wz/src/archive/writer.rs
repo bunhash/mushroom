@@ -1,20 +1,18 @@
-//! WZ Archive Builder
+//! WZ Archive Writer
 
 use crate::{
     error::{PackageError, Result},
-    file::{
-        package::{ContentRef, Metadata},
-        Header,
-    },
     io::{DummyEncryptor, Encode, SizeHint, WzWriter},
     map::{Cursor, CursorMut, Map},
-    types::{WzInt, WzOffset},
+    types::{
+        package::{ContentRef, Header, Metadata},
+        WzInt, WzOffset,
+    },
 };
 use crypto::{checksum, Encryptor};
 use std::{
-    convert::AsRef,
     fs::File,
-    io::{self, Seek, Write},
+    io::{self, BufWriter, Seek, Write},
     num::Wrapping,
     path::Path,
 };
@@ -55,14 +53,14 @@ where
 /// archive's root directory should only contain other directories and images. It will treat all
 /// non-directory files as images.
 #[derive(Debug)]
-pub struct Builder<I>
+pub struct Writer<I>
 where
     I: ImageRef,
 {
     map: Map<Node<I>>,
 }
 
-impl<I> Builder<I>
+impl<I> Writer<I>
 where
     I: ImageRef,
 {
@@ -95,9 +93,9 @@ where
     /// exist.
     ///
     /// Errors when `path` does not start with the root package name.
-    pub fn add_package<S>(&mut self, path: &S) -> Result<()>
+    pub fn add_package<S>(&mut self, path: S) -> Result<()>
     where
-        S: AsRef<Path> + ?Sized,
+        S: AsRef<Path>,
     {
         self.make_package_path(path)?;
         Ok(())
@@ -111,9 +109,9 @@ where
     ///
     /// Errors when `path` does not start with the root package name or when a package or image
     /// already exists at the specified `path`.
-    pub fn add_image<S>(&mut self, path: &S, image: I) -> Result<()>
+    pub fn add_image<S>(&mut self, path: S, image: I) -> Result<()>
     where
-        S: AsRef<Path> + ?Sized,
+        S: AsRef<Path>,
     {
         let parent = match path.as_ref().parent() {
             Some(p) => p,
@@ -153,16 +151,20 @@ where
     ///
     /// Errors when the provided version does not match the header's version hash. Or if any IO
     /// error occurs.
-    pub fn save<E>(
+    pub fn save<S, E>(
         &mut self,
+        path: S,
         version: u16,
         mut header: Header,
-        mut file: File,
         encryptor: E,
     ) -> Result<()>
     where
+        S: AsRef<Path>,
         E: Encryptor,
     {
+        // If file fails, no point in wasting time on the rest so do this first
+        let mut file = BufWriter::new(File::create(path)?);
+
         let absolute_position = header.absolute_position;
         let (version_hash, version_checksum) = checksum(&version.to_string());
         if version_hash != header.version_hash {
@@ -187,9 +189,9 @@ where
 
     // *** PRIVATES *** //
 
-    fn make_package_path<S>(&mut self, path: &S) -> Result<CursorMut<Node<I>>>
+    fn make_package_path<S>(&mut self, path: S) -> Result<CursorMut<Node<I>>>
     where
-        S: AsRef<Path> + ?Sized,
+        S: AsRef<Path>,
     {
         let mut cursor = self.map.cursor_mut();
         let path = match path.as_ref().strip_prefix(cursor.name()) {

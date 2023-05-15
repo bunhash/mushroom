@@ -1,35 +1,19 @@
-//! WZ Package
+//! WZ Image Property Type
 
 use crate::{
     error::{DecodeError, Result},
     io::{Decode, Encode, WzRead, WzWrite},
-    types::WzInt,
+    types::{image::raw::ContentRef, WzInt},
 };
 use std::slice::Iter;
 
-mod content;
-
-pub use content::{ContentRef, Metadata};
-
-/// Packages can hold other packages or images. The structure is as follows:
-///
-/// ```no_build
-/// [ num_contents: WzInt ]
-/// [metadata for content1]
-/// [         ...         ]
-/// [metadata for contentN]
-/// [      content 1      ]
-/// [         ...         ]
-/// [      content N      ]
-/// ```
-///
-/// Packages are allowed to be empty. Empty packages are used in Base.wz to probably to signify what
-/// other WZ archives exist. It's best to treat each of the package contents as binary blobs.
-pub struct Package {
+/// A property contains a list of contents--similar to package.
+#[derive(Debug)]
+pub struct Property {
     contents: Vec<ContentRef>,
 }
 
-impl Package {
+impl Property {
     /// Returns the number of contents
     pub fn num_contents(&self) -> usize {
         self.contents.len()
@@ -41,11 +25,12 @@ impl Package {
     }
 }
 
-impl Decode for Package {
+impl Decode for Property {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
         R: WzRead,
     {
+        u16::decode(reader)?;
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {
             return Err(DecodeError::Length(*num_contents).into());
@@ -59,7 +44,7 @@ impl Decode for Package {
     }
 }
 
-impl Encode for Package {
+impl Encode for Property {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
         W: WzWrite,

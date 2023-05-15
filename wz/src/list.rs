@@ -1,4 +1,4 @@
-//! List.wz Decoder
+//! Reader.wz Decoder
 
 use crate::{
     error::{Error, Result},
@@ -11,11 +11,11 @@ use std::{
     slice::Iter,
 };
 
-pub struct List {
+pub struct Reader {
     strings: Vec<String>,
 }
 
-impl List {
+impl Reader {
     pub fn parse<D>(file: File, mut decryptor: D) -> Result<Self>
     where
         D: Decryptor,
