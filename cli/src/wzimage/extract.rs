@@ -10,10 +10,10 @@ use wz::{
         writer::{EmitterConfig, EventWriter, ToXml, XmlEvent},
     },
     map::{Cursor, Map},
-    types::image::Node,
+    types::Property,
 };
 
-pub(crate) fn extract_image_from_map(map: &Map<Node>, verbose: bool) -> Result<()> {
+pub(crate) fn extract_image_from_map(map: &Map<Property>, verbose: bool) -> Result<()> {
     let mut cursor = map.cursor();
 
     // Create the directory
@@ -36,7 +36,7 @@ pub(crate) fn extract_image_from_map(map: &Map<Node>, verbose: bool) -> Result<(
 fn recursive_extract<W>(
     image_dir: &str,
     writer: &mut EventWriter<W>,
-    cursor: &mut Cursor<Node>,
+    cursor: &mut Cursor<Property>,
     verbose: bool,
 ) -> Result<()>
 where
@@ -44,7 +44,7 @@ where
 {
     let data = cursor.get();
     match &data {
-        Node::Canvas(v) => {
+        Property::Canvas(v) => {
             let res_dir = format!("{}/res", &image_dir);
             if !Path::new(&res_dir).is_dir() {
                 fs::create_dir(&res_dir)?;
@@ -65,7 +65,7 @@ where
             }
             v.save_to_file(&png_out, ImageFormat::Png)?;
         }
-        Node::Sound(v) => {
+        Property::Sound(v) => {
             let res_dir = format!("{}/res", &image_dir);
             if !Path::new(&res_dir).is_dir() {
                 fs::create_dir(&res_dir)?;

@@ -1,4 +1,4 @@
-//! WZ Archive Header
+//! WZ Archive WzHeader
 
 use crate::{
     error::{PackageError, Result},
@@ -7,9 +7,9 @@ use crate::{
 use crypto::checksum;
 use std::io::Read;
 
-/// Header of the WZ archive
+/// WzHeader of the WZ archive
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Header {
+pub struct WzHeader {
     /// Constant value. ASCII for "PKG1"
     pub identifier: [u8; 4],
 
@@ -30,7 +30,7 @@ pub struct Header {
     pub version_hash: u16,
 }
 
-impl Header {
+impl WzHeader {
     /// Creates new header with default values.
     pub fn new(version: u16) -> Self {
         let (version_hash, _) = checksum(&version.to_string());
@@ -44,7 +44,7 @@ impl Header {
     }
 
     /// Reads the header at the beginning of the WZ archive
-    pub fn from_reader<R>(reader: &mut R) -> Result<Header>
+    pub fn from_reader<R>(reader: &mut R) -> Result<WzHeader>
     where
         R: Read,
     {
@@ -89,7 +89,7 @@ impl Header {
         reader.read_exact(&mut version_hash)?;
         let version_hash = u16::from_le_bytes(version_hash);
 
-        Ok(Header {
+        Ok(WzHeader {
             identifier,
             size,
             absolute_position,
@@ -110,7 +110,7 @@ impl Header {
     }
 }
 
-impl Encode for Header {
+impl Encode for WzHeader {
     /// Encodes objects
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
@@ -128,13 +128,13 @@ impl Encode for Header {
 #[cfg(test)]
 mod tests {
 
-    use crate::types::package::Header;
+    use crate::types::WzHeader;
     use std::fs::File;
 
     #[test]
     fn v83_header() {
         let mut file = File::open("testdata/v83-base.wz").expect("error opening file");
-        let header = Header::from_reader(&mut file).expect("error reading header");
+        let header = WzHeader::from_reader(&mut file).expect("error reading header");
         assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(header.size, 6480);
         assert_eq!(header.absolute_position, 60);
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn v172_header() {
         let mut file = File::open("testdata/v172-base.wz").expect("error opening file");
-        let header = Header::from_reader(&mut file).expect("error reading header");
+        let header = WzHeader::from_reader(&mut file).expect("error reading header");
         assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(header.size, 6705);
         assert_eq!(header.absolute_position, 60);

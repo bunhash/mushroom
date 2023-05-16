@@ -5,8 +5,8 @@ use crate::{
     io::{Decode, WzRead, WzReader},
     map::{CursorMut, Map},
     types::{
-        package::{ContentRef, Header},
-        Package, WzInt, WzOffset,
+        raw::{package::ContentRef, Package},
+        WzHeader, WzInt, WzOffset,
     },
 };
 use crypto::{checksum, Decryptor};
@@ -26,7 +26,7 @@ pub enum Node {
 /// ```no_run
 /// use crypto::{KeyStream, GMS_IV, TRIMMED_KEY};
 /// use std::fs::File;
-/// use wz::Reader;
+/// use wz::archive::Reader;
 ///
 /// let mut archive = Reader::open("Character.wz", KeyStream::new(&TRIMMED_KEY, &GMS_IV)).unwrap();
 /// let map = archive.map("Character.wz").unwrap();
@@ -35,50 +35,64 @@ pub enum Node {
 /// // Do stuf with reader
 /// ```
 #[derive(Debug)]
-pub struct Reader<D>
+pub struct Reader<R>
 where
-    D: Decryptor,
+    R: WzRead,
 {
-    header: Header,
-    inner: WzReader<BufReader<File>, D>,
+    header: WzHeader,
+    inner: R,
 }
 
-impl<D> Reader<D>
+impl<D> Reader<WzReader<BufReader<File>, D>>
 where
     D: Decryptor,
 {
     /// Opens a WZ archive and reads the header data. Attemps to brute force the version
-    pub fn open<S>(path: S, decryptor: D) -> Result<Self>
+    pub fn open<S>(path: S, decryptor: D) -> Result<Reader<WzReader<BufReader<File>, D>>>
     where
         S: AsRef<Path>,
     {
         let mut buf = BufReader::new(File::open(path)?);
-        let header = Header::from_reader(&mut buf)?;
+        let header = WzHeader::from_reader(&mut buf)?;
         let inner = bruteforce_version(&header, buf, decryptor)?;
-        Ok(Self { header, inner })
+        Ok(Reader::new(header, inner))
     }
 
     /// Opens a WZ archive and reads the header data.
-    pub fn open_as_version<S>(path: S, version: u16, decryptor: D) -> Result<Self>
+    pub fn open_as_version<S>(
+        path: S,
+        version: u16,
+        decryptor: D,
+    ) -> Result<Reader<WzReader<BufReader<File>, D>>>
     where
         S: AsRef<Path>,
     {
         let mut buf = BufReader::new(File::open(path)?);
-        let header = Header::from_reader(&mut buf)?;
+        let header = WzHeader::from_reader(&mut buf)?;
         let absolute_position = header.absolute_position;
         let (version_hash, version_checksum) = checksum(&version.to_string());
         if version_hash != header.version_hash {
             Err(PackageError::Checksum.into())
         } else {
-            Ok(Self {
+            Ok(Reader::new(
                 header,
-                inner: WzReader::new(absolute_position, version_checksum, buf, decryptor),
-            })
+                WzReader::new(absolute_position, version_checksum, buf, decryptor),
+            ))
         }
+    }
+}
+
+impl<R> Reader<R>
+where
+    R: WzRead,
+{
+    /// Creates a new archive reader from a WzRead
+    pub fn new(header: WzHeader, inner: R) -> Self {
+        Self { header, inner }
     }
 
     /// Returns a reference to the header
-    pub fn header(&self) -> &Header {
+    pub fn header(&self) -> &WzHeader {
         &self.header
     }
 
@@ -92,13 +106,13 @@ where
     }
 
     /// Consumes the archive and returns the inner reader
-    pub fn into_inner(self) -> WzReader<BufReader<File>, D> {
+    pub fn into_inner(self) -> R {
         self.inner
     }
 }
 
 fn bruteforce_version<D>(
-    header: &Header,
+    header: &WzHeader,
     buf: BufReader<File>,
     decryptor: D,
 ) -> Result<WzReader<BufReader<File>, D>>
@@ -108,7 +122,7 @@ where
     let lower_bound = WzOffset::from(header.absolute_position as u32);
     let upper_bound = WzOffset::from(header.absolute_position as u32 + header.size as u32);
     let mut inner = WzReader::new(header.absolute_position, 0u32, buf, decryptor);
-    for (_, version_checksum) in Header::possible_versions(header.version_hash) {
+    for (_, version_checksum) in WzHeader::possible_versions(header.version_hash) {
         inner.set_version_checksum(version_checksum);
         inner.seek_to_start()?;
 
@@ -127,12 +141,9 @@ where
     Err(PackageError::BruteForceChecksum.into())
 }
 
-fn map_package_to<D>(
-    reader: &mut WzReader<BufReader<File>, D>,
-    cursor: &mut CursorMut<Node>,
-) -> Result<()>
+fn map_package_to<R>(reader: &mut R, cursor: &mut CursorMut<Node>) -> Result<()>
 where
-    D: Decryptor,
+    R: WzRead,
 {
     let package = Package::decode(reader)?;
     for content in package.contents() {

@@ -14,27 +14,6 @@ pub enum ContentRef {
 }
 
 impl ContentRef {
-    pub fn name(&self) -> &str {
-        match &self {
-            ContentRef::Package(ref data) => data.name(),
-            ContentRef::Image(ref data) => data.name(),
-        }
-    }
-
-    pub fn size(&self) -> WzInt {
-        match &self {
-            ContentRef::Package(ref data) => data.size(),
-            ContentRef::Image(ref data) => data.size(),
-        }
-    }
-
-    pub fn checksum(&self) -> WzInt {
-        match &self {
-            ContentRef::Package(ref data) => data.checksum(),
-            ContentRef::Image(ref data) => data.checksum(),
-        }
-    }
-
     pub fn offset(&self) -> WzOffset {
         match &self {
             ContentRef::Package(ref data) => data.offset(),
@@ -155,10 +134,6 @@ impl Metadata {
 
     pub fn size(&self) -> WzInt {
         self.size
-    }
-
-    pub fn checksum(&self) -> WzInt {
-        self.checksum
     }
 
     pub fn offset(&self) -> WzOffset {

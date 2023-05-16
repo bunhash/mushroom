@@ -3,7 +3,7 @@
 use crate::{
     error::{DecodeError, Result},
     io::{Decode, Encode, WzRead, WzWrite},
-    types::{image::raw::ContentRef, WzInt},
+    types::{raw::ContentRef, WzInt},
 };
 use std::slice::Iter;
 
@@ -14,11 +14,6 @@ pub struct Property {
 }
 
 impl Property {
-    /// Returns the number of contents
-    pub fn num_contents(&self) -> usize {
-        self.contents.len()
-    }
-
     /// Returns an iterator over the contents
     pub fn contents(&self) -> Iter<'_, ContentRef> {
         self.contents.iter()

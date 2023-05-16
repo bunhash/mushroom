@@ -4,40 +4,46 @@ use crate::{
     error::{DecodeError, ImageError, Result},
     io::{Decode, WzRead, WzReader},
     map::{CursorMut, Map},
-    types::{
-        image::{raw, Canvas, Node},
-        WzInt, WzOffset,
-    },
+    types::{raw, Canvas, Property, WzInt, WzOffset},
 };
 use crypto::Decryptor;
 use std::{fs::File, io::BufReader, path::Path};
 
 /// Reads a WZ image.
 #[derive(Debug)]
-pub struct Reader<D>
+pub struct Reader<R>
 where
-    D: Decryptor,
+    R: WzRead,
 {
-    inner: WzReader<BufReader<File>, D>,
+    inner: R,
 }
 
-impl<D> Reader<D>
+impl<D> Reader<WzReader<BufReader<File>, D>>
 where
     D: Decryptor,
 {
-    /// Opens a WZ image
     pub fn open<S>(path: S, decryptor: D) -> Result<Self>
     where
         S: AsRef<Path>,
     {
-        let buf = BufReader::new(File::open(path)?);
-        let inner = WzReader::new(0, 0, buf, decryptor);
-        Ok(Self { inner })
+        Ok(Self {
+            inner: WzReader::new(0, 0, BufReader::new(File::open(path)?), decryptor),
+        })
+    }
+}
+
+impl<R> Reader<R>
+where
+    R: WzRead,
+{
+    /// Creates a new WZ image reader
+    pub fn new(inner: R) -> Self {
+        Self { inner }
     }
 
     /// Maps the archive contents. The root will be named `name`
-    pub fn map(&mut self, name: &str) -> Result<Map<Node>> {
-        let mut map = Map::new(String::from(name), Node::Property);
+    pub fn map(&mut self, name: &str) -> Result<Map<Property>> {
+        let mut map = Map::new(String::from(name), Property::ImgDir);
         let object = raw::Object::decode(&mut self.inner)?;
         match &object {
             raw::Object::Property(p) => {
@@ -49,41 +55,41 @@ where
     }
 
     /// Consumes the archive and returns the inner reader
-    pub fn into_inner(self) -> WzReader<BufReader<File>, D> {
+    pub fn into_inner(self) -> R {
         self.inner
     }
 }
 
-fn map_property_to<D>(
+fn map_property_to<R>(
     property: &raw::Property,
-    reader: &mut WzReader<BufReader<File>, D>,
-    cursor: &mut CursorMut<Node>,
+    reader: &mut R,
+    cursor: &mut CursorMut<Property>,
 ) -> Result<()>
 where
-    D: Decryptor,
+    R: WzRead,
 {
     for content in property.contents() {
         match &content {
             raw::ContentRef::Null { name } => {
-                cursor.create(String::from(name.as_ref()), Node::Null)?;
+                cursor.create(String::from(name.as_ref()), Property::Null)?;
             }
             raw::ContentRef::Short { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::Short(*value))?;
+                cursor.create(String::from(name.as_ref()), Property::Short(*value))?;
             }
             raw::ContentRef::Int { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::Int(*value))?;
+                cursor.create(String::from(name.as_ref()), Property::Int(*value))?;
             }
             raw::ContentRef::Long { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::Long(*value))?;
+                cursor.create(String::from(name.as_ref()), Property::Long(*value))?;
             }
             raw::ContentRef::Float { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::Float(*value))?;
+                cursor.create(String::from(name.as_ref()), Property::Float(*value))?;
             }
             raw::ContentRef::Double { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::Double(*value))?;
+                cursor.create(String::from(name.as_ref()), Property::Double(*value))?;
             }
             raw::ContentRef::String { name, value } => {
-                cursor.create(String::from(name.as_ref()), Node::String(value.clone()))?;
+                cursor.create(String::from(name.as_ref()), Property::String(value.clone()))?;
             }
             raw::ContentRef::Object { name, offset, .. } => {
                 map_object_to(name.as_ref(), *offset, reader, cursor)?;
@@ -93,20 +99,20 @@ where
     Ok(())
 }
 
-fn map_object_to<D>(
+fn map_object_to<R>(
     name: &str,
     offset: WzOffset,
-    reader: &mut WzReader<BufReader<File>, D>,
-    cursor: &mut CursorMut<Node>,
+    reader: &mut R,
+    cursor: &mut CursorMut<Property>,
 ) -> Result<()>
 where
-    D: Decryptor,
+    R: WzRead,
 {
     reader.seek(offset)?;
     let object = raw::Object::decode(reader)?;
     match &object {
         raw::Object::Property(p) => {
-            cursor.create(String::from(name), Node::Property)?;
+            cursor.create(String::from(name), Property::ImgDir)?;
             cursor.move_to(name)?;
             map_property_to(p, reader, cursor)?;
             cursor.parent()?;
@@ -114,7 +120,7 @@ where
         raw::Object::Canvas(c) => {
             cursor.create(
                 String::from(name),
-                Node::Canvas(Canvas::new(
+                Property::Canvas(Canvas::new(
                     c.width(),
                     c.height(),
                     c.format(),
@@ -128,7 +134,7 @@ where
             }
         }
         raw::Object::Convex => {
-            cursor.create(String::from(name), Node::Convex)?;
+            cursor.create(String::from(name), Property::Convex)?;
             cursor.move_to(name)?;
             let num_objects = WzInt::decode(reader)?;
             if num_objects.is_negative() {
@@ -141,13 +147,13 @@ where
             cursor.parent()?;
         }
         raw::Object::Vector(v) => {
-            cursor.create(String::from(name), Node::Vector(*v))?;
+            cursor.create(String::from(name), Property::Vector(*v))?;
         }
         raw::Object::Uol(u) => {
-            cursor.create(String::from(name), Node::Uol(u.clone()))?;
+            cursor.create(String::from(name), Property::Uol(u.clone()))?;
         }
         raw::Object::Sound(s) => {
-            cursor.create(String::from(name), Node::Sound(s.clone()))?;
+            cursor.create(String::from(name), Property::Sound(s.clone()))?;
         }
     }
     Ok(())

@@ -5,8 +5,8 @@ use crate::{
     io::{DummyEncryptor, Encode, SizeHint, WzWriter},
     map::{Cursor, CursorMut, Map},
     types::{
-        package::{ContentRef, Header, Metadata},
-        WzInt, WzOffset,
+        raw::package::{ContentRef, Metadata},
+        WzHeader, WzInt, WzOffset,
     },
 };
 use crypto::{checksum, Encryptor};
@@ -88,10 +88,6 @@ where
     /// Adds a package to the builder. A package is essentially a directory but WZ calls it a
     /// package. When it and its contents are serialized, it is treated as a binary blob.
     ///
-    /// `path` should be a [`OsStr`]. Example: "root/subdir_a/subdir_b" where `root` is the name given to the
-    /// builder at creation. The entire chain of packages will be created if they don't already
-    /// exist.
-    ///
     /// Errors when `path` does not start with the root package name.
     pub fn add_package<S>(&mut self, path: S) -> Result<()>
     where
@@ -102,10 +98,6 @@ where
     }
 
     /// Adds an image to the builder. An image is treated as a binary blob.
-    ///
-    /// `path` should be a [`OsStr`]. Example: "root/subdir_a/image_a.img" where `root` is the name
-    /// given to the builder at creation. The entire chain of packages preceeding the image will be
-    /// created if they don't already exist.
     ///
     /// Errors when `path` does not start with the root package name or when a package or image
     /// already exists at the specified `path`.
@@ -145,7 +137,7 @@ where
 
     /// Generates the WZ archive and writes it to disk.
     ///
-    /// The version must match the [`Header`] and should match the added imges. If the image versions do
+    /// The version must match the [`WzHeader`] and should match the added imges. If the image versions do
     /// not match the version provided here, decoding offsets contained in the images may not align
     /// properly.
     ///
@@ -155,7 +147,7 @@ where
         &mut self,
         path: S,
         version: u16,
-        mut header: Header,
+        mut header: WzHeader,
         encryptor: E,
     ) -> Result<()>
     where

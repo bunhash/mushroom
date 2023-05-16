@@ -3,7 +3,7 @@
 use crate::{
     error::{Error, Result, SoundError},
     io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::image::sound::AudioFormat,
+    types::sound::AudioFormat,
 };
 use std::fmt;
 

@@ -8,10 +8,8 @@ use crate::{
 use std::slice::Iter;
 
 mod content;
-mod header;
 
 pub use content::{ContentRef, Metadata};
-pub use header::Header;
 
 /// Packages can hold other packages or images. The structure is as follows:
 ///

@@ -1,4 +1,4 @@
-//! Reader.wz Decoder
+//! List.wz Decoder
 
 use crate::{
     error::{Error, Result},
@@ -8,6 +8,7 @@ use crypto::Decryptor;
 use std::{
     fs::File,
     io::{BufReader, ErrorKind},
+    path::Path,
     slice::Iter,
 };
 
@@ -16,12 +17,13 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn parse<D>(file: File, mut decryptor: D) -> Result<Self>
+    pub fn parse<S, D>(path: S, mut decryptor: D) -> Result<Self>
     where
+        S: AsRef<Path>,
         D: Decryptor,
     {
         let mut strings = Vec::new();
-        let mut reader = WzReader::new(0, 0, BufReader::new(file), DummyDecryptor);
+        let mut reader = WzReader::new(0, 0, BufReader::new(File::open(path)?), DummyDecryptor);
         loop {
             let length = match u32::decode(&mut reader) {
                 Ok(n) => n,

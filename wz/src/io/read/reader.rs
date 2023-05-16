@@ -13,10 +13,10 @@ use std::io::{Read, Seek, SeekFrom, Write};
 /// ```no_run
 /// use crypto::checksum;
 /// use std::{io::BufReader, fs::File};
-/// use wz::{io::WzReader, types::package::Header};
+/// use wz::{io::WzReader, types::WzHeader};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
-/// let header = Header::from_reader(&mut file).unwrap();
+/// let header = WzHeader::from_reader(&mut file).unwrap();
 /// let (_, version_checksum) = checksum("176");
 /// let reader = WzReader::unencrypted(
 ///     header.absolute_position,
@@ -28,10 +28,10 @@ use std::io::{Read, Seek, SeekFrom, Write};
 /// ```no_run
 /// use crypto::{checksum, KeyStream, TRIMMED_KEY, GMS_IV};
 /// use std::{io::BufReader, fs::File};
-/// use wz::{io::WzReader, types::package::Header};
+/// use wz::{io::WzReader, types::WzHeader};
 ///
 /// let mut file = File::open("Base.wz").unwrap();
-/// let header = Header::from_reader(&mut file).unwrap();
+/// let header = WzHeader::from_reader(&mut file).unwrap();
 /// let (_, version_checksum) = checksum("83");
 /// let reader = WzReader::encrypted(
 ///     header.absolute_position,
@@ -174,14 +174,14 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{io::WzReader, types::package::Header};
+    use crate::{io::WzReader, types::WzHeader};
     use crypto::{checksum, KeyStream, GMS_IV, TRIMMED_KEY};
     use std::{fs::File, io::BufReader};
 
     #[test]
     fn make_encrypted() {
         let mut file = File::open("testdata/v83-base.wz").expect("error opening file");
-        let header = Header::from_reader(&mut file).expect("error reading header");
+        let header = WzHeader::from_reader(&mut file).expect("error reading header");
         let (_, version_checksum) = checksum("83");
         let _ = WzReader::encrypted(
             header.absolute_position,
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn make_unencrypted() {
         let mut file = File::open("testdata/v172-base.wz").expect("error opening file");
-        let header = Header::from_reader(&mut file).expect("error reading header");
+        let header = WzHeader::from_reader(&mut file).expect("error reading header");
         let (_, version_checksum) = checksum("176");
         let _ = WzReader::unencrypted(
             header.absolute_position,

@@ -5,7 +5,7 @@ use std::fmt;
 /// Possible image errors
 #[derive(Debug)]
 pub enum ImageError {
-    /// The Image root must be a [`Property`](crate::types::image::Node::Property)
+    /// The Image root must be a [`Property`](crate::types::Property::ImgDir)
     ImageRoot,
 
     /// Unknown Object Type

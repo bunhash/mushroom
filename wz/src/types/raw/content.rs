@@ -3,7 +3,7 @@
 use crate::{
     error::{ImageError, Result},
     io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::{image::UolString, WzInt, WzLong, WzOffset},
+    types::{UolString, WzInt, WzLong, WzOffset},
 };
 
 /// Represents the contents of a [`Property`](crate::file::image::Property)

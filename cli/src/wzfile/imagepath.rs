@@ -10,7 +10,7 @@ use std::{
     path::PathBuf,
 };
 use wz::{
-    builder::ImageRef,
+    archive::writer::ImageRef,
     error::Result,
     io::{WzWrite, WzWriter},
     types::WzInt,

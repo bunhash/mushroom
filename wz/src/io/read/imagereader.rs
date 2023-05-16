@@ -2,40 +2,36 @@
 
 use crate::{
     error::Result,
-    io::{WzRead, WzReader},
+    io::WzRead,
     types::{WzInt, WzOffset},
 };
-use crypto::Decryptor;
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 /// WZ Image Reader
 ///
-/// This just wraps a WzReader so the seeking offsets align properly. This is not needed unless the
+/// This just wraps a WzRead so the seeking offsets align properly. This is not needed unless the
 /// image resides within a WZ archive.
 #[derive(Debug)]
-pub struct WzImageReader<'a, R, D>
+pub struct WzImageReader<'a, R>
 where
-    R: Read + Seek,
-    D: Decryptor,
+    R: WzRead,
 {
-    inner: &'a mut WzReader<R, D>,
+    inner: &'a mut R,
     offset: WzOffset,
 }
 
-impl<'a, R, D> WzImageReader<'a, R, D>
+impl<'a, R> WzImageReader<'a, R>
 where
-    R: Read + Seek,
-    D: Decryptor,
+    R: WzRead,
 {
-    pub fn new(inner: &'a mut WzReader<R, D>, offset: WzOffset) -> Self {
+    pub fn new(inner: &'a mut R, offset: WzOffset) -> Self {
         Self { inner, offset }
     }
 }
 
-impl<'a, R, D> WzRead for WzImageReader<'a, R, D>
+impl<'a, R> WzRead for WzImageReader<'a, R>
 where
-    R: Read + Seek,
-    D: Decryptor,
+    R: WzRead,
 {
     fn absolute_position(&self) -> i32 {
         self.inner.absolute_position()

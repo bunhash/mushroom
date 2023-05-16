@@ -4,11 +4,8 @@ use crate::{
     error::{ImageError, Result},
     io::{Decode, Encode, WzRead, WzWrite},
     types::{
-        image::{
-            raw::{Canvas, Property},
-            Sound, UolObject, Vector,
-        },
-        WzOffset,
+        raw::{Canvas, Property},
+        Sound, UolObject, Vector, WzOffset,
     },
 };
 

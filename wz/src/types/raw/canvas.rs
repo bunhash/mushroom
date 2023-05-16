@@ -3,10 +3,7 @@
 use crate::{
     error::{CanvasError, DecodeError, Result},
     io::{Decode, WzRead},
-    types::{
-        image::{raw::Property, CanvasFormat},
-        WzInt,
-    },
+    types::{raw::Property, CanvasFormat, WzInt},
 };
 
 #[derive(Debug)]
