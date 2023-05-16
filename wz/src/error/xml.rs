@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-/// Possible package errors
+/// Possible XML errors
 #[derive(Debug)]
 pub enum XmlError {
     /// XML reading errors
