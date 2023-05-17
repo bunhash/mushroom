@@ -43,10 +43,7 @@ pub(crate) fn do_create(
     }
 
     // Get the parent path of the directory (used to strip it from the WZ contents)
-    let parent = match path.parent() {
-        Some(p) => p,
-        None => return Err(ErrorKind::NotFound.into()),
-    };
+    let parent = path.parent().ok_or_else(|| ErrorKind::NotFound)?;
 
     // Create new WZ archive map
     let mut writer = archive::Writer::new(target);
@@ -115,10 +112,7 @@ pub(crate) fn do_list(path: &PathBuf, key: Key, version: Option<u16>) -> Result<
     };
 
     // Walk the map
-    map.walk::<Error>(|cursor| {
-        let path = cursor.pwd().join("/");
-        Ok(println!("{}", &path))
-    })
+    map.walk::<Error>(|cursor| Ok(println!("{}", &cursor.pwd())))
 }
 
 pub(crate) fn do_extract(
@@ -171,7 +165,7 @@ where
     let map = archive.map(&name.replace(".wz", ""))?;
     let mut reader = archive.into_inner();
     map.walk::<Error>(|cursor| {
-        let path = cursor.pwd().join("/");
+        let path = cursor.pwd();
         match cursor.get() {
             reader::Node::Package => {
                 if !Path::new(&path).is_dir() {
@@ -337,13 +331,13 @@ where
     map.walk::<Error>(|cursor| {
         match cursor.get() {
             reader::Node::Package => {
-                let path = cursor.pwd().join("/");
+                let path = cursor.pwd();
                 if !Path::new(&path).is_dir() {
                     fs::create_dir(&path)?;
                 }
             }
             reader::Node::Image { offset, .. } => {
-                let path = format!("{}.xml", cursor.pwd().join("/"));
+                let path = format!("{}.xml", cursor.pwd());
                 if Path::new(&path).is_file() {
                     fs::remove_file(&path)?;
                 }

@@ -23,6 +23,11 @@ impl Writer {
         }
     }
 
+    /// Creates a new image writer from an already constructed map
+    pub fn from_map(map: Map<Property>) -> Self {
+        Self { map }
+    }
+
     pub fn add_property<S>(&mut self, path: S, property: Property) -> Result<()>
     where
         S: AsRef<Path>,
@@ -60,7 +65,7 @@ impl Writer {
         // easier to encode since there are no checksums to calculate and the size is always 4
         // bytes long which makes it possible to retroactively fill in. So most of the complex
         // structure encoding is done here.
-        recursive_write(writer, &mut self.map.cursor())
+        encode_object(writer, &mut self.map.cursor())
     }
 }
 
@@ -82,7 +87,24 @@ where
         | Property::Convex
         | Property::Vector(_)
         | Property::Uol(_)
-        | Property::Sound(_) => encode_object(writer, Some(UolString::from(cursor.name())), cursor),
+        | Property::Sound(_) => {
+            UolString::from(cursor.name()).encode(writer)?;
+            9u8.encode(writer)?;
+
+            // Save the size position and write 0 for now
+            let size_position = writer.position()?;
+            0u32.encode(writer)?;
+
+            // Encode the object
+            encode_object(writer, cursor)?;
+
+            // Go back and write the size
+            let current_position = writer.position()?;
+            writer.seek(size_position)?;
+            (*current_position - *size_position - 4).encode(writer)?;
+            writer.seek(current_position)?;
+            Ok(())
+        }
     }
 }
 
@@ -121,39 +143,28 @@ where
     }
 }
 
-fn encode_object<W>(
-    writer: &mut W,
-    name: Option<UolString>,
-    cursor: &mut Cursor<Property>,
-) -> Result<()>
+fn encode_object<W>(writer: &mut W, cursor: &mut Cursor<Property>) -> Result<()>
 where
     W: WzWrite,
 {
-    if let Some(name) = name {
-        name.encode(writer)?;
-    }
-    9u8.encode(writer)?;
-
-    // Remember this position to write the size later
-    let size_position = writer.position()?;
-    0u32.encode(writer)?;
-
-    // Write the objects
     match cursor.get() {
         Property::ImgDir => {
             0x73u8.encode(writer)?;
-            UolString::from("Property").encode(writer)?;
+            String::from("Property").encode(writer)?;
+            0u16.encode(writer)?;
             WzInt::from(cursor.children().count()).encode(writer)?;
             encode_object_children(writer, cursor)?;
         }
         Property::Canvas(val) => {
             0x73u8.encode(writer)?;
-            UolString::from("Canvas").encode(writer)?;
+            String::from("Canvas").encode(writer)?;
             0u8.encode(writer)?;
             let canvas = val.clone(); // We lose the cursor when encoding children
             let num_children = cursor.children().count();
             if num_children > 0 {
                 1u8.encode(writer)?;
+                0u16.encode(writer)?;
+                WzInt::from(num_children as i32).encode(writer)?;
                 encode_object_children(writer, cursor)?;
             } else {
                 0u8.encode(writer)?;
@@ -162,13 +173,12 @@ where
         }
         Property::Convex => {
             0x73u8.encode(writer)?;
-            UolString::from("Shape2D#Convex2D").encode(writer)?;
+            String::from("Shape2D#Convex2D").encode(writer)?;
             let mut num_children = cursor.children().count();
             if num_children > 0 {
                 cursor.first_child()?;
                 loop {
-                    // Do not write the names here
-                    encode_object(writer, None, cursor)?;
+                    encode_object(writer, cursor)?;
                     num_children -= 1;
                     if num_children == 0 {
                         break;
@@ -180,27 +190,21 @@ where
         }
         Property::Vector(val) => {
             0x73u8.encode(writer)?;
-            UolString::from("Shape2D#Vector2D").encode(writer)?;
+            String::from("Shape2D#Vector2D").encode(writer)?;
             val.encode(writer)?;
         }
         Property::Uol(val) => {
             0x73u8.encode(writer)?;
-            UolString::from("UOL").encode(writer)?;
+            String::from("UOL").encode(writer)?;
             val.encode(writer)?;
         }
         Property::Sound(val) => {
             0x73u8.encode(writer)?;
-            UolString::from("Sound_DX8").encode(writer)?;
+            String::from("Sound_DX8").encode(writer)?;
             val.encode(writer)?;
         }
         _ => panic!("should not get here"),
     }
-
-    // Go back and write the size
-    let current_position = writer.position()?;
-    writer.seek(size_position)?;
-    (*current_position - *size_position).encode(writer)?;
-    writer.seek(current_position)?;
     Ok(())
 }
 

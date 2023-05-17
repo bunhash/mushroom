@@ -5,6 +5,7 @@ use crate::{
     io::{xml::writer::ToXml, Decode, Encode, WzRead, WzWrite},
     types::WzInt,
 };
+use deflate::deflate_bytes_zlib;
 use image::{ImageFormat, RgbaImage};
 use inflate::inflate_bytes_zlib;
 use std::{fmt, path::Path};
@@ -35,6 +36,18 @@ impl CanvasFormat {
             CanvasFormat::Rgb565 => WzInt::from(513),
             CanvasFormat::CompressedRgb565 => WzInt::from(517),
             CanvasFormat::Bc3 => WzInt::from(1026),
+        }
+    }
+
+    /// Tries to make a CanvasFormat from a WzInt
+    pub fn from_int(val: WzInt) -> Result<Self> {
+        match *val {
+            1 => Ok(CanvasFormat::Bgra4444),
+            2 => Ok(CanvasFormat::Argb8888),
+            513 => Ok(CanvasFormat::Rgb565),
+            517 => Ok(CanvasFormat::CompressedRgb565),
+            1026 => Ok(CanvasFormat::Bc3),
+            _ => Err(CanvasError::EncodingFormat(val, 0).into()),
         }
     }
 }
@@ -115,7 +128,12 @@ impl Canvas {
     {
         let img = image::io::Reader::open(path)?.decode()?;
         let (width, height, data) = encode_image(format, img.into_rgba8())?;
-        Ok(Self::new(width.into(), height.into(), format, data))
+        Ok(Self::new(
+            width.into(),
+            height.into(),
+            format,
+            deflate_bytes_zlib(&data),
+        ))
     }
 
     /// Returns the width of the image

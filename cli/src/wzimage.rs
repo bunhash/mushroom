@@ -2,21 +2,18 @@
 
 use crate::{file_name, Key};
 use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 use wz::{
-    error::{ImageError, Result},
-    image::Reader,
-    io::{DummyDecryptor, WzRead},
+    error::Result,
+    image::{Reader, Writer},
+    io::{DummyDecryptor, DummyEncryptor, WzRead},
 };
 
+mod create;
 mod extract;
-mod xmlreader;
 
+use create::map_image_from_xml;
 use extract::extract_image_from_map;
-use xmlreader::map_image_from_xml;
 
 pub(crate) fn do_create(path: &PathBuf, directory: &str, verbose: bool, key: Key) -> Result<()> {
     // Remove the WZ archive if it exists
@@ -27,8 +24,12 @@ pub(crate) fn do_create(path: &PathBuf, directory: &str, verbose: bool, key: Key
     if verbose {
         println!("{}", target);
     }
-    map_image_from_xml(target, directory, verbose)?;
-    Ok(())
+    let mut writer = Writer::from_map(map_image_from_xml(target, directory, verbose)?);
+    match key {
+        Key::Gms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
+        Key::Kms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
+        Key::None => writer.save(path, DummyEncryptor),
+    }
 }
 
 pub(crate) fn do_extract(path: &PathBuf, verbose: bool, key: Key) -> Result<()> {

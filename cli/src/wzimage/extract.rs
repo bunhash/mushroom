@@ -3,7 +3,7 @@
 use image::ImageFormat;
 use std::{borrow::Cow, fs, io::Write, path::Path};
 use wz::{
-    error::Result,
+    error::{ImageError, Result},
     io::xml::{
         attribute::Attribute,
         namespace::Namespace,
@@ -49,7 +49,16 @@ where
             if !Path::new(&res_dir).is_dir() {
                 fs::create_dir(&res_dir)?;
             }
-            let res_path = format!("res/{}.png", cursor.pwd()[1..].join("-"));
+            let res_path = format!(
+                "res/{}.png",
+                cursor
+                    .pwd()
+                    .strip_prefix(image_dir)
+                    .ok_or_else(|| ImageError::Path(image_dir.into()))?
+                    .strip_prefix(".img/")
+                    .ok_or_else(|| ImageError::Path(".img/".into()))?
+                    .replace('/', "-")
+            );
             writer.write(
                 XmlEvent::start_element("canvas")
                     .attr("name", cursor.name())
@@ -70,7 +79,16 @@ where
             if !Path::new(&res_dir).is_dir() {
                 fs::create_dir(&res_dir)?;
             }
-            let res_path = format!("res/{}.wav", cursor.pwd()[1..].join("-"));
+            let res_path = format!(
+                "res/{}.wav",
+                cursor
+                    .pwd()
+                    .strip_prefix(image_dir)
+                    .ok_or_else(|| ImageError::Path(image_dir.into()))?
+                    .strip_prefix(".img/")
+                    .ok_or_else(|| ImageError::Path(".img/".into()))?
+                    .replace('/', "-")
+            );
             writer.write(
                 XmlEvent::start_element("sound")
                     .attr("name", cursor.name())

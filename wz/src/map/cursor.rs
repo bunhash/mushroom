@@ -22,7 +22,7 @@ impl<'a, T> Cursor<'a, T> {
     }
 
     /// Returns the path of the current position as a vector of names starting with the root
-    pub fn pwd(&'a self) -> Vec<&'a str> {
+    pub fn pwd(&'a self) -> String {
         let mut path = VecDeque::new();
         for id in self.position.ancestors(self.arena) {
             path.push_front(
@@ -34,7 +34,7 @@ impl<'a, T> Cursor<'a, T> {
                     .as_str(),
             );
         }
-        path.into()
+        path.make_contiguous().join("/")
     }
 
     /// Returns a vector containing the names of the current position's children
