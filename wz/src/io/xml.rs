@@ -1,5 +1,6 @@
 //! XML IO
 
+pub mod reader;
 pub mod writer;
 pub use xml::attribute;
 pub use xml::common;

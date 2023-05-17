@@ -2,7 +2,7 @@
 
 use crate::{
     error::{DecodeError, Result},
-    io::{Decode, Encode, WzRead, WzWrite},
+    io::{Decode, WzRead},
     types::{raw::ContentRef, WzInt},
 };
 use std::slice::Iter;
@@ -36,19 +36,5 @@ impl Decode for Property {
             contents.push(ContentRef::decode(reader)?);
         }
         Ok(Self { contents })
-    }
-}
-
-impl Encode for Property {
-    fn encode<W>(&self, writer: &mut W) -> Result<()>
-    where
-        W: WzWrite,
-    {
-        let num_contents = WzInt::from(self.contents.len() as i32);
-        num_contents.encode(writer)?;
-        for content in &self.contents {
-            content.encode(writer)?;
-        }
-        Ok(())
     }
 }

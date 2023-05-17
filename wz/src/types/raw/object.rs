@@ -2,7 +2,7 @@
 
 use crate::{
     error::{ImageError, Result},
-    io::{Decode, Encode, WzRead, WzWrite},
+    io::{Decode, WzRead},
     types::{
         raw::{Canvas, Property},
         Sound, UolObject, Vector, WzOffset,
@@ -57,14 +57,5 @@ impl Decode for Object {
             "Sound_DX8" => Ok(Self::Sound(Sound::decode(reader)?)),
             t => Err(ImageError::ObjectType(String::from(t)).into()),
         }
-    }
-}
-
-impl Encode for Object {
-    fn encode<W>(&self, _writer: &mut W) -> Result<()>
-    where
-        W: WzWrite,
-    {
-        unimplemented!()
     }
 }

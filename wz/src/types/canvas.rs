@@ -170,6 +170,21 @@ impl fmt::Debug for Canvas {
     }
 }
 
+impl Encode for Canvas {
+    fn encode<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: WzWrite,
+    {
+        self.width.encode(writer)?;
+        self.height.encode(writer)?;
+        self.format.encode(writer)?;
+        0i32.encode(writer)?;
+        (self.data.len() as i32 + 1).encode(writer)?;
+        0u8.encode(writer)?;
+        writer.write_all(&self.data)
+    }
+}
+
 impl ToXml for Canvas {
     fn tag(&self) -> &'static str {
         "canvas"

@@ -22,7 +22,7 @@ use imagepath::ImagePath;
 
 pub(crate) fn do_create(
     path: &PathBuf,
-    directory: &String,
+    directory: &str,
     verbose: bool,
     key: Key,
     version: u16,
@@ -35,7 +35,7 @@ pub(crate) fn do_create(
     // Get the target directory and ensure it is actually a directory
     let path = PathBuf::from(&directory);
     if !path.is_dir() {
-        return Err(PackageError::PathName(path.to_string_lossy().into()).into());
+        return Err(PackageError::Path(path.to_string_lossy().into()).into());
     }
     let target = file_name(&path)?;
     if verbose {
@@ -76,10 +76,10 @@ fn recursive_do_create(
             println!("{}", stripped_path.display())
         }
         if path.is_dir() {
-            writer.add_package(&stripped_path)?;
+            writer.add_package(stripped_path)?;
             recursive_do_create(&path, parent, writer, verbose)?;
         } else if path.is_file() {
-            writer.add_image(&stripped_path, ImagePath::new(&path)?)?;
+            writer.add_image(stripped_path, ImagePath::new(&path)?)?;
         }
     }
     Ok(())
@@ -249,10 +249,7 @@ where
     let map = archive.map(name)?;
     let mut cursor = match directory {
         // Find the optional directory
-        Some(ref path) => {
-            let path = path.split('/').collect::<Vec<&str>>();
-            map.cursor_at(&path)?
-        }
+        Some(ref path) => map.cursor_at(path)?,
         // Get the root
         None => map.cursor(),
     };

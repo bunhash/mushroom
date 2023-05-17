@@ -1,4 +1,4 @@
-//! Custom Image exporter
+//! Image extractor
 
 use image::ImageFormat;
 use std::{borrow::Cow, fs, io::Write, path::Path};

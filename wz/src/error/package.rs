@@ -18,7 +18,7 @@ pub enum PackageError {
     Header,
 
     ///  Path
-    PathName(String),
+    Path(String),
 
     /// Multiple Roots
     MultipleRoots,
@@ -31,7 +31,7 @@ impl fmt::Display for PackageError {
             Self::ContentType(t) => write!(f, "Unknown content type: `{}`", t),
             Self::Checksum => write!(f, "Invalid version checksum"),
             Self::Header => write!(f, "Invalid WZ archive header"),
-            Self::PathName(p) => write!(f, "Invalid path name: `{}`", p),
+            Self::Path(p) => write!(f, "Invalid path name: `{}`", p),
             Self::MultipleRoots => write!(f, "A WZ archive can only have 1 root"),
         }
     }

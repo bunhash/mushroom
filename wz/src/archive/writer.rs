@@ -107,22 +107,16 @@ where
     {
         let parent = match path.as_ref().parent() {
             Some(p) => p,
-            None => {
-                return Err(PackageError::PathName(path.as_ref().to_string_lossy().into()).into())
-            }
+            None => return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into()),
         };
         let name = match path.as_ref().file_name() {
             Some(name) => match name.to_str() {
                 Some(name) => name,
                 None => {
-                    return Err(
-                        PackageError::PathName(path.as_ref().to_string_lossy().into()).into(),
-                    )
+                    return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into())
                 }
             },
-            None => {
-                return Err(PackageError::PathName(path.as_ref().to_string_lossy().into()).into())
-            }
+            None => return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into()),
         };
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
@@ -193,7 +187,7 @@ where
         for part in path.iter() {
             let name = match part.to_str() {
                 Some(n) => n,
-                None => return Err(PackageError::PathName(path.to_string_lossy().into()).into()),
+                None => return Err(PackageError::Path(path.to_string_lossy().into()).into()),
             };
             if !cursor.has_child(name) {
                 cursor.create(

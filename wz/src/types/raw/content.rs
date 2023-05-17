@@ -2,7 +2,7 @@
 
 use crate::{
     error::{ImageError, Result},
-    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
+    io::{Decode, Encode, WzRead, WzWrite},
     types::{UolString, WzInt, WzLong, WzOffset},
 };
 
@@ -86,52 +86,44 @@ impl Encode for ContentRef {
     where
         W: WzWrite,
     {
-        match self {
-            ContentRef::Null { name } => name.encode(writer),
+        match &self {
+            ContentRef::Null { name } => {
+                name.encode(writer)?;
+                0u8.encode(writer)
+            }
             ContentRef::Short { name, value } => {
                 name.encode(writer)?;
+                2u8.encode(writer)?;
                 value.encode(writer)
             }
             ContentRef::Int { name, value } => {
                 name.encode(writer)?;
+                3u8.encode(writer)?;
                 value.encode(writer)
             }
             ContentRef::Long { name, value } => {
                 name.encode(writer)?;
+                20u8.encode(writer)?;
                 value.encode(writer)
             }
             ContentRef::Float { name, value } => {
                 name.encode(writer)?;
+                4u8.encode(writer)?;
                 value.encode(writer)
             }
             ContentRef::Double { name, value } => {
                 name.encode(writer)?;
+                5u8.encode(writer)?;
                 value.encode(writer)
             }
             ContentRef::String { name, value } => {
                 name.encode(writer)?;
+                8u8.encode(writer)?;
                 value.encode(writer)
             }
-            ContentRef::Object { name, size, .. } => {
-                name.encode(writer)?;
-                size.encode(writer)
+            ContentRef::Object { .. } => {
+                unimplemented!()
             }
-        }
-    }
-}
-
-impl SizeHint for ContentRef {
-    #[inline]
-    fn size_hint(&self) -> u32 {
-        match self {
-            ContentRef::Null { name } => name.size_hint(),
-            ContentRef::Short { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Int { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Long { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Float { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Double { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::String { name, value } => name.size_hint() + value.size_hint(),
-            ContentRef::Object { name, size, .. } => name.size_hint() + size,
         }
     }
 }

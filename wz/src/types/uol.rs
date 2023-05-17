@@ -211,7 +211,6 @@ impl Encode for UolObject {
         W: WzWrite,
     {
         0u8.encode(writer)?;
-        0x73u8.encode(writer)?;
         self.uri.encode(writer)
     }
 }

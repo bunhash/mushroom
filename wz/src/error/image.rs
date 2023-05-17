@@ -11,6 +11,9 @@ pub enum ImageError {
     /// Unknown Object Type
     ObjectType(String),
 
+    ///  Path
+    Path(String),
+
     /// Unknown Property Type
     PropertyType(u8),
 
@@ -23,6 +26,7 @@ impl fmt::Display for ImageError {
         match self {
             Self::ImageRoot => write!(f, "The root of the image is not a property"),
             Self::ObjectType(t) => write!(f, "Unknown Object type: `{}`", t),
+            Self::Path(p) => write!(f, "Invalid path: `{}`", p),
             Self::PropertyType(t) => write!(f, "Unknown Property type: `{}`", t),
             Self::UolType(t) => write!(f, "Unknown UOL type: `{}`", t),
         }

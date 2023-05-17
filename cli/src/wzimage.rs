@@ -2,16 +2,34 @@
 
 use crate::{file_name, Key};
 use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use wz::{
-    error::Result,
+    error::{ImageError, Result},
     image::Reader,
     io::{DummyDecryptor, WzRead},
 };
 
 mod extract;
+mod xmlreader;
 
 use extract::extract_image_from_map;
+use xmlreader::map_image_from_xml;
+
+pub(crate) fn do_create(path: &PathBuf, directory: &str, verbose: bool, key: Key) -> Result<()> {
+    // Remove the WZ archive if it exists
+    if path.is_file() {
+        fs::remove_file(path)?;
+    }
+    let target = file_name(path)?;
+    if verbose {
+        println!("{}", target);
+    }
+    map_image_from_xml(target, directory, verbose)?;
+    Ok(())
+}
 
 pub(crate) fn do_extract(path: &PathBuf, verbose: bool, key: Key) -> Result<()> {
     let name = file_name(path)?;
@@ -76,10 +94,7 @@ where
     let map = reader.map(name)?;
     let mut cursor = match directory {
         // Find the optional directory
-        Some(ref path) => {
-            let path = path.split('/').collect::<Vec<&str>>();
-            map.cursor_at(&path)?
-        }
+        Some(ref path) => map.cursor_at(path)?,
         // Get the root
         None => {
             println!("{:?}", map.debug_pretty_print());

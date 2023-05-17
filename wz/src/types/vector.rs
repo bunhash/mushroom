@@ -8,8 +8,8 @@ use crate::{
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Vector {
-    x: WzInt,
-    y: WzInt,
+    pub x: WzInt,
+    pub y: WzInt,
 }
 
 impl Vector {

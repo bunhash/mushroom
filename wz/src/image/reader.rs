@@ -142,7 +142,7 @@ where
             }
             let num_objects = *num_objects as usize;
             for i in 0..num_objects {
-                map_object_to(i.to_string().as_ref(), reader.position()?, reader, cursor)?;
+                map_object_to(&i.to_string(), reader.position()?, reader, cursor)?;
             }
             cursor.parent()?;
         }

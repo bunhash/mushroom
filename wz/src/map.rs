@@ -3,6 +3,7 @@
 use crate::error::MapError;
 
 use indextree::{Arena, NodeId};
+use std::path::Path;
 
 mod children;
 mod cursor;
@@ -45,13 +46,19 @@ impl<T> Map<T> {
     }
 
     /// Creates a cursor inside the root that has read-only access to the map data
-    pub fn cursor_at(&self, uri: &[&str]) -> Result<Cursor<'_, T>, MapError> {
-        Ok(Cursor::new(self.get_id(uri)?, &self.arena))
+    pub fn cursor_at<S>(&self, path: S) -> Result<Cursor<'_, T>, MapError>
+    where
+        S: AsRef<Path>,
+    {
+        Ok(Cursor::new(self.get_id(path)?, &self.arena))
     }
 
     /// Creates a cursor inside the root that has mutable access to the map data
-    pub fn cursor_mut_at<'a>(&'a mut self, uri: &[&str]) -> Result<CursorMut<'a, T>, MapError> {
-        Ok(CursorMut::new(self.get_id(uri)?, &mut self.arena))
+    pub fn cursor_mut_at<S>(&mut self, path: S) -> Result<CursorMut<T>, MapError>
+    where
+        S: AsRef<Path>,
+    {
+        Ok(CursorMut::new(self.get_id(path)?, &mut self.arena))
     }
 
     /// Returns the name of the root node
@@ -70,11 +77,14 @@ impl<T> Map<T> {
         Ok(())
     }
 
-    /// Gets the data at the uri path. Errors when the node does not exist.
-    pub fn get(&self, uri: &[&str]) -> Result<&T, MapError> {
+    /// Gets the data at the path. Errors when the node does not exist.
+    pub fn get<S>(&self, path: S) -> Result<&T, MapError>
+    where
+        S: AsRef<Path>,
+    {
         Ok(&self
             .arena
-            .get(self.get_id(uri)?)
+            .get(self.get_id(path)?)
             .expect("get() node should exist")
             .get()
             .data)
@@ -95,18 +105,25 @@ impl<T> Map<T> {
 
     // *** PRIVATES *** //
 
-    fn get_id(&self, uri: &[&str]) -> Result<NodeId, MapError> {
-        if uri.is_empty() {
-            Err(MapError::Path(uri.join("/")))
-        } else if uri[0] == self.name() {
-            let mut cursor = self.cursor();
-            for name in &uri[1..] {
-                cursor.move_to(name)?;
+    fn get_id<S>(&self, path: S) -> Result<NodeId, MapError>
+    where
+        S: AsRef<Path>,
+    {
+        let mut it = path.as_ref().iter();
+        let mut cursor = match it.next() {
+            Some(root) => {
+                if root.to_string_lossy() == self.name() {
+                    self.cursor()
+                } else {
+                    return Err(MapError::Path(path.as_ref().to_string_lossy().into()));
+                }
             }
-            Ok(cursor.position)
-        } else {
-            Err(MapError::NotFound(String::from(uri[0])))
+            _ => return Err(MapError::Path(path.as_ref().to_string_lossy().into())),
+        };
+        for name in it {
+            cursor.move_to(&name.to_string_lossy())?;
         }
+        Ok(cursor.position)
     }
 }
 

@@ -92,7 +92,7 @@ fn main() -> Result<()> {
     let action = &args.action;
     if args.image {
         if action.create {
-            unimplemented!()
+            wzimage::do_create(&args.file, &args.directory.unwrap(), args.verbose, args.key)?;
         } else if action.list {
             unimplemented!()
         } else if action.extract {
