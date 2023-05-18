@@ -1,73 +1,107 @@
 //! Compressed RGBA Pixel Type
 
-use crate::error::{CanvasError, Result};
+use crate::{
+    error::{CanvasError, Result},
+    types::CanvasFormat,
+};
 use image::{Pixel, Rgb, RgbaImage};
-
-const MAX_BGRA4444_SIZE: u8 = 15;
-const MAX_RGB565_RB: u8 = 31;
-const MAX_RGB565_G: u8 = 63;
-
-#[inline]
-pub(crate) fn ratio(src_val: u8, src_max: u8, dst_max: u8) -> u8 {
-    ((src_val as usize * dst_max as usize) / src_max as usize) as u8
-}
 
 #[inline]
 pub(crate) fn split4444(pixel: u16) -> [u8; 4] {
-    let b = pixel.wrapping_shr(12) as u8;
-    let g = (pixel.wrapping_shr(8) & 0xf) as u8;
-    let r = (pixel.wrapping_shr(4) & 0xf) as u8;
-    let a = (pixel & 0xf) as u8;
+    let b = (pixel & 0xf) as u8;
+    let g = (pixel.wrapping_shr(4) & 0xf) as u8;
+    let r = (pixel.wrapping_shr(8) & 0xf) as u8;
+    let a = pixel.wrapping_shr(12) as u8;
     [
-        ratio(a, MAX_BGRA4444_SIZE, u8::MAX),
-        ratio(r, MAX_BGRA4444_SIZE, u8::MAX),
-        ratio(g, MAX_BGRA4444_SIZE, u8::MAX),
-        ratio(b, MAX_BGRA4444_SIZE, u8::MAX),
+        r.wrapping_shl(4) | r,
+        g.wrapping_shl(4) | g,
+        b.wrapping_shl(4) | b,
+        a.wrapping_shl(4) | a,
     ]
 }
 
 #[inline]
-pub(crate) fn join4444(a: u8, r: u8, g: u8, b: u8) -> u16 {
-    let a = ratio(a, u8::MAX, MAX_BGRA4444_SIZE);
-    let r = ratio(r, u8::MAX, MAX_BGRA4444_SIZE);
-    let g = ratio(g, u8::MAX, MAX_BGRA4444_SIZE);
-    let b = ratio(b, u8::MAX, MAX_BGRA4444_SIZE);
-    (b.wrapping_shl(12) as u16 & 0xf000)
-        | (g.wrapping_shl(8) as u16 & 0x0f00)
-        | (r.wrapping_shl(4) as u16 & 0x00f0)
-        | (a as u16 & 0x000f)
+pub(crate) fn join4444(r: u8, g: u8, b: u8, a: u8) -> u16 {
+    let r = r.wrapping_shr(4) as u16;
+    let g = g.wrapping_shr(4) as u16;
+    let b = b.wrapping_shr(4) as u16;
+    let a = a.wrapping_shr(4) as u16;
+    (b & 0x000f)
+        | (g.wrapping_shl(4) & 0x00f0)
+        | (r.wrapping_shl(8) & 0x0f00)
+        | (a.wrapping_shl(12) & 0xf000)
 }
 
 #[inline]
 pub(crate) fn split565(pixel: u16) -> [u8; 3] {
-    let b = (pixel & 0x1f) as usize;
-    let g = (pixel.wrapping_shr(5) & 0x3f) as usize;
-    let r = pixel.wrapping_shr(11) as usize;
+    let r = pixel.wrapping_shr(11) as u8;
+    let g = (pixel.wrapping_shr(5) & 0x3f) as u8;
+    let b = (pixel & 0x1f) as u8;
     [
-        ratio(r as u8, MAX_RGB565_RB, u8::MAX),
-        ratio(g as u8, MAX_RGB565_G, u8::MAX),
-        ratio(b as u8, MAX_RGB565_RB, u8::MAX),
+        r.wrapping_shl(3) | r.wrapping_shr(2),
+        g.wrapping_shl(2) | g.wrapping_shr(4),
+        b.wrapping_shl(3) | b.wrapping_shr(2),
     ]
 }
 
 #[inline]
 pub(crate) fn join565(r: u8, g: u8, b: u8) -> u16 {
-    (r as u16).wrapping_shl(11) | (g as u16).wrapping_shl(5) | (b as u16)
+    let r = ((r as usize) * 249 + 1014).wrapping_shr(11) as u16;
+    let g = ((g as usize) * 253 + 505).wrapping_shr(10) as u16;
+    let b = ((b as usize) * 249 + 1014).wrapping_shr(11) as u16;
+    r.wrapping_shl(11) | g.wrapping_shl(5) | b
+}
+
+/// DirectX DXGI_FORMAT_B8G8R8A8
+pub(crate) fn from_bgra8888(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
+    let data_len = (width * height * 4) as usize;
+    if data.len() < data_len {
+        return Err(
+            CanvasError::SizeMismatch(CanvasFormat::Bgra8888, width, height, data.len()).into(),
+        );
+    }
+    Ok(RgbaImage::from_raw(
+        width,
+        height,
+        data.chunks(4)
+            .take(data_len / 4)
+            .flat_map(|b| [b[2], b[1], b[0], b[3]])
+            .collect::<Vec<u8>>(),
+    )
+    .expect("RGBA8888 size should be good"))
+}
+
+/// DirectX DXGI_FORMAT_B8G8R8A8
+pub(crate) fn to_bgra8888(img: RgbaImage) -> (u32, u32, Vec<u8>) {
+    (
+        img.width(),
+        img.height(),
+        img.pixels()
+            .flat_map(|p| {
+                let rgba = p.channels();
+                [rgba[2], rgba[1], rgba[0], rgba[3]]
+            })
+            .collect::<Vec<u8>>(),
+    )
 }
 
 /// DirectX DXGI_FORMAT_B4G4R4A4
 pub(crate) fn from_bgra4444(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
-    assert!(data.len() % 2 == 0, "invald bgra4444 size");
-    match RgbaImage::from_raw(
+    let data_len = (width * height * 2) as usize;
+    if data.len() < data_len {
+        return Err(
+            CanvasError::SizeMismatch(CanvasFormat::Bgra4444, width, height, data.len()).into(),
+        );
+    }
+    Ok(RgbaImage::from_raw(
         width,
         height,
         data.chunks(2)
+            .take(data_len / 2)
             .flat_map(|b| split4444(u16::from_le_bytes([b[0], b[1]])))
             .collect::<Vec<u8>>(),
-    ) {
-        Some(img) => Ok(img),
-        None => Err(CanvasError::SizeMismatch(width, height, data.len()).into()),
-    }
+    )
+    .expect("Rgba4444 size should be good"))
 }
 
 /// DirectX DXGI_FORMAT_B4G4R4A4
@@ -75,29 +109,35 @@ pub(crate) fn to_bgra4444(img: RgbaImage) -> (u32, u32, Vec<u8>) {
     (
         img.width(),
         img.height(),
-        img.as_raw()
-            .chunks(4)
-            .flat_map(|b| join4444(b[0], b[1], b[2], b[3]).to_le_bytes())
+        img.pixels()
+            .flat_map(|p| {
+                let rgba = p.channels();
+                join4444(rgba[0], rgba[1], rgba[2], rgba[3]).to_le_bytes()
+            })
             .collect::<Vec<u8>>(),
     )
 }
 
 /// DirectX DXGI_FORMAT_B5G6R5
 pub(crate) fn from_rgb565(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
-    assert!(data.len() % 2 == 0, "invald rgb565 size");
-    match RgbaImage::from_raw(
+    let data_len = (width * height * 2) as usize;
+    if data.len() < data_len {
+        return Err(
+            CanvasError::SizeMismatch(CanvasFormat::Rgb565, width, height, data.len()).into(),
+        );
+    }
+    Ok(RgbaImage::from_raw(
         width,
         height,
         data.chunks(2)
+            .take(data_len / 2)
             .flat_map(|b| {
                 let rgb = split565(u16::from_le_bytes([b[0], b[1]]));
                 [rgb[0], rgb[1], rgb[2], u8::MAX]
             })
             .collect::<Vec<u8>>(),
-    ) {
-        Some(img) => Ok(img),
-        None => Err(CanvasError::SizeMismatch(width, height, data.len()).into()),
-    }
+    )
+    .expect("Rgba565 size should be good"))
 }
 
 /// DirectX DXGI_FORMAT_B5G6R5
@@ -105,9 +145,11 @@ pub(crate) fn to_rgb565(img: RgbaImage) -> (u32, u32, Vec<u8>) {
     (
         img.width(),
         img.height(),
-        img.as_raw()
-            .chunks(4)
-            .flat_map(|b| join565(b[0], b[1], b[2]).to_le_bytes())
+        img.pixels()
+            .flat_map(|p| {
+                let rgba = p.channels();
+                join565(rgba[0], rgba[1], rgba[2]).to_le_bytes()
+            })
             .collect::<Vec<u8>>(),
     )
 }
@@ -115,14 +157,30 @@ pub(crate) fn to_rgb565(img: RgbaImage) -> (u32, u32, Vec<u8>) {
 /// This format just blows up an RGB565 image 16x. I assume repeating the pixel is faster than the
 /// standard resize algorithms.
 pub(crate) fn expand_rgb565(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
-    assert!(width % 16 == 0, "invalid expanded rgb565");
-    assert!(height % 16 == 0, "invalid expanded rgb565");
-    assert!(data.len() % 2 == 0, "invald rgb565 size");
+    if width % 16 != 0 || height % 16 != 0 {
+        return Err(CanvasError::SizeMismatch(
+            CanvasFormat::CompressedRgb565,
+            width,
+            height,
+            data.len(),
+        )
+        .into());
+    }
 
     let mut img = RgbaImage::new(width, height);
 
     let width = width / 16;
     let height = height / 16;
+    let data_len = (width * height * 2) as usize;
+    if data.len() < data_len {
+        return Err(CanvasError::SizeMismatch(
+            CanvasFormat::CompressedRgb565,
+            width,
+            height,
+            data.len(),
+        )
+        .into());
+    }
 
     for y in 0..height {
         for x in 0..width {
@@ -140,17 +198,43 @@ pub(crate) fn expand_rgb565(width: u32, height: u32, data: Vec<u8>) -> Result<Rg
 }
 
 /// This grabs a single pixel from every 16x16 block
-pub(crate) fn compress_rgb565(img: RgbaImage) -> (u32, u32, Vec<u8>) {
+pub(crate) fn compress_rgb565(img: RgbaImage) -> Result<(u32, u32, Vec<u8>)> {
     let (width, height) = img.dimensions();
-    assert!(width % 16 == 0, "invalid expanded rgb565");
-    assert!(height % 16 == 0, "invalid expanded rgb565");
+    if width % 16 != 0 || height % 16 != 0 {
+        return Err(CanvasError::SizeMismatch(
+            CanvasFormat::CompressedRgb565,
+            width,
+            height,
+            img.pixels().count() * 4,
+        )
+        .into());
+    }
     let mut data = Vec::with_capacity((width * height / 256) as usize);
     for y in (0..height).step_by(16) {
         for x in (0..width).step_by(16) {
-            let ind = (((y * width) + x) * 4) as usize;
-            let b = &img.as_raw()[ind..ind + 4];
-            data.extend_from_slice(&join565(b[0], b[1], b[2]).to_le_bytes());
+            let rgba = img.get_pixel(x, y).channels();
+            data.extend_from_slice(&join565(rgba[0], rgba[1], rgba[2]).to_le_bytes());
         }
     }
-    (width, height, data)
+    Ok((width, height, data))
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::types::canvas::{join4444, join565, split4444, split565};
+
+    #[test]
+    fn rgba4444() {
+        let pixel = 0xF820u16;
+        let b = split4444(pixel);
+        assert_eq!(pixel, join4444(b[0], b[1], b[2], b[3]));
+    }
+
+    #[test]
+    fn rgb565() {
+        let pixel = 0xF820u16;
+        let b = split565(pixel);
+        assert_eq!(pixel, join565(b[0], b[1], b[2]));
+    }
 }

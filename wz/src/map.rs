@@ -167,13 +167,13 @@ mod tests {
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");
-        assert_eq!(&cursor.pwd(), &["n1", "n1_1", "n1_1_1", "n1_1_1_1"]);
+        assert_eq!(&cursor.pwd(), "n1/n1_1/n1_1_1/n1_1_1_1");
         // `cursor` dies here--arena ownership moves back to map in the next line.
         assert_eq!(
-            *map.get(&["n1", "n1_1", "n1_1_1", "n1_1_1_1"])
+            *map.get("n1/n1_1/n1_1_1/n1_1_1_1")
                 .expect("error getting uri"),
             255
         );
-        assert!(map.get(&["n1", "n1_1", "fail"]).is_err());
+        assert!(map.get("n1/n1_1/fail").is_err());
     }
 }

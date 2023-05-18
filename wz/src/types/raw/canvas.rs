@@ -68,12 +68,14 @@ impl Decode for Canvas {
         let mut data = vec![0u8; length];
         reader.read_exact(&mut data)?;
 
+        /*
         // Check if the compressed data is encrypted
         if data[0] != 0x78
             || (data[1] != 0x01 && data[1] != 0x5e && data[1] != 0x9c && data[1] != 0xda)
         {
             reader.decrypt(&mut data);
         }
+        */
         Ok(Self {
             width,
             height,

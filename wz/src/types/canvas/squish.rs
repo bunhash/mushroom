@@ -1,16 +1,18 @@
 //! BC* Compressed Images
 
-use crate::error::{CanvasError, Result};
-use image::RgbaImage;
+use crate::{
+    error::{CanvasError, Result},
+    types::CanvasFormat,
+};
+use image::{Pixel, RgbaImage};
 use squish::{Format, Params};
 
 fn from_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> Result<RgbaImage> {
     let mut output = vec![0u8; width * height * 4];
     format.decompress(&data, width, height, &mut output);
-    match RgbaImage::from_raw(width as u32, height as u32, output) {
-        Some(img) => Ok(img),
-        None => Err(CanvasError::SizeMismatch(width as u32, height as u32, data.len()).into()),
-    }
+    RgbaImage::from_raw(width as u32, height as u32, output).ok_or_else(|| {
+        CanvasError::SizeMismatch(CanvasFormat::Bc3, width as u32, height as u32, data.len()).into()
+    })
 }
 
 fn to_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> (u32, u32, Vec<u8>) {
@@ -22,18 +24,44 @@ fn to_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> (u32, u3
 
 /// DirectX DXGI_FORMAT_BC3
 pub(crate) fn from_bc3(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaImage> {
-    assert!(width % 4 == 0, "is this image BC3?");
-    assert!(height % 4 == 0, "is this image BC3?");
-    assert!(data.len() % 16 == 0, "is this image BC3?");
-    from_bc(Format::Bc3, width as usize, height as usize, data)
+    if width % 4 != 0 || height % 4 != 0 {
+        return Err(CanvasError::SizeMismatch(CanvasFormat::Bc3, width, height, data.len()).into());
+    }
+    let data_len = (width * height) as usize;
+    if data.len() < data_len {
+        return Err(CanvasError::SizeMismatch(CanvasFormat::Bc3, width, height, data.len()).into());
+    }
+    from_bc(
+        Format::Bc3,
+        width as usize,
+        height as usize,
+        Vec::from(&data[0..data_len]),
+    )
 }
 
 /// DirectX DXGI_FORMAT_BC3
-pub(crate) fn to_bc3(img: RgbaImage) -> (u32, u32, Vec<u8>) {
+pub(crate) fn to_bc3(img: RgbaImage) -> Result<(u32, u32, Vec<u8>)> {
     let (width, height) = img.dimensions();
-    assert!(width % 4 == 0, "is this image BC3?");
-    assert!(height % 4 == 0, "is this image BC3?");
-    to_bc(Format::Bc3, width as usize, height as usize, img.into_raw())
+    if width % 4 != 0 || height % 4 != 0 {
+        return Err(CanvasError::SizeMismatch(
+            CanvasFormat::Bc3,
+            width,
+            height,
+            img.pixels().count() * 4,
+        )
+        .into());
+    }
+    Ok(to_bc(
+        Format::Bc3,
+        width as usize,
+        height as usize,
+        img.pixels()
+            .flat_map(|p| {
+                let rgba = p.channels();
+                [rgba[0], rgba[1], rgba[2], rgba[3]]
+            })
+            .collect::<Vec<u8>>(),
+    ))
 }
 
 /*
@@ -54,4 +82,4 @@ pub(crate) fn to_bc3(img: RgbaImage) -> (u32, u32, Vec<u8>) {
  *     assert!(height % 4 == 0, "is this image BC5?");
  *     to_bc(Format::Bc5, width as usize, height as usize, img.into_raw())
  * }
-*/
+ */

@@ -1,6 +1,6 @@
 //! Canvas Error Types
 
-use crate::types::WzInt;
+use crate::types::{CanvasFormat, WzInt};
 use image::error::ImageError;
 use std::fmt;
 
@@ -17,7 +17,7 @@ pub enum CanvasError {
     Inflate(String),
 
     /// Size mismatch
-    SizeMismatch(u32, u32, usize),
+    SizeMismatch(CanvasFormat, u32, u32, usize),
 
     /// Too big
     TooBig(u32, u32),
@@ -31,10 +31,10 @@ impl fmt::Display for CanvasError {
             }
             Self::Image(e) => write!(f, "Image: {}", e),
             Self::Inflate(s) => write!(f, "Inflate: {}", s),
-            Self::SizeMismatch(w, h, l) => write!(
+            Self::SizeMismatch(c, w, h, l) => write!(
                 f,
-                "ImageBuffer size mismatch {{ Width({}), Height({}), PixelBytes({}) }}",
-                w, h, l
+                "Data length does not match Canvas Size {{ {:?}, Width({}), Height({}), PixelBytes({}) }}",
+                c, w, h, l
             ),
             Self::TooBig(w, h) => write!(f, "canvas is too big: {{ Width({}), Height({}) }}", w, h),
         }

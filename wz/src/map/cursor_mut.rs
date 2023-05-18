@@ -400,7 +400,7 @@ mod tests {
             .expect("error creating n1_1_1_1")
             .move_to("n1_1_1_1")
             .expect("error moving into n1_1_1_1");
-        assert_eq!(&cursor.pwd(), &["n1", "n1_1", "n1_1_1", "n1_1_1_1"]);
+        assert_eq!(&cursor.pwd(), "n1/n1_1/n1_1_1/n1_1_1_1");
     }
 
     #[test]
