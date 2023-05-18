@@ -7,12 +7,10 @@ use crate::{
 use image::{Pixel, RgbaImage};
 use squish::{Format, Params};
 
-fn from_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> Result<RgbaImage> {
+fn from_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> RgbaImage {
     let mut output = vec![0u8; width * height * 4];
     format.decompress(&data, width, height, &mut output);
-    RgbaImage::from_raw(width as u32, height as u32, output).ok_or_else(|| {
-        CanvasError::SizeMismatch(CanvasFormat::Bc3, width as u32, height as u32, data.len()).into()
-    })
+    RgbaImage::from_raw(width as u32, height as u32, output).expect("BC3 size should be good")
 }
 
 fn to_bc(format: Format, width: usize, height: usize, data: Vec<u8>) -> (u32, u32, Vec<u8>) {
@@ -31,12 +29,12 @@ pub(crate) fn from_bc3(width: u32, height: u32, data: Vec<u8>) -> Result<RgbaIma
     if data.len() < data_len {
         return Err(CanvasError::SizeMismatch(CanvasFormat::Bc3, width, height, data.len()).into());
     }
-    from_bc(
+    Ok(from_bc(
         Format::Bc3,
         width as usize,
         height as usize,
         Vec::from(&data[0..data_len]),
-    )
+    ))
 }
 
 /// DirectX DXGI_FORMAT_BC3

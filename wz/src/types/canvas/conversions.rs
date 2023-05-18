@@ -225,7 +225,7 @@ mod tests {
     use crate::types::canvas::{join4444, join565, split4444, split565};
 
     #[test]
-    fn rgba4444() {
+    fn bgra4444() {
         let pixel = 0xF820u16;
         let b = split4444(pixel);
         assert_eq!(pixel, join4444(b[0], b[1], b[2], b[3]));
