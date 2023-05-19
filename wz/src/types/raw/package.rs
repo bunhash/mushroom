@@ -44,7 +44,7 @@ impl Package {
 impl Decode for Package {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let num_contents = WzInt::decode(reader)?;
         if num_contents.is_negative() {

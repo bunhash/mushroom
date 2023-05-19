@@ -24,7 +24,7 @@ impl_from!(WzInt, usize, i32);
 impl Decode for WzInt {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -77,7 +77,7 @@ impl_from!(WzLong, usize, i64);
 impl Decode for WzLong {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {

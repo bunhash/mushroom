@@ -7,6 +7,6 @@ pub trait Decode {
     /// Decodes objects
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
         Self: Sized;
 }

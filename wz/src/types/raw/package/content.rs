@@ -25,7 +25,7 @@ impl ContentRef {
 impl Decode for ContentRef {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let tag = reader.read_byte()?;
         let (tag, name, size, checksum, offset) = match tag {
@@ -142,7 +142,7 @@ impl Metadata {
 
     fn dereference_name<R>(offset: i32, reader: &mut R) -> Result<(u8, String)>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         if offset.is_negative() {
             // sanity check

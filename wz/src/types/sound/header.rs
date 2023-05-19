@@ -71,7 +71,7 @@ impl fmt::Debug for SoundHeader {
 impl Decode for SoundHeader {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         // Decode static header
         let mut sound_header = vec![0u8; HEADER.len()];

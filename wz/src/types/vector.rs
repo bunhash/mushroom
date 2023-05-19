@@ -21,7 +21,7 @@ impl Vector {
 impl Decode for Vector {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         Ok(Self {
             x: WzInt::decode(reader)?,

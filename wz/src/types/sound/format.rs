@@ -35,7 +35,7 @@ impl From<u16> for AudioFormat {
 impl Decode for AudioFormat {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         Ok(Self::from(u16::decode(reader)?))
     }

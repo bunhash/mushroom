@@ -72,7 +72,7 @@ impl WzOffset {
 impl Decode for WzOffset {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let position = reader.position()?;
         let encoded = u32::decode(reader)?;

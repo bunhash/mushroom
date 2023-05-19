@@ -45,7 +45,7 @@ impl Canvas {
 impl Decode for Canvas {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         u8::decode(reader)?;
         let property = match u8::decode(reader)? {

@@ -77,7 +77,7 @@ impl SizeHint for &str {
 impl Decode for String {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let check = i8::decode(reader)?;
         let length = match check {

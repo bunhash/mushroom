@@ -23,7 +23,7 @@ impl Property {
 impl Decode for Property {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         u16::decode(reader)?;
         let num_contents = WzInt::decode(reader)?;

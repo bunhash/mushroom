@@ -88,7 +88,7 @@ impl fmt::Debug for Sound {
 impl Decode for Sound {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         u8::decode(reader)?; // garbage byte?
         let data_len = WzInt::decode(reader)?;

@@ -41,7 +41,7 @@ pub enum ContentRef {
 impl Decode for ContentRef {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let name = UolString::decode(reader)?;
         match u8::decode(reader)? {

@@ -1,9 +1,8 @@
 //! WZ Image UOLs
 
 use crate::{
-    error::{ImageError, Result},
+    error::Result,
     io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::WzOffset,
 };
 use std::ops::{Deref, DerefMut};
 
@@ -73,31 +72,9 @@ impl PartialEq<UolString> for &str {
 impl Decode for UolString {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
-        let check = u8::decode(reader)?;
-        match check {
-            0 => {
-                let position = reader.position()?;
-                let string = String::decode(reader)?;
-                reader.cache(*position, &string);
-                Ok(Self(string))
-            }
-            1 => {
-                let offset = WzOffset::from(u32::decode(reader)?);
-                Ok(Self(match reader.get_from_cache(*offset) {
-                    Some(string) => string.to_string(),
-                    None => {
-                        let pos = reader.position()?;
-                        reader.seek(offset)?;
-                        let string = String::decode(reader)?;
-                        reader.seek(pos)?;
-                        string
-                    }
-                }))
-            }
-            u => Err(ImageError::UolType(u).into()),
-        }
+        Ok(Self(reader.read_uol_string()?))
     }
 }
 
@@ -205,7 +182,7 @@ impl PartialEq<UolObject> for &str {
 impl Decode for UolObject {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         u8::decode(reader)?;
         Ok(Self {

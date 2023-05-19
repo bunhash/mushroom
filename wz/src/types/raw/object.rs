@@ -5,7 +5,7 @@ use crate::{
     io::{Decode, WzRead},
     types::{
         raw::{Canvas, Property},
-        Sound, UolObject, Vector, WzOffset,
+        Sound, UolObject, Vector,
     },
 };
 
@@ -34,30 +34,9 @@ pub enum Object {
 impl Decode for Object {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
-        let typename = match u8::decode(reader)? {
-            0x73 => {
-                let position = reader.position()?;
-                let string = String::decode(reader)?;
-                reader.cache(*position, &string);
-                string
-            }
-            0x1b => {
-                let offset = WzOffset::from(u32::decode(reader)?);
-                match reader.get_from_cache(*offset) {
-                    Some(string) => string.to_string(),
-                    None => {
-                        let pos = reader.position()?;
-                        reader.seek(offset)?;
-                        let string = String::decode(reader)?;
-                        reader.seek(pos)?;
-                        string
-                    }
-                }
-            }
-            t => return Err(ImageError::UolType(t).into()),
-        };
+        let typename = reader.read_object_tag()?;
         match typename.as_ref() {
             "Property" => Ok(Self::Property(Property::decode(reader)?)),
             "Canvas" => Ok(Self::Canvas(Canvas::decode(reader)?)),

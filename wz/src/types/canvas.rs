@@ -55,7 +55,7 @@ impl CanvasFormat {
 impl Decode for CanvasFormat {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let format = WzInt::decode(reader)?;
         let format2 = u8::decode(reader)?;

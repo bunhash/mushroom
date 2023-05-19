@@ -8,7 +8,7 @@ use crate::{
 impl Decode for i8 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         Ok(reader.read_byte()? as i8)
     }
@@ -33,7 +33,7 @@ impl SizeHint for i8 {
 impl Decode for i16 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 2];
         reader.read_exact(&mut buf)?;
@@ -60,7 +60,7 @@ impl SizeHint for i16 {
 impl Decode for i32 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf)?;
@@ -87,7 +87,7 @@ impl SizeHint for i32 {
 impl Decode for i64 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
@@ -114,7 +114,7 @@ impl SizeHint for i64 {
 impl Decode for u8 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         reader.read_byte()
     }
@@ -139,7 +139,7 @@ impl SizeHint for u8 {
 impl Decode for u16 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 2];
         reader.read_exact(&mut buf)?;
@@ -166,7 +166,7 @@ impl SizeHint for u16 {
 impl Decode for u32 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf)?;
@@ -193,7 +193,7 @@ impl SizeHint for u32 {
 impl Decode for u64 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;
@@ -220,7 +220,7 @@ impl SizeHint for u64 {
 impl Decode for f32 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         Ok(match reader.read_byte()? {
             0x80 => {
@@ -261,7 +261,7 @@ impl SizeHint for f32 {
 impl Decode for f64 {
     fn decode<R>(reader: &mut R) -> Result<Self>
     where
-        R: WzRead,
+        R: WzRead + ?Sized,
     {
         let mut buf = [0u8; 8];
         reader.read_exact(&mut buf)?;

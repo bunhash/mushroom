@@ -1,7 +1,8 @@
 //! WZ Readers
 
 use crate::{
-    error::Result,
+    error::{ImageError, Result},
+    io::Decode,
     types::{WzInt, WzOffset},
 };
 use std::io::Write;
@@ -47,12 +48,38 @@ pub trait WzRead {
     /// Decrypts a vector of bytes
     fn decrypt(&mut self, bytes: &mut Vec<u8>);
 
-    /// Check the cache for a previously cached string
-    fn cache(&mut self, _offset: u32, _string: &str) {}
+    /// Reads a UOL string
+    fn read_uol_string(&mut self) -> Result<String> {
+        let check = u8::decode(self)?;
+        match check {
+            0 => String::decode(self),
+            1 => {
+                let offset = WzOffset::from(u32::decode(self)?);
+                let pos = self.position()?;
+                self.seek(offset)?;
+                let string = String::decode(self)?;
+                self.seek(pos)?;
+                Ok(string)
+            }
+            u => Err(ImageError::UolType(u).into()),
+        }
+    }
 
-    /// Check the cache for a previously cached string
-    fn get_from_cache(&self, _offset: u32) -> Option<&str> {
-        None
+    /// Reads an object tag
+    fn read_object_tag(&mut self) -> Result<String> {
+        let check = u8::decode(self)?;
+        match check {
+            0x73 => String::decode(self),
+            0x1b => {
+                let offset = WzOffset::from(u32::decode(self)?);
+                let pos = self.position()?;
+                self.seek(offset)?;
+                let string = String::decode(self)?;
+                self.seek(pos)?;
+                Ok(string)
+            }
+            u => Err(ImageError::UolType(u).into()),
+        }
     }
 
     /// Seek to start after the version checksum (absolute_position + 2)

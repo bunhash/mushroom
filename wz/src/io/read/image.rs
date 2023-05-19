@@ -1,8 +1,8 @@
 //! WZ Image Reader
 
 use crate::{
-    error::Result,
-    io::WzRead,
+    error::{ImageError, Result},
+    io::{Decode, WzRead},
     types::{WzInt, WzOffset},
 };
 use std::{collections::HashMap, io::Write};
@@ -16,7 +16,7 @@ use std::{collections::HashMap, io::Write};
 #[derive(Debug)]
 pub struct WzImageReader<'a, R>
 where
-    R: WzRead,
+    R: WzRead + ?Sized,
 {
     inner: &'a mut R,
     offset: WzOffset,
@@ -25,7 +25,7 @@ where
 
 impl<'a, R> WzImageReader<'a, R>
 where
-    R: WzRead,
+    R: WzRead + ?Sized,
 {
     /// Creates a new [`WzImageReader`] with a starting offset of 0
     pub fn new(inner: &'a mut R) -> Self {
@@ -48,7 +48,7 @@ where
 
 impl<'a, R> WzRead for WzImageReader<'a, R>
 where
-    R: WzRead,
+    R: WzRead + ?Sized,
 {
     fn absolute_position(&self) -> i32 {
         self.inner.absolute_position()
@@ -101,11 +101,55 @@ where
         self.inner.decrypt(bytes)
     }
 
-    fn cache(&mut self, offset: u32, string: &str) {
-        self.cache.insert(offset, string.to_string());
+    fn read_uol_string(&mut self) -> Result<String> {
+        let check = u8::decode(self)?;
+        match check {
+            0 => {
+                let position = self.position()?;
+                let string = String::decode(self)?;
+                self.cache.insert(*position, string.clone());
+                Ok(string)
+            }
+            1 => {
+                let offset = u32::decode(self)?;
+                Ok(match self.cache.get(&offset) {
+                    Some(string) => string.to_string(),
+                    None => {
+                        let pos = self.position()?;
+                        self.seek(offset.into())?;
+                        let string = String::decode(self)?;
+                        self.seek(pos)?;
+                        string
+                    }
+                })
+            }
+            u => Err(ImageError::UolType(u).into()),
+        }
     }
 
-    fn get_from_cache(&self, offset: u32) -> Option<&str> {
-        Some(self.cache.get(&offset)?.as_str())
+    fn read_object_tag(&mut self) -> Result<String> {
+        let check = u8::decode(self)?;
+        match check {
+            0x73 => {
+                let position = self.position()?;
+                let string = String::decode(self)?;
+                self.cache.insert(*position, string.clone());
+                Ok(string)
+            }
+            0x1b => {
+                let offset = u32::decode(self)?;
+                Ok(match self.cache.get(&offset) {
+                    Some(string) => string.to_string(),
+                    None => {
+                        let pos = self.position()?;
+                        self.seek(offset.into())?;
+                        let string = String::decode(self)?;
+                        self.seek(pos)?;
+                        string
+                    }
+                })
+            }
+            u => Err(ImageError::UolType(u).into()),
+        }
     }
 }
