@@ -105,19 +105,16 @@ where
     where
         S: AsRef<Path>,
     {
-        let parent = match path.as_ref().parent() {
-            Some(p) => p,
-            None => return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into()),
-        };
-        let name = match path.as_ref().file_name() {
-            Some(name) => match name.to_str() {
-                Some(name) => name,
-                None => {
-                    return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into())
-                }
-            },
-            None => return Err(PackageError::Path(path.as_ref().to_string_lossy().into()).into()),
-        };
+        let parent = path
+            .as_ref()
+            .parent()
+            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?;
+        let name = path
+            .as_ref()
+            .file_name()
+            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?
+            .to_str()
+            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?;
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
             String::from(name),
@@ -180,15 +177,14 @@ where
         S: AsRef<Path>,
     {
         let mut cursor = self.map.cursor_mut();
-        let path = match path.as_ref().strip_prefix(cursor.name()) {
-            Ok(p) => p,
-            Err(_) => return Err(PackageError::MultipleRoots.into()),
-        };
+        let path = path
+            .as_ref()
+            .strip_prefix(cursor.name())
+            .map_err(|_| PackageError::MultipleRoots)?;
         for part in path.iter() {
-            let name = match part.to_str() {
-                Some(n) => n,
-                None => return Err(PackageError::Path(path.to_string_lossy().into()).into()),
-            };
+            let name = part
+                .to_str()
+                .ok_or_else(|| PackageError::Path(path.to_string_lossy().into()))?;
             if !cursor.has_child(name) {
                 cursor.create(
                     String::from(name),

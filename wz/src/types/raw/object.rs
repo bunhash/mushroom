@@ -37,14 +37,24 @@ impl Decode for Object {
         R: WzRead,
     {
         let typename = match u8::decode(reader)? {
-            0x73 => String::decode(reader)?,
+            0x73 => {
+                let position = reader.position()?;
+                let string = String::decode(reader)?;
+                reader.cache(*position, &string);
+                string
+            }
             0x1b => {
                 let offset = WzOffset::from(u32::decode(reader)?);
-                let pos = reader.position()?;
-                reader.seek(offset)?;
-                let typename = String::decode(reader)?;
-                reader.seek(pos)?;
-                typename
+                match reader.from_cache(*offset) {
+                    Some(string) => string.to_string(),
+                    None => {
+                        let pos = reader.position()?;
+                        reader.seek(offset)?;
+                        let string = String::decode(reader)?;
+                        reader.seek(pos)?;
+                        string
+                    }
+                }
             }
             t => return Err(ImageError::UolType(t).into()),
         };

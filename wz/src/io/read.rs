@@ -7,11 +7,11 @@ use crate::{
 use std::io::Write;
 
 mod dummy_decryptor;
-mod imagereader;
+mod image;
 mod reader;
 
+pub use self::image::WzImageReader;
 pub use dummy_decryptor::DummyDecryptor;
-pub use imagereader::WzImageReader;
 pub use reader::WzReader;
 
 pub trait WzRead {
@@ -46,6 +46,14 @@ pub trait WzRead {
 
     /// Decrypts a vector of bytes
     fn decrypt(&mut self, bytes: &mut Vec<u8>);
+
+    /// Check the cache for a previously cached string
+    fn cache(&mut self, _offset: u32, _string: &str) {}
+
+    /// Check the cache for a previously cached string
+    fn from_cache(&self, _offset: u32) -> Option<&str> {
+        None
+    }
 
     /// Seek to start after the version checksum (absolute_position + 2)
     fn seek_to_start(&mut self) -> Result<WzOffset> {

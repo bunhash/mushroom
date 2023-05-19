@@ -33,21 +33,21 @@ pub(crate) fn do_create(
     }
 
     // Get the target directory and ensure it is actually a directory
-    let path = PathBuf::from(&directory);
-    if !path.is_dir() {
-        return Err(PackageError::Path(path.to_string_lossy().into()).into());
+    let directory = PathBuf::from(&directory);
+    if !directory.is_dir() {
+        return Err(PackageError::Path(directory.to_string_lossy().into()).into());
     }
-    let target = file_name(&path)?;
+    let target = file_name(&directory)?;
     if verbose {
         println!("{}", target);
     }
 
     // Get the parent path of the directory (used to strip it from the WZ contents)
-    let parent = path.parent().ok_or_else(|| ErrorKind::NotFound)?;
+    let parent = directory.parent().ok_or_else(|| ErrorKind::NotFound)?;
 
     // Create new WZ archive map
     let mut writer = archive::Writer::new(target);
-    recursive_do_create(&path, parent, &mut writer, verbose)?;
+    recursive_do_create(&directory, parent, &mut writer, verbose)?;
 
     // Create a new header
     let header = WzHeader::new(version);
@@ -341,7 +341,7 @@ where
                 if Path::new(&path).is_file() {
                     fs::remove_file(&path)?;
                 }
-                let mut image_reader = WzImageReader::new(&mut reader, *offset);
+                let mut image_reader = WzImageReader::with_offset(&mut reader, *offset);
                 image_reader.seek_to_start()?;
                 let mut image = image::Reader::new(image_reader);
                 let map = image.map(cursor.name())?;

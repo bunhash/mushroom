@@ -5,7 +5,7 @@ use crate::{
     io::WzRead,
     types::{WzInt, WzOffset},
 };
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 /// WZ Image Reader
 ///
@@ -18,14 +18,29 @@ where
 {
     inner: &'a mut R,
     offset: WzOffset,
+    cache: HashMap<u32, String>,
 }
 
 impl<'a, R> WzImageReader<'a, R>
 where
     R: WzRead,
 {
-    pub fn new(inner: &'a mut R, offset: WzOffset) -> Self {
-        Self { inner, offset }
+    /// Creates a new [`WzImageReader`]
+    pub fn new(inner: &'a mut R) -> Self {
+        Self {
+            inner,
+            offset: WzOffset::from(0),
+            cache: HashMap::new(),
+        }
+    }
+
+    /// Creates a new [`WzImageReader`]
+    pub fn with_offset(inner: &'a mut R, offset: WzOffset) -> Self {
+        Self {
+            inner,
+            offset,
+            cache: HashMap::new(),
+        }
     }
 }
 
@@ -82,5 +97,13 @@ where
 
     fn decrypt(&mut self, bytes: &mut Vec<u8>) {
         self.inner.decrypt(bytes)
+    }
+
+    fn cache(&mut self, offset: u32, string: &str) {
+        self.cache.insert(offset, string.to_string());
+    }
+
+    fn from_cache(&self, offset: u32) -> Option<&str> {
+        Some(self.cache.get(&offset)?.as_str())
     }
 }

@@ -199,9 +199,7 @@ impl Encode for Canvas {
         0i32.encode(writer)?;
         (self.data.len() as i32 + 1).encode(writer)?;
         0u8.encode(writer)?;
-        let mut data = self.data.clone();
-        writer.encrypt(&mut data);
-        writer.write_all(&data)
+        writer.write_all(&self.data)
     }
 }
 

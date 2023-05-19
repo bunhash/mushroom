@@ -75,10 +75,7 @@ impl WzHeader {
         // Read the description
         let mut description = vec![0u8; (absolute_position as usize) - 17];
         reader.read_exact(&mut description)?;
-        let description = match String::from_utf8(description) {
-            Ok(s) => s,
-            Err(_) => return Err(PackageError::Header.into()),
-        };
+        let description = String::from_utf8(description).map_err(|_| PackageError::Header)?;
 
         // Skip the null
         let mut skip = [0];

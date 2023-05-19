@@ -2,7 +2,7 @@
 
 use crate::{
     error::{DecodeError, ImageError, Result},
-    io::{Decode, WzRead, WzReader},
+    io::{Decode, WzImageReader, WzRead, WzReader},
     map::{CursorMut, Map},
     types::{raw, Canvas, Property, WzInt, WzOffset},
 };
@@ -44,10 +44,11 @@ where
     /// Maps the archive contents. The root will be named `name`
     pub fn map(&mut self, name: &str) -> Result<Map<Property>> {
         let mut map = Map::new(String::from(name), Property::ImgDir);
-        let object = raw::Object::decode(&mut self.inner)?;
+        let mut reader = WzImageReader::new(&mut self.inner);
+        let object = raw::Object::decode(&mut reader)?;
         match &object {
             raw::Object::Property(p) => {
-                map_property_to(p, &mut self.inner, &mut map.cursor_mut())?;
+                map_property_to(p, &mut reader, &mut map.cursor_mut())?;
                 Ok(map)
             }
             _ => Err(ImageError::ImageRoot.into()),

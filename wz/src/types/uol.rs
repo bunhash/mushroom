@@ -77,14 +77,24 @@ impl Decode for UolString {
     {
         let check = u8::decode(reader)?;
         match check {
-            0 => Ok(Self(String::decode(reader)?)),
+            0 => {
+                let position = reader.position()?;
+                let string = String::decode(reader)?;
+                reader.cache(*position, &string);
+                Ok(Self(string))
+            }
             1 => {
                 let offset = WzOffset::from(u32::decode(reader)?);
-                let pos = reader.position()?;
-                reader.seek(offset)?;
-                let string = String::decode(reader)?;
-                reader.seek(pos)?;
-                Ok(Self(string))
+                Ok(Self(match reader.from_cache(*offset) {
+                    Some(string) => string.to_string(),
+                    None => {
+                        let pos = reader.position()?;
+                        reader.seek(offset)?;
+                        let string = String::decode(reader)?;
+                        reader.seek(pos)?;
+                        string
+                    }
+                }))
             }
             u => Err(ImageError::UolType(u).into()),
         }
@@ -96,8 +106,7 @@ impl Encode for UolString {
     where
         W: WzWrite,
     {
-        0u8.encode(writer)?;
-        self.0.encode(writer)
+        writer.write_uol_string(&self.0)
     }
 }
 
@@ -211,7 +220,7 @@ impl Encode for UolObject {
         W: WzWrite,
     {
         0u8.encode(writer)?;
-        self.uri.encode(writer)
+        writer.write_uol_string(&self.uri)
     }
 }
 

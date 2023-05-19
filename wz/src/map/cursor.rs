@@ -81,82 +81,62 @@ impl<'a, T> Cursor<'a, T> {
 
     /// Moves the cursor to the first child.
     pub fn first_child(&mut self) -> Result<&mut Self, MapError> {
-        match self
+        let id = self
             .arena
             .get(self.position)
             .expect("current node should exist")
             .first_child()
-        {
-            Some(id) => {
-                self.position = id;
-                Ok(self)
-            }
-            None => Err(MapError::NoChildren),
-        }
+            .ok_or_else(|| MapError::NoChildren)?;
+        self.position = id;
+        Ok(self)
     }
 
     /// Moves the cursor to the last child.
     pub fn last_child(&mut self) -> Result<&mut Self, MapError> {
-        match self
+        let id = self
             .arena
             .get(self.position)
             .expect("current node should exist")
             .last_child()
-        {
-            Some(id) => {
-                self.position = id;
-                Ok(self)
-            }
-            None => Err(MapError::NoChildren),
-        }
+            .ok_or_else(|| MapError::NoChildren)?;
+        self.position = id;
+        Ok(self)
     }
 
     /// Moves the cursor to the previous sibling node
     pub fn previous_sibling(&mut self) -> Result<&mut Self, MapError> {
-        match self
+        let id = self
             .arena
             .get(self.position)
             .expect("current node should exist")
             .previous_sibling()
-        {
-            Some(id) => {
-                self.position = id;
-                Ok(self)
-            }
-            None => Err(MapError::NoSibling),
-        }
+            .ok_or_else(|| MapError::NoChildren)?;
+        self.position = id;
+        Ok(self)
     }
 
     /// Moves the cursor to the next sibling node
     pub fn next_sibling(&mut self) -> Result<&mut Self, MapError> {
-        match self
+        let id = self
             .arena
             .get(self.position)
             .expect("current node should exist")
             .next_sibling()
-        {
-            Some(id) => {
-                self.position = id;
-                Ok(self)
-            }
-            None => Err(MapError::NoSibling),
-        }
+            .ok_or_else(|| MapError::NoChildren)?;
+        self.position = id;
+        Ok(self)
     }
 
     /// Moves the cursor to the parent. Errors when already at the root node.
     pub fn parent(&mut self) -> Result<&mut Self, MapError> {
-        match self
+        let id = self
             .arena
             .get(self.position)
-            .expect("current position should exist")
+            .expect("current node should exist")
             .parent()
-        {
-            Some(id) => {
-                self.position = id;
-                Ok(self)
-            }
-            None => Err(MapError::NoParent),
-        }
+            .ok_or_else(|| MapError::NoParent)?;
+        self.position = id;
+        Ok(self)
     }
 
     /// Walks the map depth-first
@@ -178,17 +158,17 @@ impl<'a, T> Cursor<'a, T> {
     // *** PRIVATES *** //
 
     fn get_id(&self, position: NodeId, name: &str) -> Result<NodeId, MapError> {
-        match position.children(self.arena).find(|id| {
-            self.arena
-                .get(*id)
-                .expect("child position should exist")
-                .get()
-                .name
-                .as_str()
-                == name
-        }) {
-            Some(id) => Ok(id),
-            None => Err(MapError::NotFound(String::from(name))),
-        }
+        position
+            .children(self.arena)
+            .find(|id| {
+                self.arena
+                    .get(*id)
+                    .expect("child position should exist")
+                    .get()
+                    .name
+                    .as_str()
+                    == name
+            })
+            .ok_or_else(|| MapError::NotFound(String::from(name)))
     }
 }

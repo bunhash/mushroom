@@ -7,8 +7,10 @@ use crate::{
 use std::io::Read;
 
 mod dummy_encryptor;
+mod image;
 mod writer;
 
+pub use self::image::WzImageWriter;
 pub use dummy_encryptor::DummyEncryptor;
 pub use writer::WzWriter;
 
@@ -38,6 +40,16 @@ pub trait WzWrite {
 
     /// Encrypts a vector of bytes
     fn encrypt(&mut self, bytes: &mut Vec<u8>);
+
+    /// Writes a [`UolString`](crate::types::UolString) (images only)
+    fn write_uol_string(&mut self, _string: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    /// Writes the object tag string (images only)
+    fn write_object_tag(&mut self, _tag: &str) -> Result<()> {
+        unimplemented!()
+    }
 
     /// Seek to start after the version checksum (absolute_position + 2)
     fn seek_to_start(&mut self) -> Result<WzOffset> {

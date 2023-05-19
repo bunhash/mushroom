@@ -2,7 +2,7 @@
 
 use crate::{
     error::{ImageError, Result},
-    io::{Encode, WzWrite, WzWriter},
+    io::{Encode, WzImageWriter, WzWrite, WzWriter},
     map::{Cursor, Map},
     types::{Property, UolString, WzInt},
 };
@@ -32,17 +32,16 @@ impl Writer {
     where
         S: AsRef<Path>,
     {
-        let parent = match path.as_ref().parent() {
-            Some(p) => p,
-            None => return Err(ImageError::Path(path.as_ref().to_string_lossy().into()).into()),
-        };
-        let name = match path.as_ref().file_name() {
-            Some(name) => match name.to_str() {
-                Some(name) => name,
-                None => return Err(ImageError::Path(path.as_ref().to_string_lossy().into()).into()),
-            },
-            None => return Err(ImageError::Path(path.as_ref().to_string_lossy().into()).into()),
-        };
+        let parent = path
+            .as_ref()
+            .parent()
+            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?;
+        let name = path
+            .as_ref()
+            .file_name()
+            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?
+            .to_str()
+            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?;
         let mut cursor = self.map.cursor_mut_at(parent)?;
         cursor.create(String::from(name), property)?;
         Ok(())
@@ -53,7 +52,8 @@ impl Writer {
         S: AsRef<Path>,
         E: Encryptor,
     {
-        let mut writer = WzWriter::new(0, 0, BufWriter::new(File::create(path)?), encryptor);
+        let mut inner = WzWriter::new(0, 0, BufWriter::new(File::create(path)?), encryptor);
+        let mut writer = WzImageWriter::new(&mut inner);
         self.write_to(&mut writer)
     }
 
@@ -149,15 +149,13 @@ where
 {
     match cursor.get() {
         Property::ImgDir => {
-            0x73u8.encode(writer)?;
-            String::from("Property").encode(writer)?;
+            writer.write_object_tag("Property")?;
             0u16.encode(writer)?;
             WzInt::from(cursor.children().count()).encode(writer)?;
             encode_object_children(writer, cursor)?;
         }
         Property::Canvas(val) => {
-            0x73u8.encode(writer)?;
-            String::from("Canvas").encode(writer)?;
+            writer.write_object_tag("Canvas")?;
             0u8.encode(writer)?;
             let canvas = val.clone(); // We lose the cursor when encoding children
             let num_children = cursor.children().count();
@@ -172,8 +170,7 @@ where
             canvas.encode(writer)?;
         }
         Property::Convex => {
-            0x73u8.encode(writer)?;
-            String::from("Shape2D#Convex2D").encode(writer)?;
+            writer.write_object_tag("Shape2D#Convex2D")?;
             let mut num_children = cursor.children().count();
             if num_children > 0 {
                 cursor.first_child()?;
@@ -189,18 +186,15 @@ where
             }
         }
         Property::Vector(val) => {
-            0x73u8.encode(writer)?;
-            String::from("Shape2D#Vector2D").encode(writer)?;
+            writer.write_object_tag("Shape2D#Vector2D")?;
             val.encode(writer)?;
         }
         Property::Uol(val) => {
-            0x73u8.encode(writer)?;
-            String::from("UOL").encode(writer)?;
+            writer.write_object_tag("UOL")?;
             val.encode(writer)?;
         }
         Property::Sound(val) => {
-            0x73u8.encode(writer)?;
-            String::from("Sound_DX8").encode(writer)?;
+            writer.write_object_tag("Sound_DX8")?;
             val.encode(writer)?;
         }
         _ => panic!("should not get here"),
