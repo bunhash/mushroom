@@ -111,7 +111,7 @@ impl Encode for WzHeader {
     /// Encodes objects
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.identifier)?;
         self.size.encode(writer)?;

@@ -88,7 +88,7 @@ impl Decode for WzOffset {
 impl Encode for WzOffset {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         let position = writer.position()?;
         let encoded = self.encode_with(

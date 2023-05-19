@@ -2,6 +2,7 @@
 
 use crate::{
     error::Result,
+    io::Encode,
     types::{WzInt, WzOffset},
 };
 use std::io::Read;
@@ -42,13 +43,15 @@ pub trait WzWrite {
     fn encrypt(&mut self, bytes: &mut Vec<u8>);
 
     /// Writes a [`UolString`](crate::types::UolString) (images only)
-    fn write_uol_string(&mut self, _string: &str) -> Result<()> {
-        unimplemented!()
+    fn write_uol_string(&mut self, string: &str) -> Result<()> {
+        0u8.encode(self)?;
+        string.encode(self)
     }
 
     /// Writes the object tag string (images only)
-    fn write_object_tag(&mut self, _tag: &str) -> Result<()> {
-        unimplemented!()
+    fn write_object_tag(&mut self, tag: &str) -> Result<()> {
+        0x73u8.encode(self)?;
+        tag.encode(self)
     }
 
     /// Seek to start after the version checksum (absolute_position + 2)

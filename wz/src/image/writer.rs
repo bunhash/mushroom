@@ -59,7 +59,7 @@ impl Writer {
 
     pub fn write_to<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         // Images don't really need an intermediary object storage like archives do. They are far
         // easier to encode since there are no checksums to calculate and the size is always 4
@@ -71,7 +71,7 @@ impl Writer {
 
 fn recursive_write<W>(writer: &mut W, cursor: &mut Cursor<Property>) -> Result<()>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     let prop = cursor.get();
     match prop {
@@ -110,7 +110,7 @@ where
 
 fn encode_property<W>(writer: &mut W, name: &str, property: &Property) -> Result<()>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     UolString::from(name).encode(writer)?;
     match property {
@@ -145,7 +145,7 @@ where
 
 fn encode_object<W>(writer: &mut W, cursor: &mut Cursor<Property>) -> Result<()>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     match cursor.get() {
         Property::ImgDir => {
@@ -205,7 +205,7 @@ where
 #[inline]
 fn encode_object_children<W>(writer: &mut W, cursor: &mut Cursor<Property>) -> Result<()>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     let mut num_children = cursor.children().count();
     if num_children > 0 {

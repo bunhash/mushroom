@@ -73,7 +73,7 @@ impl Decode for CanvasFormat {
 impl Encode for CanvasFormat {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         match self {
             CanvasFormat::Bgra4444 => {
@@ -191,7 +191,7 @@ impl fmt::Debug for Canvas {
 impl Encode for Canvas {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         self.width.encode(writer)?;
         self.height.encode(writer)?;

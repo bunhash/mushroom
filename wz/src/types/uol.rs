@@ -85,7 +85,7 @@ impl Decode for UolString {
             }
             1 => {
                 let offset = WzOffset::from(u32::decode(reader)?);
-                Ok(Self(match reader.from_cache(*offset) {
+                Ok(Self(match reader.get_from_cache(*offset) {
                     Some(string) => string.to_string(),
                     None => {
                         let pos = reader.position()?;
@@ -104,7 +104,7 @@ impl Decode for UolString {
 impl Encode for UolString {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_uol_string(&self.0)
     }
@@ -217,7 +217,7 @@ impl Decode for UolObject {
 impl Encode for UolObject {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         0u8.encode(writer)?;
         writer.write_uol_string(&self.uri)

@@ -7,7 +7,7 @@ pub trait Encode {
     /// Encodes objects
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
         Self: Sized;
 }
 

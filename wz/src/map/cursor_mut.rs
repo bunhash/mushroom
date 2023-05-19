@@ -90,7 +90,7 @@ impl<'a, T> CursorMut<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .first_child()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -102,7 +102,7 @@ impl<'a, T> CursorMut<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .last_child()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -114,7 +114,7 @@ impl<'a, T> CursorMut<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .previous_sibling()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -126,7 +126,7 @@ impl<'a, T> CursorMut<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .next_sibling()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -138,7 +138,7 @@ impl<'a, T> CursorMut<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .parent()
-            .ok_or_else(|| MapError::NoParent)?;
+            .ok_or(MapError::NoParent)?;
         self.position = id;
         Ok(self)
     }
@@ -215,7 +215,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// Pastes the contents of the clipboard at the current position. Errors when the clipboard is
     /// empty or another node with the same name exists.
     pub fn paste(&mut self) -> Result<&mut Self, MapError> {
-        let id = self.clipboard.ok_or_else(|| MapError::ClipboardEmpty)?;
+        let id = self.clipboard.ok_or(MapError::ClipboardEmpty)?;
         let name = self
             .arena
             .get(id)

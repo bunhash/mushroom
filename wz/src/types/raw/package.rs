@@ -62,7 +62,7 @@ impl Decode for Package {
 impl Encode for Package {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         let num_contents = WzInt::from(self.contents.len() as i32);
         num_contents.encode(writer)?;

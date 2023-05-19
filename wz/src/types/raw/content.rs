@@ -84,7 +84,7 @@ impl Decode for ContentRef {
 impl Encode for ContentRef {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         match &self {
             ContentRef::Null { name } => {

@@ -86,7 +86,7 @@ impl<'a, T> Cursor<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .first_child()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -98,7 +98,7 @@ impl<'a, T> Cursor<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .last_child()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -110,7 +110,7 @@ impl<'a, T> Cursor<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .previous_sibling()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -122,7 +122,7 @@ impl<'a, T> Cursor<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .next_sibling()
-            .ok_or_else(|| MapError::NoChildren)?;
+            .ok_or(MapError::NoChildren)?;
         self.position = id;
         Ok(self)
     }
@@ -134,7 +134,7 @@ impl<'a, T> Cursor<'a, T> {
             .get(self.position)
             .expect("current node should exist")
             .parent()
-            .ok_or_else(|| MapError::NoParent)?;
+            .ok_or(MapError::NoParent)?;
         self.position = id;
         Ok(self)
     }

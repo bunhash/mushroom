@@ -45,7 +45,7 @@ impl Decode for Object {
             }
             0x1b => {
                 let offset = WzOffset::from(u32::decode(reader)?);
-                match reader.from_cache(*offset) {
+                match reader.get_from_cache(*offset) {
                     Some(string) => string.to_string(),
                     None => {
                         let pos = reader.position()?;

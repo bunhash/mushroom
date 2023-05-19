@@ -117,7 +117,7 @@ impl Decode for Sound {
 impl Encode for Sound {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         0u8.encode(writer)?;
         WzInt::from(self.data.len() as i32).encode(writer)?;

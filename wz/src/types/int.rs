@@ -37,7 +37,7 @@ impl Decode for WzInt {
 impl Encode for WzInt {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         if self.0 > (i8::MAX as i32) || self.0 <= (i8::MIN as i32) {
             writer.write_byte(i8::MIN as u8)?;
@@ -90,7 +90,7 @@ impl Decode for WzLong {
 impl Encode for WzLong {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         if self.0 > (i8::MAX as i64) || self.0 <= (i8::MIN as i64) {
             writer.write_byte(i8::MIN as u8)?;

@@ -51,7 +51,7 @@ pub trait WzRead {
     fn cache(&mut self, _offset: u32, _string: &str) {}
 
     /// Check the cache for a previously cached string
-    fn from_cache(&self, _offset: u32) -> Option<&str> {
+    fn get_from_cache(&self, _offset: u32) -> Option<&str> {
         None
     }
 

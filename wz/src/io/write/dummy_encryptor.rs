@@ -1,5 +1,4 @@
 ///! Dummy Encryptor
-
 use crypto::Encryptor;
 
 /// Encryptor that does nothing

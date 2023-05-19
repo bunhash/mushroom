@@ -33,7 +33,7 @@ impl Decode for Vector {
 impl Encode for Vector {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         self.x.encode(writer)?;
         self.y.encode(writer)

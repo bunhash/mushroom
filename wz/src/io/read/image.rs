@@ -10,7 +10,9 @@ use std::{collections::HashMap, io::Write};
 /// WZ Image Reader
 ///
 /// This just wraps a WzRead so the seeking offsets align properly. This is not needed unless the
-/// image resides within a WZ archive.
+/// image resides within a WZ archive. It also tracks cached strings so it may slightly speed up
+/// parsing but hog more memory. Make sure to let this object die after reading is complete to
+/// clear the cache from memory.
 #[derive(Debug)]
 pub struct WzImageReader<'a, R>
 where
@@ -25,7 +27,7 @@ impl<'a, R> WzImageReader<'a, R>
 where
     R: WzRead,
 {
-    /// Creates a new [`WzImageReader`]
+    /// Creates a new [`WzImageReader`] with a starting offset of 0
     pub fn new(inner: &'a mut R) -> Self {
         Self {
             inner,
@@ -34,7 +36,7 @@ where
         }
     }
 
-    /// Creates a new [`WzImageReader`]
+    /// Creates a new [`WzImageReader`] starting at `offset`
     pub fn with_offset(inner: &'a mut R, offset: WzOffset) -> Self {
         Self {
             inner,
@@ -103,7 +105,7 @@ where
         self.cache.insert(offset, string.to_string());
     }
 
-    fn from_cache(&self, offset: u32) -> Option<&str> {
+    fn get_from_cache(&self, offset: u32) -> Option<&str> {
         Some(self.cache.get(&offset)?.as_str())
     }
 }

@@ -98,7 +98,7 @@ impl Decode for SoundHeader {
 impl Encode for SoundHeader {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(HEADER)?;
         (self.header.len() as u8).encode(writer)?;
@@ -168,7 +168,7 @@ impl TryFrom<SoundHeader> for WavHeader {
 impl Encode for WavHeader {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         ((self.size_hint() - 1) as u8).encode(writer)?;
         self.audio_format.encode(writer)?;

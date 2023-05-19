@@ -17,7 +17,7 @@ impl Decode for i8 {
 impl Encode for i8 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_byte(*self as u8)
     }
@@ -44,7 +44,7 @@ impl Decode for i16 {
 impl Encode for i16 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -71,7 +71,7 @@ impl Decode for i32 {
 impl Encode for i32 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -98,7 +98,7 @@ impl Decode for i64 {
 impl Encode for i64 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -123,7 +123,7 @@ impl Decode for u8 {
 impl Encode for u8 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_byte(*self)
     }
@@ -150,7 +150,7 @@ impl Decode for u16 {
 impl Encode for u16 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -177,7 +177,7 @@ impl Decode for u32 {
 impl Encode for u32 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -204,7 +204,7 @@ impl Decode for u64 {
 impl Encode for u64 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }
@@ -236,7 +236,7 @@ impl Decode for f32 {
 impl Encode for f32 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         if *self as u32 == 0 {
             writer.write_byte(0)
@@ -272,7 +272,7 @@ impl Decode for f64 {
 impl Encode for f64 {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         writer.write_all(&self.to_le_bytes())
     }

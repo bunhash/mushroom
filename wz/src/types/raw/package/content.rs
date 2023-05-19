@@ -77,7 +77,7 @@ impl Decode for ContentRef {
 impl Encode for ContentRef {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         match &self {
             ContentRef::Package(ref data) => {
@@ -173,7 +173,7 @@ impl Metadata {
 impl Encode for Metadata {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         self.name.encode(writer)?;
         self.size.encode(writer)?;

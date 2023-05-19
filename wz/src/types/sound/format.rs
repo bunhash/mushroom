@@ -44,7 +44,7 @@ impl Decode for AudioFormat {
 impl Encode for AudioFormat {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         match self {
             Self::Pcm => 1u16.encode(writer),

@@ -8,7 +8,7 @@ use crate::{
 impl Encode for &str {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         let length = self.len() as i32;
 
@@ -102,7 +102,7 @@ impl Decode for String {
 impl Encode for String {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
     where
-        W: WzWrite,
+        W: WzWrite + ?Sized,
     {
         self.as_str().encode(writer)
     }

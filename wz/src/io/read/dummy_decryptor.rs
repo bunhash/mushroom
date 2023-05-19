@@ -1,5 +1,4 @@
 ///! Dummy Decryptor
-
 use crypto::Decryptor;
 
 /// Decryptor that does nothing

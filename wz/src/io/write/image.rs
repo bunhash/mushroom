@@ -15,7 +15,7 @@ use std::{collections::HashMap, io::Read};
 #[derive(Debug)]
 pub struct WzImageWriter<'a, W>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     inner: &'a mut W,
     offset: WzOffset,
@@ -24,9 +24,9 @@ where
 
 impl<'a, W> WzImageWriter<'a, W>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
-    /// Creates a new [`WzImageWriter`] with a starting offset at 0
+    /// Creates a new [`WzImageWriter`] with a starting offset of 0
     pub fn new(inner: &'a mut W) -> Self {
         Self {
             inner,
@@ -35,7 +35,7 @@ where
         }
     }
 
-    /// Creates a new [`WzImageWriter`] with a starting offset
+    /// Creates a new [`WzImageWriter`] starting at `offset`
     pub fn with_offset(inner: &'a mut W, offset: WzOffset) -> Self {
         Self {
             inner,
@@ -64,7 +64,7 @@ where
 
 impl<'a, W> WzWrite for WzImageWriter<'a, W>
 where
-    W: WzWrite,
+    W: WzWrite + ?Sized,
 {
     fn absolute_position(&self) -> i32 {
         self.inner.absolute_position()
