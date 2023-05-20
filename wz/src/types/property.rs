@@ -5,20 +5,52 @@ use crate::{
     types::{Canvas, Sound, UolObject, UolString, Vector, WzInt, WzLong},
 };
 
+/// Possible WZ image contents.
+///
+/// This list has flattened to include both primitive properties and more complex objects.
 #[derive(Debug)]
 pub enum Property {
+    /// Null value
     Null,
+
+    /// Short
     Short(i16),
+
+    /// Int
     Int(WzInt),
+
+    /// Long
     Long(WzLong),
+
+    /// Float
     Float(f32),
+
+    /// Double
     Double(f64),
+
+    /// String
     String(UolString),
+
+    /// A package/directory within the Image that holds more data. Called ImgDir for HaRepacker
+    /// compatability
     ImgDir,
+
+    /// Canvas
     Canvas(Canvas),
+
+    /// Holds a list of Vector properties. The vector children are within the Map instead of here.
+    /// That decision was made to make compatability with HaRepacker easier. However, it makes more
+    /// sense to have this a `Vec<Vector>`.
     Convex,
+
+    /// Holds a `(x, y)` coordiate
     Vector(Vector),
+
+    /// A UOL object just references another object in a URI pathspec format. Another form of WZ
+    /// compression.
     Uol(UolObject),
+
+    /// Holds WAV sound data
     Sound(Sound),
 }
 

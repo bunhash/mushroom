@@ -6,8 +6,12 @@ use crate::{
 };
 use std::ops::{Deref, DerefMut};
 
-/// This is just a deduplicated string. WZ Images will use an offset to point to the string value
-/// instead of encoding the same string multiple times.
+/// This is just a deduplicated string.
+///
+/// WZ Images will use an offset to point to the string value instead of re-encoding it. This is
+/// useful for compressing data. It is not entirely known when they decide to use a reference
+/// instead of re-encoding it. I arbitrarily set this threshold to when the encoded size of the
+/// string is >5 since that seems to match the behavior I've witnessed during decoding.
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct UolString(String);
 

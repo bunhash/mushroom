@@ -1,123 +1,75 @@
-//! Parsing of WZ images
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![doc = include_str!("../README.md")]
 
-use crate::{file_name, Key};
-use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
-use std::{fs, path::PathBuf};
-use wz::{
-    error::Result,
-    image::{Reader, Writer},
-    io::{DummyDecryptor, DummyEncryptor, WzRead},
-};
+use clap::{Args, Parser, ValueEnum};
+use std::path::PathBuf;
+use wz::error::Result;
 
-mod create;
-mod extract;
+pub(crate) mod image;
+pub(crate) mod utils;
 
-use create::map_image_from_xml;
-use extract::extract_image_from_map;
+#[derive(Parser)]
+struct Cli {
+    /// File for input/output
+    #[arg(short, long, required = true)]
+    file: PathBuf,
 
-pub(crate) fn do_create(path: &PathBuf, directory: &str, verbose: bool, key: Key) -> Result<()> {
-    // Remove the WZ archive if it exists
-    if path.is_file() {
-        fs::remove_file(path)?;
-    }
-    let target = file_name(path)?;
-    if verbose {
-        println!("{}", target);
-    }
-    let mut writer = Writer::from_map(map_image_from_xml(target, directory, verbose)?);
-    match key {
-        Key::Gms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
-        Key::Kms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
-        Key::None => writer.save(path, DummyEncryptor),
-    }
+    /// XML file to build the WZ image from
+    #[arg()]
+    path: Option<String>,
+
+    /// Command to do
+    #[command(flatten)]
+    action: Action,
+
+    /// Verbose
+    #[arg(short, long, default_value_t = false)]
+    verbose: bool,
+
+    /// Expect encrypted strings
+    #[arg(short, long, value_enum, default_value_t = Key::None)]
+    key: Key,
 }
 
-pub(crate) fn do_extract(path: &PathBuf, verbose: bool, key: Key) -> Result<()> {
-    let name = file_name(path)?;
-    let result = match key {
-        Key::Gms => extract(
-            name,
-            Reader::open(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-            verbose,
-        ),
-        Key::Kms => extract(
-            name,
-            Reader::open(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-            verbose,
-        ),
-        Key::None => extract(name, Reader::open(path, DummyDecryptor)?, verbose),
-    };
-    match result {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            println!("{} failed: {:?}", path.display(), e);
-            Ok(())
-        }
-    }
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+struct Action {
+    /// Create a new WZ image
+    #[arg(short = 'c', requires = "path")]
+    create: bool,
+
+    /// List the WZ image contents
+    #[arg(short = 't')]
+    list: bool,
+
+    /// Extract the WZ image
+    #[arg(short = 'x')]
+    extract: bool,
+
+    /// Debug the WZ image
+    #[arg(short = 'd')]
+    debug: bool,
 }
 
-fn extract<R>(name: &str, mut reader: Reader<R>, verbose: bool) -> Result<()>
-where
-    R: WzRead,
-{
-    let map = reader.map(name)?;
-    extract_image_from_map(&map, verbose)
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Key {
+    Gms,
+    Kms,
+    None,
 }
 
-pub(crate) fn do_debug(path: &PathBuf, directory: &Option<String>, key: Key) -> Result<()> {
-    let name = file_name(path)?;
-    let result = match key {
-        Key::Gms => debug(
-            name,
-            Reader::open(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-            directory,
-        ),
-        Key::Kms => debug(
-            name,
-            Reader::open(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-            directory,
-        ),
-        Key::None => debug(name, Reader::open(path, DummyDecryptor)?, directory),
-    };
-    match result {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            println!("{} failed: {:?}", path.display(), e);
-            Ok(())
-        }
-    }
-}
+fn main() -> Result<()> {
+    let args = Cli::parse();
 
-fn debug<R>(name: &str, mut reader: Reader<R>, directory: &Option<String>) -> Result<()>
-where
-    R: WzRead,
-{
-    let map = reader.map(name)?;
-    let mut cursor = match directory {
-        // Find the optional directory
-        Some(ref path) => map.cursor_at(path)?,
-        // Get the root
-        None => {
-            println!("{:?}", map.debug_pretty_print());
-            return Ok(());
-        }
-    };
-
-    // Print the directory and its immediate children
-    println!("{:?} : {:?}", cursor.name(), cursor.get());
-    let mut num_children = cursor.children().count();
-    if num_children > 0 {
-        cursor.first_child()?;
-        loop {
-            if num_children <= 1 {
-                println!("`-- {:?} : {:?}", cursor.name(), cursor.get());
-                break;
-            } else {
-                println!("|-- {:?} : {:?}", cursor.name(), cursor.get());
-            }
-            num_children -= 1;
-            cursor.next_sibling()?;
-        }
+    let action = &args.action;
+    if action.create {
+        image::do_create(&args.file, &args.path.unwrap(), args.verbose, args.key)?;
+    } else if action.list {
+        image::do_list(&args.file, args.key)?;
+    } else if action.extract {
+        image::do_extract(&args.file, args.verbose, args.key)?;
+    } else if action.debug {
+        image::do_debug(&args.file, &args.path, args.key)?;
     }
     Ok(())
 }

@@ -18,6 +18,7 @@ use header::HEADER;
 pub use format::AudioFormat;
 pub use header::{SoundHeader, WavHeader};
 
+/// Sound property found in WZ images
 #[derive(Clone, PartialEq, Eq)]
 pub struct Sound {
     duration: WzInt,

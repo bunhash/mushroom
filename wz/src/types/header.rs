@@ -7,7 +7,13 @@ use crate::{
 use crypto::checksum;
 use std::io::Read;
 
-/// WzHeader of the WZ archive
+/// Header of the WZ archive
+///
+/// The `WzHeader` object contains 2 important pieces of information used in parsing WZ archives:
+/// * `absolute_position`
+/// * `version_hash`
+///
+/// These values are referenced to calculate WZ offset values within the archive.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WzHeader {
     /// Constant value. ASCII for "PKG1"

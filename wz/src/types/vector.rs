@@ -6,6 +6,9 @@ use crate::{
     types::WzInt,
 };
 
+/// Vector property found in WZ images.
+///
+/// This is just a `(x, y)` coordinate. Typically used in Canvas objects.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Vector {
     pub x: WzInt,

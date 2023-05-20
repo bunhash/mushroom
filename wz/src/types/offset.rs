@@ -3,23 +3,31 @@
 use crate::{
     error::Result,
     io::{Decode, Encode, SizeHint, WzRead, WzWrite},
+    types::macros,
 };
 use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
 
-/// Defines a WZ-OFFSET structure and how to encode/decode it
+/// Defines a WZ offset structure and how to encode/decode it.
+///
+/// WZ offsets are annoying encoded offsets used in WZ archives. They do not exist within WZ images
+/// unlike the other types. WZ offsets are an obfuscated position within the WZ archive. This
+/// position is calculated based on the version hash and absolute position. This makes it
+/// impossible to drop older WZ archives into the latest MS game data. This also means the version
+/// must be known when reading or writing WZ archives. The `archive::Reader` structure offers a
+/// method to bruteforce the version but it should not be relied on to work 100% of the time.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzOffset(u32);
 
-impl_num!(WzOffset, u32);
-impl_from!(WzOffset, i8, u32);
-impl_from!(WzOffset, i16, u32);
-impl_from!(WzOffset, i32, u32);
-impl_from!(WzOffset, i64, u32);
-impl_from!(WzOffset, u8, u32);
-impl_from!(WzOffset, u16, u32);
-impl_from!(WzOffset, u32, u32);
-impl_from!(WzOffset, u64, u32);
-impl_from!(WzOffset, usize, u32);
+macros::impl_num!(WzOffset, u32);
+macros::impl_from!(WzOffset, i8, u32);
+macros::impl_from!(WzOffset, i16, u32);
+macros::impl_from!(WzOffset, i32, u32);
+macros::impl_from!(WzOffset, i64, u32);
+macros::impl_from!(WzOffset, u8, u32);
+macros::impl_from!(WzOffset, u16, u32);
+macros::impl_from!(WzOffset, u32, u32);
+macros::impl_from!(WzOffset, u64, u32);
+macros::impl_from!(WzOffset, usize, u32);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information

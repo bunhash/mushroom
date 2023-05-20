@@ -1,34 +1,45 @@
 //! Image builder
 
+use crate::{utils, Key};
+use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::{
     fs,
-    io::{BufReader, ErrorKind},
-    path::Path,
+    io::BufReader,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 use wz::{
     error::{ImageError, Result},
-    io::xml::{
-        attribute::OwnedAttribute,
-        reader::{EventReader, XmlEvent},
+    image::Writer,
+    io::{
+        xml::{
+            attribute::OwnedAttribute,
+            reader::{EventReader, XmlEvent},
+        },
+        DummyEncryptor,
     },
     map::Map,
     types::{Canvas, CanvasFormat, Property, Sound, UolObject, UolString, Vector, WzInt, WzLong},
 };
 
-pub(crate) fn map_image_from_xml<S>(
-    img_name: &str,
-    xml_path: S,
-    verbose: bool,
-) -> Result<Map<Property>>
+pub(crate) fn do_create(path: &PathBuf, directory: &str, verbose: bool, key: Key) -> Result<()> {
+    // Remove the WZ archive if it exists
+    utils::remove_file(path)?;
+    let target = utils::file_name(path)?;
+    utils::verbose!(verbose, "{}", target);
+    let mut writer = Writer::from_map(map_image_from_xml(target, directory, verbose)?);
+    match key {
+        Key::Gms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
+        Key::Kms => writer.save(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
+        Key::None => writer.save(path, DummyEncryptor),
+    }
+}
+
+fn map_image_from_xml<S>(img_name: &str, xml_path: S, verbose: bool) -> Result<Map<Property>>
 where
     S: AsRef<Path>,
 {
-    let parent = xml_path
-        .as_ref()
-        .parent()
-        .ok_or_else(|| ErrorKind::NotFound)?
-        .to_path_buf();
+    let parent = utils::parent(&xml_path)?.to_path_buf();
     let mut parser = EventReader::new(BufReader::new(fs::File::open(xml_path)?));
     let mut map = Map::new(img_name.into(), Property::ImgDir);
     let mut cursor = map.cursor_mut();
@@ -66,9 +77,7 @@ where
                 let (name, property) = read_start_element(&name.local_name, &attributes, &parent)?;
                 cursor.create(name.clone(), property)?;
                 cursor.move_to(&name)?;
-                if verbose {
-                    println!("{}", cursor.pwd());
-                }
+                utils::verbose!(verbose, "{}", cursor.pwd());
             }
             XmlEvent::EndElement { .. } => {
                 let _ = cursor.parent();
@@ -84,17 +93,17 @@ macro_rules! map_attributes {
     ( $attrs:ident, $( $name:expr, $container:ident ),* ) => {
         $(
             let mut $container = None;
-        )*
-        for attr in $attrs {
-            $(
-                if $name == &attr.name.local_name {
-                    $container = Some(&attr.value);
-                }
-            )*
-        }
+         )*
+            for attr in $attrs {
+                $(
+                    if $name == &attr.name.local_name {
+                        $container = Some(&attr.value);
+                    }
+                 )*
+            }
         $(
             let $container = $container.ok_or_else(|| ImageError::Property($name.into()))?;
-        )*
+         )*
     };
 }
 

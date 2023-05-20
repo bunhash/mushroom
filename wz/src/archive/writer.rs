@@ -49,9 +49,11 @@ where
     },
 }
 
-/// WZ archive builder. Structure for building a WZ archive from a file system directory. The
-/// archive's root directory should only contain other directories and images. It will treat all
-/// non-directory files as images.
+/// WZ archive builder.
+///
+/// Structure for building a WZ archive from a file system directory. There can only be 1 root
+/// directory. And the contents of the directory can only be other directories or image binaries.
+/// This builder will treat all non-directory objects as binary WZ images.
 #[derive(Debug)]
 pub struct Writer<I>
 where

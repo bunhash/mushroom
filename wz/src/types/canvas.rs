@@ -16,8 +16,9 @@ mod squish;
 pub(crate) use self::squish::*;
 pub(crate) use conversions::*;
 
-/// Canvas Image format types. This is non-exhaustive. I stopped at v172. Later versions may have
-/// more formats.
+/// Canvas Image format types.
+///
+/// This is non-exhaustive. I stopped at v172 and later versions have more formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CanvasFormat {
     Bgra4444,
@@ -101,7 +102,11 @@ impl Encode for CanvasFormat {
     }
 }
 
-/// Canvas object. Holds image data.
+/// Canvas objects that hold graphics data.
+///
+/// Later version of MS will have empty canvases that point to other canvas objects as reference.
+/// This is useful to cut down on unnecessary duplicated data. So if a plain white PNG is saved, it
+/// is likely, the source is elsewhere in the WZ image.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Canvas {
     width: WzInt,

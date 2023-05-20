@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "wz"
-path = "src/wz.rs"
+name = "wzarchive"
+path = "src/wzarchive.rs"
+
+[[bin]]
+name = "wzimage"
+path = "src/wzimage.rs"
 
 [dependencies]
 clap = { version = "4.2.4", features = ["derive"] }

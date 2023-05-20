@@ -1,4 +1,4 @@
-//! Generic map of WZ Package and Image structures
+//! Generic map of WZ Archive and Image structures
 
 use crate::error::MapError;
 

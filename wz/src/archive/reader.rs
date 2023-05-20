@@ -2,7 +2,7 @@
 
 use crate::{
     error::{PackageError, Result},
-    io::{Decode, WzRead, WzReader},
+    io::{Decode, DummyDecryptor, WzRead, WzReader},
     map::{CursorMut, Map},
     types::{
         raw::{package::ContentRef, Package},
@@ -41,6 +41,15 @@ where
 {
     header: WzHeader,
     inner: R,
+}
+
+impl Reader<WzReader<BufReader<File>, DummyDecryptor>> {
+    pub fn unencrypted<S>(path: S) -> Result<Self>
+    where
+        S: AsRef<Path>,
+    {
+        Reader::open(path, DummyDecryptor)
+    }
 }
 
 impl<D> Reader<WzReader<BufReader<File>, D>>

@@ -1,8 +1,5 @@
 //! WZ types
 
-#[macro_use]
-mod macros;
-
 mod canvas;
 mod header;
 mod int;
@@ -14,6 +11,7 @@ mod string;
 mod uol;
 mod vector;
 
+pub(crate) mod macros;
 pub(crate) mod raw;
 
 pub use canvas::{Canvas, CanvasFormat};

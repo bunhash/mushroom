@@ -3,23 +3,27 @@
 use crate::{
     error::Result,
     io::{Decode, Encode, SizeHint, WzRead, WzWrite},
+    types::macros,
 };
 use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
 
-/// Defines a WZ-INT structure and how to encode/decode it
+/// Defines a WZ int structure and how to encode/decode it.
+///
+/// This is a compressed `i32`. WZ archives use both `i32` and `WzInt` so a separate structure was
+/// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzInt(i32);
 
-impl_num!(WzInt, i32);
-impl_from!(WzInt, i8, i32);
-impl_from!(WzInt, i16, i32);
-impl_from!(WzInt, i32, i32);
-impl_from!(WzInt, i64, i32);
-impl_from!(WzInt, u8, i32);
-impl_from!(WzInt, u16, i32);
-impl_from!(WzInt, u32, i32);
-impl_from!(WzInt, u64, i32);
-impl_from!(WzInt, usize, i32);
+macros::impl_num!(WzInt, i32);
+macros::impl_from!(WzInt, i8, i32);
+macros::impl_from!(WzInt, i16, i32);
+macros::impl_from!(WzInt, i32, i32);
+macros::impl_from!(WzInt, i64, i32);
+macros::impl_from!(WzInt, u8, i32);
+macros::impl_from!(WzInt, u16, i32);
+macros::impl_from!(WzInt, u32, i32);
+macros::impl_from!(WzInt, u64, i32);
+macros::impl_from!(WzInt, usize, i32);
 
 impl Decode for WzInt {
     fn decode<R>(reader: &mut R) -> Result<Self>
@@ -59,20 +63,23 @@ impl SizeHint for WzInt {
     }
 }
 
-/// Defines a WZ-LONG structure and how to encode/decode it
+/// Defines a WZ long structure and how to encode/decode it.
+///
+/// This is a compressed `i64`. WZ archives use both `i64` and `WzLong` so a separate structure was
+/// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct WzLong(i64);
 
-impl_num!(WzLong, i64);
-impl_from!(WzLong, i8, i64);
-impl_from!(WzLong, i16, i64);
-impl_from!(WzLong, i32, i64);
-impl_from!(WzLong, i64, i64);
-impl_from!(WzLong, u8, i64);
-impl_from!(WzLong, u16, i64);
-impl_from!(WzLong, u32, i64);
-impl_from!(WzLong, u64, i64);
-impl_from!(WzLong, usize, i64);
+macros::impl_num!(WzLong, i64);
+macros::impl_from!(WzLong, i8, i64);
+macros::impl_from!(WzLong, i16, i64);
+macros::impl_from!(WzLong, i32, i64);
+macros::impl_from!(WzLong, i64, i64);
+macros::impl_from!(WzLong, u8, i64);
+macros::impl_from!(WzLong, u16, i64);
+macros::impl_from!(WzLong, u32, i64);
+macros::impl_from!(WzLong, u64, i64);
+macros::impl_from!(WzLong, usize, i64);
 
 impl Decode for WzLong {
     fn decode<R>(reader: &mut R) -> Result<Self>

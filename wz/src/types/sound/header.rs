@@ -14,6 +14,7 @@ pub(crate) const HEADER: &[u8] = &[
     0x55, 0x59, 0x5A,
 ];
 
+/// Unparsed Sound header
 #[derive(Clone, PartialEq, Eq)]
 pub struct SoundHeader {
     header: Vec<u8>,
@@ -112,6 +113,10 @@ impl SizeHint for SoundHeader {
     }
 }
 
+/// Parsed sound header.
+///
+/// It seems not all sound objects are valid WAV headers so I elected to keep the original
+/// data intact by used [`SoundHeader`] as an intermediary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WavHeader {
     pub audio_format: AudioFormat,

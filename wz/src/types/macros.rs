@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! impl_num {
     ($lhs:ty, $rhs:ty ) => {
         impl From<$lhs> for $rhs {
@@ -89,7 +88,9 @@ macro_rules! impl_num {
         }
     };
 }
-#[macro_export]
+
+pub(crate) use impl_num;
+
 macro_rules! impl_from {
     ($lhs:ty, $rhs:ty, $expected:ty ) => {
         impl From<$rhs> for $lhs {
@@ -99,3 +100,5 @@ macro_rules! impl_from {
         }
     };
 }
+
+pub(crate) use impl_from;
