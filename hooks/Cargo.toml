@@ -1,0 +1,11 @@
+[package]
+name = "hooks"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test"
+path = "src/test.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
