@@ -1,11 +1,9 @@
 //! WZ Image Writer
 
-use crate::{
-    error::{ImageError, Result},
-    io::{Encode, WzImageWriter, WzWrite, WzWriter},
-    map::{Cursor, Map},
-    types::{Property, UolString, WzInt},
-};
+use crate::error::{ImageError, Result};
+use crate::io::{Encode, WzImageWriter, WzWrite, WzWriter};
+use crate::map::{Cursor, Map};
+use crate::types::{Property, UolString, WzInt};
 use crypto::Encryptor;
 use std::{fs::File, io::BufWriter, path::Path};
 

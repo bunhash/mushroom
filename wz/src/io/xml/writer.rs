@@ -1,10 +1,8 @@
 //! XML Writer
 
-use crate::{
-    error::Result,
-    io::xml::{attribute::Attribute, namespace::Namespace},
-    map::Cursor,
-};
+use crate::error::Result;
+use crate::io::xml::{attribute::Attribute, namespace::Namespace};
+use crate::map::Cursor;
 use std::{borrow::Cow, io::Write};
 
 pub use xml::writer::*;

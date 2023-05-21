@@ -1,10 +1,8 @@
 //! WZ Offset Structure
 
-use crate::{
-    error::Result,
-    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::macros,
-};
+use crate::error::Result;
+use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
+use crate::types::macros;
 use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
 
 /// Defines a WZ offset structure and how to encode/decode it.

@@ -1,9 +1,7 @@
 //! WZ Archive WzHeader
 
-use crate::{
-    error::{PackageError, Result},
-    io::{Encode, WzWrite},
-};
+use crate::error::{PackageError, Result};
+use crate::io::{Encode, WzWrite};
 use crypto::checksum;
 use std::io::Read;
 

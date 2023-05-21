@@ -3,11 +3,9 @@
 //! Sound objects do not always adhere to the size constraint in the Property. Maybe this size is
 //! the decoded size? The size should be ignored when parsing this. It is quite annoying.
 
-use crate::{
-    error::{DecodeError, Result},
-    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::WzInt,
-};
+use crate::error::{DecodeError, Result};
+use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
+use crate::types::WzInt;
 use std::{fmt, fs, io::Write, path::Path};
 
 mod format;

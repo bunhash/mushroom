@@ -1,13 +1,9 @@
 //! WZ Property Object
 
-use crate::{
-    error::{ImageError, Result},
-    io::{Decode, WzRead},
-    types::{
-        raw::{Canvas, Property},
-        Sound, UolObject, Vector,
-    },
-};
+use crate::error::{ImageError, Result};
+use crate::io::{Decode, WzRead};
+use crate::types::raw::{Canvas, Property};
+use crate::types::{Sound, UolObject, Vector};
 
 /// These are just complex structures compared to the primitive values contained in WZ properties
 #[derive(Debug)]

@@ -1,9 +1,7 @@
 //! Image Property
 
-use crate::{
-    io::xml::writer::ToXml,
-    types::{Canvas, Sound, UolObject, UolString, Vector, WzInt, WzLong},
-};
+use crate::io::xml::writer::ToXml;
+use crate::types::{Canvas, Sound, UolObject, UolString, Vector, WzInt, WzLong};
 
 /// Possible WZ image contents.
 ///

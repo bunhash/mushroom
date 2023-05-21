@@ -1,9 +1,7 @@
 //! Compressed RGBA Pixel Type
 
-use crate::{
-    error::{CanvasError, Result},
-    types::CanvasFormat,
-};
+use crate::error::{CanvasError, Result};
+use crate::types::CanvasFormat;
 use image::{Pixel, Rgb, RgbaImage};
 
 #[inline]

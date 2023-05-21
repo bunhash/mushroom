@@ -1,11 +1,9 @@
 //! WZ Image Reader
 
-use crate::{
-    error::{DecodeError, ImageError, Result},
-    io::{Decode, WzImageReader, WzRead, WzReader},
-    map::{CursorMut, Map},
-    types::{raw, Canvas, Property, WzInt, WzOffset},
-};
+use crate::error::{DecodeError, ImageError, Result};
+use crate::io::{Decode, WzImageReader, WzRead, WzReader};
+use crate::map::{CursorMut, Map};
+use crate::types::{raw, Canvas, Property, WzInt, WzOffset};
 use crypto::Decryptor;
 use std::{fs::File, io::BufReader, path::Path};
 

@@ -1,16 +1,12 @@
 //! List.wz Decoder
 
-use crate::{
-    error::{Error, Result},
-    io::{Decode, DummyDecryptor, WzRead, WzReader},
-};
+use crate::error::{Error, Result};
+use crate::io::{Decode, DummyDecryptor, WzRead, WzReader};
 use crypto::Decryptor;
-use std::{
-    fs::File,
-    io::{BufReader, ErrorKind},
-    path::Path,
-    slice::Iter,
-};
+use std::fs::File;
+use std::io::{BufReader, ErrorKind};
+use std::path::Path;
+use std::slice::Iter;
 
 pub struct Reader {
     strings: Vec<String>,

@@ -1,10 +1,8 @@
 //! Object in a WZ image
 
-use crate::{
-    error::{ImageError, Result},
-    io::{Decode, Encode, WzRead, WzWrite},
-    types::{UolString, WzInt, WzLong, WzOffset},
-};
+use crate::error::{ImageError, Result};
+use crate::io::{Decode, Encode, WzRead, WzWrite};
+use crate::types::{UolString, WzInt, WzLong, WzOffset};
 
 /// Represents the contents of a [`Property`](crate::file::image::Property)
 #[derive(Debug)]

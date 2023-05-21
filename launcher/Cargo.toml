@@ -1,0 +1,17 @@
+[package]
+name = "hooks"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mapledev"
+path = "src/mapledev.rs"
+type = ["cdylib"]
+
+[[bin]]
+name = "launcher"
+path = "src/launcher.rs"
+
+[dependencies]
+sysinfo = { version = "0.29.0" }
+winapi = { version = "0.3.9", features = [ "handleapi", "libloaderapi", "memoryapi", "minwindef", "processthreadsapi", "winnt" ] }

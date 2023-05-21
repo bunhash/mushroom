@@ -1,10 +1,8 @@
 //! Parsed Vector type
 
-use crate::{
-    error::Result,
-    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
-    types::WzInt,
-};
+use crate::error::Result;
+use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
+use crate::types::WzInt;
 
 /// Vector property found in WZ images.
 ///

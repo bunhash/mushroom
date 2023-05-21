@@ -1,10 +1,8 @@
 //! WZ Package types
 
-use crate::{
-    error::{DecodeError, Result},
-    io::{Decode, Encode, WzRead, WzWrite},
-    types::WzInt,
-};
+use crate::error::{DecodeError, Result};
+use crate::io::{Decode, Encode, WzRead, WzWrite};
+use crate::types::WzInt;
 use std::slice::Iter;
 
 mod content;

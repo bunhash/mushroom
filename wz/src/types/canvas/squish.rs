@@ -1,9 +1,7 @@
 //! BC* Compressed Images
 
-use crate::{
-    error::{CanvasError, Result},
-    types::CanvasFormat,
-};
+use crate::error::{CanvasError, Result};
+use crate::types::CanvasFormat;
 use image::{Pixel, RgbaImage};
 use squish::{Format, Params};
 

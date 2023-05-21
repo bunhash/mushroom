@@ -2,10 +2,8 @@
 //!
 //! Used to navigate the map. This is to abstract the internals so no undefined behavior can occur.
 
-use crate::{
-    error::MapError,
-    map::{ChildNames, Children, MapNode},
-};
+use crate::error::MapError;
+use crate::map::{ChildNames, Children, MapNode};
 use indextree::{Arena, DebugPrettyPrint, NodeId};
 use std::{collections::VecDeque, fmt::Debug};
 

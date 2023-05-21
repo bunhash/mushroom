@@ -1,7 +1,6 @@
 //! Generic map of WZ Archive and Image structures
 
 use crate::error::MapError;
-
 use indextree::{Arena, NodeId};
 use std::path::Path;
 

@@ -1,10 +1,8 @@
 //! Parsed Canvas type
 
-use crate::{
-    error::{CanvasError, Result},
-    io::{xml::writer::ToXml, Decode, Encode, WzRead, WzWrite},
-    types::WzInt,
-};
+use crate::error::{CanvasError, Result};
+use crate::io::{xml::writer::ToXml, Decode, Encode, WzRead, WzWrite};
+use crate::types::WzInt;
 use deflate::deflate_bytes_zlib;
 use image::{ImageFormat, RgbaImage};
 use inflate::inflate_bytes_zlib;

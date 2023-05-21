@@ -1,9 +1,7 @@
 //! WZ Image UOLs
 
-use crate::{
-    error::Result,
-    io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite},
-};
+use crate::error::Result;
+use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
 use std::ops::{Deref, DerefMut};
 
 /// This is just a deduplicated string.

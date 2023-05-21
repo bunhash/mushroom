@@ -1,9 +1,7 @@
 //! Seekable Chunk Reader
 
-use std::{
-    cmp::min,
-    io::{self, Read, Seek, SeekFrom},
-};
+use std::cmp::min;
+use std::io::{self, Read, Seek, SeekFrom};
 
 /// A wrapper to a pimitive [`Read`] that limits the bytes it can read.
 pub struct ChunkReader<R>

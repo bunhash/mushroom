@@ -1,9 +1,7 @@
 //! WZ String Format
 
-use crate::{
-    error::{DecodeError, Result},
-    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-};
+use crate::error::{DecodeError, Result};
+use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
 
 impl Encode for &str {
     fn encode<W>(&self, writer: &mut W) -> Result<()>

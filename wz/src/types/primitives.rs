@@ -1,9 +1,7 @@
 //! Primitive WZ Formats
 
-use crate::{
-    error::Result,
-    io::{Decode, Encode, SizeHint, WzRead, WzWrite},
-};
+use crate::error::Result;
+use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
 
 impl Decode for i8 {
     fn decode<R>(reader: &mut R) -> Result<Self>

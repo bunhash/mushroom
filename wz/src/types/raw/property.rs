@@ -1,10 +1,9 @@
 //! WZ Image Property Type
 
-use crate::{
-    error::{DecodeError, Result},
-    io::{Decode, WzRead},
-    types::{raw::ContentRef, WzInt},
-};
+use crate::error::{DecodeError, Result};
+use crate::io::{Decode, WzRead};
+use crate::types::raw::ContentRef;
+use crate::types::WzInt;
 use std::slice::Iter;
 
 /// A property contains a list of contents--similar to package.

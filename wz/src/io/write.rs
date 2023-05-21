@@ -1,10 +1,8 @@
 //! WZ Writer
 
-use crate::{
-    error::Result,
-    io::Encode,
-    types::{WzInt, WzOffset},
-};
+use crate::error::Result;
+use crate::io::Encode;
+use crate::types::{WzInt, WzOffset};
 use std::io::Read;
 
 mod dummy_encryptor;

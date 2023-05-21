@@ -1,10 +1,8 @@
 //! WZ Image Canvas
 
-use crate::{
-    error::{CanvasError, DecodeError, Result},
-    io::{Decode, WzRead},
-    types::{raw::Property, CanvasFormat, WzInt},
-};
+use crate::error::{CanvasError, DecodeError, Result};
+use crate::io::{Decode, WzRead};
+use crate::types::{raw::Property, CanvasFormat, WzInt};
 
 #[derive(Debug)]
 pub struct Canvas {

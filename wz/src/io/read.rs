@@ -1,10 +1,8 @@
 //! WZ Readers
 
-use crate::{
-    error::{ImageError, Result},
-    io::Decode,
-    types::{WzInt, WzOffset},
-};
+use crate::error::{ImageError, Result};
+use crate::io::Decode;
+use crate::types::{WzInt, WzOffset};
 use std::io::Write;
 
 mod dummy_decryptor;

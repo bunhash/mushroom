@@ -1,2 +1,2 @@
 [workspace]
-members = ["cli", "crypto", "hooks", "wz"]
+members = ["cli", "crypto", "launcher", "wz"]

@@ -1,14 +1,10 @@
 //! WZ Archive Reader
 
-use crate::{
-    error::{PackageError, Result},
-    io::{Decode, DummyDecryptor, WzRead, WzReader},
-    map::{CursorMut, Map},
-    types::{
-        raw::{package::ContentRef, Package},
-        WzHeader, WzInt, WzOffset,
-    },
-};
+use crate::error::{PackageError, Result};
+use crate::io::{Decode, DummyDecryptor, WzRead, WzReader};
+use crate::map::{CursorMut, Map};
+use crate::types::raw::{package::ContentRef, Package};
+use crate::types::{WzHeader, WzInt, WzOffset};
 use crypto::{checksum, Decryptor};
 use std::{fs::File, io::BufReader, path::Path};
 

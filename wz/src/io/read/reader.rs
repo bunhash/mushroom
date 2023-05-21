@@ -1,10 +1,8 @@
 //! WZ Reader
 
-use crate::{
-    error::Result,
-    io::{DummyDecryptor, WzRead},
-    types::{WzInt, WzOffset},
-};
+use crate::error::Result;
+use crate::io::{DummyDecryptor, WzRead};
+use crate::types::{WzInt, WzOffset};
 use crypto::{Decryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
 

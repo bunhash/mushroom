@@ -1,21 +1,15 @@
 //! WZ Archive Writer
 
-use crate::{
-    error::{PackageError, Result},
-    io::{DummyEncryptor, Encode, SizeHint, WzWriter},
-    map::{Cursor, CursorMut, Map},
-    types::{
-        raw::package::{ContentRef, Metadata},
-        WzHeader, WzInt, WzOffset,
-    },
-};
+use crate::error::{PackageError, Result};
+use crate::io::{DummyEncryptor, Encode, SizeHint, WzWriter};
+use crate::map::{Cursor, CursorMut, Map};
+use crate::types::raw::package::{ContentRef, Metadata};
+use crate::types::{WzHeader, WzInt, WzOffset};
 use crypto::{checksum, Encryptor};
-use std::{
-    fs::File,
-    io::{self, BufWriter, Seek, Write},
-    num::Wrapping,
-    path::Path,
-};
+use std::fs::File;
+use std::io::{self, BufWriter, Seek, Write};
+use std::num::Wrapping;
+use std::path::Path;
 
 /// Trait for representing Images
 pub trait ImageRef {

@@ -1,10 +1,8 @@
 //! WZ Writer
 
-use crate::{
-    error::Result,
-    io::{DummyEncryptor, WzWrite},
-    types::{WzInt, WzOffset},
-};
+use crate::error::Result;
+use crate::io::{DummyEncryptor, WzWrite};
+use crate::types::{WzInt, WzOffset};
 use crypto::{Encryptor, KeyStream};
 use std::io::{Read, Seek, SeekFrom, Write};
 

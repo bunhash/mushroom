@@ -1,10 +1,8 @@
 //! WZ Image Writer
 
-use crate::{
-    error::Result,
-    io::{encode::SizeHint, Encode, WzWrite},
-    types::{WzInt, WzOffset},
-};
+use crate::error::Result;
+use crate::io::{encode::SizeHint, Encode, WzWrite};
+use crate::types::{WzInt, WzOffset};
 use std::{collections::HashMap, io::Read};
 
 /// WZ Image Writer

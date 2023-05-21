@@ -1,10 +1,8 @@
 //! WZ Image Reader
 
-use crate::{
-    error::{ImageError, Result},
-    io::{Decode, WzRead},
-    types::{WzInt, WzOffset},
-};
+use crate::error::{ImageError, Result};
+use crate::io::{Decode, WzRead};
+use crate::types::{WzInt, WzOffset};
 use std::{collections::HashMap, io::Write};
 
 /// WZ Image Reader
