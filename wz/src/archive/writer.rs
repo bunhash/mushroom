@@ -104,13 +104,13 @@ where
         let parent = path
             .as_ref()
             .parent()
-            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?;
+            .ok_or(PackageError::Path(path.as_ref().to_string_lossy().into()))?;
         let name = path
             .as_ref()
             .file_name()
-            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?
+            .ok_or(PackageError::Path(path.as_ref().to_string_lossy().into()))?
             .to_str()
-            .ok_or_else(|| PackageError::Path(path.as_ref().to_string_lossy().into()))?;
+            .ok_or(PackageError::Path(path.as_ref().to_string_lossy().into()))?;
         let mut cursor = self.make_package_path(parent)?;
         cursor.create(
             String::from(name),
@@ -180,7 +180,7 @@ where
         for part in path.iter() {
             let name = part
                 .to_str()
-                .ok_or_else(|| PackageError::Path(path.to_string_lossy().into()))?;
+                .ok_or(PackageError::Path(path.to_string_lossy().into()))?;
             if !cursor.has_child(name) {
                 cursor.create(
                     String::from(name),

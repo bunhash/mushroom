@@ -33,13 +33,13 @@ impl Writer {
         let parent = path
             .as_ref()
             .parent()
-            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?;
+            .ok_or(ImageError::Path(path.as_ref().to_string_lossy().into()))?;
         let name = path
             .as_ref()
             .file_name()
-            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?
+            .ok_or(ImageError::Path(path.as_ref().to_string_lossy().into()))?
             .to_str()
-            .ok_or_else(|| ImageError::Path(path.as_ref().to_string_lossy().into()))?;
+            .ok_or(ImageError::Path(path.as_ref().to_string_lossy().into()))?;
         let mut cursor = self.map.cursor_mut_at(parent)?;
         cursor.create(String::from(name), property)?;
         Ok(())
