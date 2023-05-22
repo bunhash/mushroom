@@ -206,7 +206,7 @@ impl Encode for UolObject {
 impl SizeHint for UolObject {
     #[inline]
     fn size_hint(&self) -> u32 {
-        2 + self.uri.size_hint()
+        1 + self.uri.size_hint()
     }
 }
 

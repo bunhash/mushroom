@@ -67,7 +67,7 @@ fn map_property_to<R>(
 where
     R: WzRead,
 {
-    for content in property.contents() {
+    for content in &property.contents {
         match &content {
             raw::ContentRef::Null { name } => {
                 cursor.create(String::from(name.as_ref()), Property::Null)?;
@@ -120,13 +120,13 @@ where
             cursor.create(
                 String::from(name),
                 Property::Canvas(Canvas::new(
-                    c.width(),
-                    c.height(),
-                    c.format(),
-                    Vec::from(c.data()),
+                    c.width,
+                    c.height,
+                    c.format,
+                    Vec::from(c.data.as_slice()),
                 )),
             )?;
-            if let Some(p) = c.property() {
+            if let Some(p) = &c.property {
                 cursor.move_to(name)?;
                 map_property_to(p, reader, cursor)?;
                 cursor.parent()?;

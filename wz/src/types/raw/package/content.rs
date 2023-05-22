@@ -8,16 +8,16 @@ use crate::{
 
 /// Content Types
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ContentRef {
+pub(crate) enum ContentRef {
     Package(Metadata),
     Image(Metadata),
 }
 
 impl ContentRef {
-    pub fn offset(&self) -> WzOffset {
+    pub(crate) fn offset(&self) -> WzOffset {
         match &self {
-            ContentRef::Package(ref data) => data.offset(),
-            ContentRef::Image(ref data) => data.offset(),
+            ContentRef::Package(ref data) => data.offset,
+            ContentRef::Image(ref data) => data.offset,
         }
     }
 }
@@ -104,7 +104,7 @@ impl SizeHint for ContentRef {
 
 /// Content metadata
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Metadata {
+pub(crate) struct Metadata {
     /// Name of the content
     pub(crate) name: String,
 
@@ -119,25 +119,13 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn new(name: String, size: WzInt, checksum: WzInt, offset: WzOffset) -> Self {
+    pub(crate) fn new(name: String, size: WzInt, checksum: WzInt, offset: WzOffset) -> Self {
         Self {
             name,
             size,
             checksum,
             offset,
         }
-    }
-
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
-    }
-
-    pub fn size(&self) -> WzInt {
-        self.size
-    }
-
-    pub fn offset(&self) -> WzOffset {
-        self.offset
     }
 
     fn dereference_name<R>(offset: i32, reader: &mut R) -> Result<(u8, String)>

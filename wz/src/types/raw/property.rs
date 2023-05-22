@@ -4,19 +4,11 @@ use crate::error::{DecodeError, Result};
 use crate::io::{Decode, WzRead};
 use crate::types::raw::ContentRef;
 use crate::types::WzInt;
-use std::slice::Iter;
 
 /// A property contains a list of contents--similar to package.
 #[derive(Debug)]
-pub struct Property {
-    contents: Vec<ContentRef>,
-}
-
-impl Property {
-    /// Returns an iterator over the contents
-    pub fn contents(&self) -> Iter<'_, ContentRef> {
-        self.contents.iter()
-    }
+pub(crate) struct Property {
+    pub(crate) contents: Vec<ContentRef>,
 }
 
 impl Decode for Property {

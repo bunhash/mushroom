@@ -7,7 +7,7 @@ use crate::types::{Sound, UolObject, Vector};
 
 /// These are just complex structures compared to the primitive values contained in WZ properties
 #[derive(Debug)]
-pub enum Object {
+pub(crate) enum Object {
     /// Contains an embedded list of properties
     Property(Property),
 

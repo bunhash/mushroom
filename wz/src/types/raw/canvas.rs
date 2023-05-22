@@ -5,39 +5,12 @@ use crate::io::{Decode, WzRead};
 use crate::types::{raw::Property, CanvasFormat, WzInt};
 
 #[derive(Debug)]
-pub struct Canvas {
-    width: WzInt,
-    height: WzInt,
-    format: CanvasFormat,
-    data: Vec<u8>,
-    property: Option<Property>,
-}
-
-impl Canvas {
-    /// Returns the width
-    pub fn width(&self) -> WzInt {
-        self.width
-    }
-
-    /// Returns the height
-    pub fn height(&self) -> WzInt {
-        self.height
-    }
-
-    /// Returns the format
-    pub fn format(&self) -> CanvasFormat {
-        self.format
-    }
-
-    /// Returns the data
-    pub fn data(&self) -> &[u8] {
-        &self.data[..]
-    }
-
-    /// Returns the property
-    pub fn property(&self) -> &Option<Property> {
-        &self.property
-    }
+pub(crate) struct Canvas {
+    pub(crate) width: WzInt,
+    pub(crate) height: WzInt,
+    pub(crate) format: CanvasFormat,
+    pub(crate) data: Vec<u8>,
+    pub(crate) property: Option<Property>,
 }
 
 impl Decode for Canvas {

@@ -3,11 +3,10 @@
 use crate::error::{DecodeError, Result};
 use crate::io::{Decode, Encode, WzRead, WzWrite};
 use crate::types::WzInt;
-use std::slice::Iter;
 
 mod content;
 
-pub use content::{ContentRef, Metadata};
+pub(crate) use content::{ContentRef, Metadata};
 
 /// Packages can hold other packages or images. The structure is as follows:
 ///
@@ -23,20 +22,8 @@ pub use content::{ContentRef, Metadata};
 ///
 /// Packages are allowed to be empty. Empty packages are used in Base.wz to probably to signify what
 /// other WZ archives exist. It's best to treat each of the package contents as binary blobs.
-pub struct Package {
-    contents: Vec<ContentRef>,
-}
-
-impl Package {
-    /// Returns the number of contents
-    pub fn num_contents(&self) -> usize {
-        self.contents.len()
-    }
-
-    /// Returns an iterator over the contents
-    pub fn contents(&self) -> Iter<'_, ContentRef> {
-        self.contents.iter()
-    }
+pub(crate) struct Package {
+    pub(crate) contents: Vec<ContentRef>,
 }
 
 impl Decode for Package {

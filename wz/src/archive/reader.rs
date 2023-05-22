@@ -135,11 +135,12 @@ where
         // upper bounds, we can assume the version checksum is good.
         let package = Package::decode(&mut inner)?;
         let filtered_len = package
-            .contents()
+            .contents
+            .iter()
             .map(|content| content.offset())
             .filter(|off| *off >= lower_bound && *off < upper_bound)
             .count();
-        if package.num_contents() == filtered_len {
+        if package.contents.len() == filtered_len {
             return Ok(inner);
         }
     }
@@ -151,21 +152,21 @@ where
     R: WzRead,
 {
     let package = Package::decode(reader)?;
-    for content in package.contents() {
+    for content in package.contents {
         match &content {
             ContentRef::Package(ref data) => {
-                cursor.create(String::from(data.name()), Node::Package)?;
+                cursor.create(String::from(data.name.as_str()), Node::Package)?;
                 cursor.move_to(data.name.as_ref())?;
-                reader.seek(data.offset())?;
+                reader.seek(data.offset)?;
                 map_package_to(reader, cursor)?;
                 cursor.parent()?;
             }
             ContentRef::Image(ref data) => {
                 cursor.create(
-                    String::from(data.name()),
+                    String::from(data.name.as_str()),
                     Node::Image {
-                        offset: data.offset(),
-                        size: data.size(),
+                        offset: data.offset,
+                        size: data.size,
                     },
                 )?;
             }

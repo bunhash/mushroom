@@ -6,7 +6,7 @@ use crate::types::{UolString, WzInt, WzLong, WzOffset};
 
 /// Represents the contents of a [`Property`](crate::file::image::Property)
 #[derive(Debug)]
-pub enum ContentRef {
+pub(crate) enum ContentRef {
     /// Primitive Null type
     Null { name: UolString },
 
@@ -29,11 +29,7 @@ pub enum ContentRef {
     String { name: UolString, value: UolString },
 
     /// Complex object
-    Object {
-        name: UolString,
-        size: u32,
-        offset: WzOffset,
-    },
+    Object { name: UolString, offset: WzOffset },
 }
 
 impl Decode for ContentRef {
@@ -72,7 +68,7 @@ impl Decode for ContentRef {
                 let size = u32::decode(reader)?;
                 let offset = reader.position()?;
                 reader.seek(offset + size.into())?;
-                Ok(Self::Object { name, size, offset })
+                Ok(Self::Object { name, offset })
             }
             t => Err(ImageError::PropertyType(t).into()),
         }
