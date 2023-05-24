@@ -1,10 +1,10 @@
-#![cfg(target_os = "windows")]
+#![cfg(all(target_arch = "x86", target_os = "windows"))]
 //! Launches MapleStory and injects mapledev.dll
 
 use std::ffi::CString;
 use std::path::Path;
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
-use winapi::shared::minwindef::{DWORD, LPVOID};
+use winapi::shared::minwindef::{DWORD, FALSE, LPVOID};
 use winapi::um::handleapi::CloseHandle;
 use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::memoryapi::{VirtualAllocEx, WriteProcessMemory};
@@ -12,7 +12,6 @@ use winapi::um::processthreadsapi::{
     CreateProcessA, CreateRemoteThread, OpenProcess, ResumeThread, PROCESS_INFORMATION,
     STARTUPINFOA,
 };
-use winapi::um::winnt::LPCSTR;
 
 // MapleStory EXE
 const MAPLESTORY: &str = "./GMSv83_4GB_docker.exe";
@@ -38,7 +37,6 @@ const PAGE_FLAGS: DWORD = 0x40;
 pub enum Error {
     Path(String),
     ProcessFailed,
-    CStringFailed(String),
     ProcessNotFound,
     Kernel32NotFound,
     Kernel32Loading,
@@ -57,34 +55,32 @@ fn get_pid(name: &str) -> Result<Pid, Error> {
 
 unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
     // Get Kernel32.dll handle
-    let kernel32 = CString::new("Kernel32.dll")
-        .map_err(|_| Error::CStringFailed("Kernel32.dll".to_string()))?;
-    let module = GetModuleHandleA(kernel32.as_ptr() as LPCSTR);
-    if module == ::std::ptr::null_mut() {
+    let module_name = CString::new("Kernel32.dll").unwrap();
+    let m_handle = GetModuleHandleA(module_name.as_ptr());
+    if m_handle == ::std::ptr::null_mut() {
         return Err(Error::Kernel32NotFound);
     }
 
     // Load Kernel32.dll and grab the LoadLibraryA function
-    let load_library_fn = CString::new("LoadLibraryA")
-        .map_err(|_| Error::CStringFailed("LoadLibraryA".to_string()))?;
-    let load_addr = GetProcAddress(module, load_library_fn.as_ptr() as LPCSTR);
-    if load_addr == ::std::ptr::null_mut() {
+    let symbol_name = CString::new("LoadLibraryA").unwrap();
+    let symbol_addr = GetProcAddress(m_handle, symbol_name.as_ptr());
+    if symbol_addr == ::std::ptr::null_mut() {
         return Err(Error::Kernel32Loading);
     }
 
     // Cast the function ptr
-    let load_addr: Option<unsafe extern "system" fn(LPVOID) -> DWORD> =
-        Some(::std::mem::transmute(load_addr));
+    let symbol_addr: Option<unsafe extern "system" fn(LPVOID) -> DWORD> =
+        Some(::std::mem::transmute(symbol_addr));
 
     // Open the process with extra privileges
-    let handle = OpenProcess(ACCESS_FLAGS, 1, pid);
-    if handle == ::std::ptr::null_mut() {
+    let phandle = OpenProcess(ACCESS_FLAGS, 1, pid);
+    if phandle == ::std::ptr::null_mut() {
         return Err(Error::OpenProcess);
     }
 
     // Extend the virtual memory
     let address = VirtualAllocEx(
-        handle,
+        phandle,
         ::std::ptr::null_mut(),
         dll.as_bytes().len(),
         MEM_FLAGS,
@@ -96,22 +92,22 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
 
     // Inject
     if WriteProcessMemory(
-        handle,
+        phandle,
         address,
         dll.as_ptr() as LPVOID,
         dll.as_bytes().len(),
         ::std::ptr::null_mut(),
-    ) == 0
+    ) == FALSE
     {
         return Err(Error::Injection);
     }
 
     // Load DLL with LoadLibraryA
     if CreateRemoteThread(
-        handle,
+        phandle,
         ::std::ptr::null_mut(),
         0,
-        load_addr,
+        symbol_addr,
         address,
         0,
         ::std::ptr::null_mut(),
@@ -120,12 +116,13 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
         return Err(Error::Loading);
     }
 
+    // wait for remote thread?
+
     Ok(())
 }
 
 pub fn main() -> Result<(), Error> {
-    let ms_exe =
-        CString::new(MAPLESTORY).map_err(|_| Error::CStringFailed(MAPLESTORY.to_string()))?;
+    let ms_exe = CString::new(MAPLESTORY).unwrap();
     let mut si: STARTUPINFOA = unsafe { ::std::mem::zeroed() };
     let mut pi: PROCESS_INFORMATION = unsafe { ::std::mem::zeroed() };
     if unsafe {
@@ -134,14 +131,14 @@ pub fn main() -> Result<(), Error> {
             ::std::ptr::null_mut(),
             ::std::ptr::null_mut(),
             ::std::ptr::null_mut(),
-            0,
+            FALSE,
             CREATION_FLAGS,
             ::std::ptr::null_mut(),
             ::std::ptr::null_mut(),
             &mut si,
             &mut pi,
         )
-    } == 0
+    } == FALSE
     {
         Err(Error::ProcessFailed)
     } else {
@@ -152,11 +149,7 @@ pub fn main() -> Result<(), Error> {
             .ok_or(Error::Path(MAPLESTORY.to_string()))?;
         let pid = get_pid(pname)?.as_u32() as DWORD;
         unsafe {
-            inject_dll(
-                pid,
-                CString::new(INJECT_DLL)
-                    .map_err(|_| Error::CStringFailed(INJECT_DLL.to_string()))?,
-            )?;
+            inject_dll(pid, CString::new(INJECT_DLL).unwrap())?;
             ResumeThread(pi.hThread);
             CloseHandle(pi.hThread);
             CloseHandle(pi.hProcess);
