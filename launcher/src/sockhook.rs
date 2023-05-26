@@ -118,7 +118,7 @@ unsafe fn WSPConnect(
     )
 }
 
-/// Hook WSPGetPeerName
+/// WSPGetPeerName Detour
 #[allow(non_snake_case)]
 unsafe extern "system" fn WSPGetPeerName_detour(
     sock: SOCKET,
@@ -164,7 +164,7 @@ unsafe extern "system" fn WSPGetPeerName_detour(
     ret
 }
 
-/// Hook WSPConnect
+/// WSPConnect Detour
 #[allow(non_snake_case)]
 unsafe extern "system" fn WSPConnect_detour(
     sock: SOCKET,
@@ -221,7 +221,7 @@ unsafe extern "system" fn WSPConnect_detour(
     )
 }
 
-/// Hook WSPStartup
+/// WSPStartup Detour
 #[allow(non_snake_case)]
 fn WSPStartup_detour(
     wVersionRequested: WORD,
@@ -259,7 +259,7 @@ fn WSPStartup_detour(
     ret
 }
 
-/// Hook mswsock.dll
+/// Sets up mswsock.dll hooks
 pub(crate) unsafe fn main() -> Result<(), Error> {
     let ip = CString::new(IP).map_err(|_| Error::CStringFailed(IP.into()))?;
     *REROUTED_ADDR
