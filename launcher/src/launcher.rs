@@ -6,12 +6,18 @@ use std::path::Path;
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
 use winapi::shared::minwindef::{DWORD, FALSE, LPVOID};
 use winapi::um::handleapi::CloseHandle;
-use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::memoryapi::{VirtualAllocEx, WriteProcessMemory};
 use winapi::um::processthreadsapi::{
     CreateProcessA, CreateRemoteThread, OpenProcess, ResumeThread, PROCESS_INFORMATION,
     STARTUPINFOA,
 };
+
+mod error;
+
+#[allow(dead_code)]
+mod utils;
+
+pub use error::Error;
 
 // MapleStory EXE
 const MAPLESTORY: &str = "./GMSv83_4GB_docker.exe";
@@ -32,41 +38,15 @@ const MEM_FLAGS: DWORD = 0x1000 | 0x2000;
 // PAGE_EXECUTE_READWRITE
 const PAGE_FLAGS: DWORD = 0x40;
 
-/// Launcher Errors
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    Path(String),
-    ProcessFailed,
-    ProcessNotFound,
-    Kernel32NotFound,
-    Kernel32Loading,
-    OpenProcess,
-    MemoryAllocation,
-    Injection,
-    Loading,
-}
-
 fn get_pid(name: &str) -> Result<Pid, Error> {
     let mut system = System::new();
     system.refresh_processes();
     let mut it = system.processes_by_name(name);
-    Ok(it.next().ok_or(Error::ProcessNotFound)?.pid())
+    Ok(it.next().ok_or(Error::ProcessNotFound(name.into()))?.pid())
 }
 
 unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
-    // Get Kernel32.dll handle
-    let module_name = CString::new("Kernel32.dll").unwrap();
-    let m_handle = GetModuleHandleA(module_name.as_ptr());
-    if m_handle == ::std::ptr::null_mut() {
-        return Err(Error::Kernel32NotFound);
-    }
-
-    // Load Kernel32.dll and grab the LoadLibraryA function
-    let symbol_name = CString::new("LoadLibraryA").unwrap();
-    let symbol_addr = GetProcAddress(m_handle, symbol_name.as_ptr());
-    if symbol_addr == ::std::ptr::null_mut() {
-        return Err(Error::Kernel32Loading);
-    }
+    let symbol_addr = utils::get_symbol("kernel32.dll", "LoadLibraryA")?;
 
     // Cast the function ptr
     let symbol_addr: Option<unsafe extern "system" fn(LPVOID) -> DWORD> =
@@ -75,7 +55,7 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
     // Open the process with extra privileges
     let phandle = OpenProcess(ACCESS_FLAGS, 1, pid);
     if phandle == ::std::ptr::null_mut() {
-        return Err(Error::OpenProcess);
+        return Err(Error::ProcessNotOpened);
     }
 
     // Extend the virtual memory
@@ -87,7 +67,7 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
         PAGE_FLAGS,
     );
     if address == ::std::ptr::null_mut() {
-        return Err(Error::MemoryAllocation);
+        return Err(Error::VMemAllocFailed);
     }
 
     // Inject
@@ -99,7 +79,7 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
         ::std::ptr::null_mut(),
     ) == FALSE
     {
-        return Err(Error::Injection);
+        return Err(Error::InjectionFailed);
     }
 
     // Load DLL with LoadLibraryA
@@ -113,7 +93,7 @@ unsafe fn inject_dll(pid: DWORD, dll: CString) -> Result<(), Error> {
         ::std::ptr::null_mut(),
     ) == ::std::ptr::null_mut()
     {
-        return Err(Error::Loading);
+        return Err(Error::ThreadFailed);
     }
 
     // wait for remote thread?
@@ -144,9 +124,9 @@ pub fn main() -> Result<(), Error> {
     } else {
         let pname = Path::new(MAPLESTORY)
             .file_name()
-            .ok_or(Error::Path(MAPLESTORY.to_string()))?
+            .ok_or(Error::Path(MAPLESTORY.into()))?
             .to_str()
-            .ok_or(Error::Path(MAPLESTORY.to_string()))?;
+            .ok_or(Error::Path(MAPLESTORY.into()))?;
         let pid = get_pid(pname)?.as_u32() as DWORD;
         unsafe {
             inject_dll(pid, CString::new(INJECT_DLL).unwrap())?;
