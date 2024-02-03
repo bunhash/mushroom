@@ -99,7 +99,8 @@ where
             // Go back and write the size
             let current_position = writer.position()?;
             writer.seek(size_position)?;
-            (*current_position - *size_position - 4).encode(writer)?;
+            let size = *current_position - *size_position - 4;
+            size.encode(writer)?;
             writer.seek(current_position)?;
             Ok(())
         }
