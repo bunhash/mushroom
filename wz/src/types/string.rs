@@ -95,13 +95,6 @@ impl Decode for String {
             // Unicode
             String::from_utf16_lossy(reader.read_unicode_bytes(length as usize)?.as_slice())
         };
-        println!(
-            "0x{:X} (length: {}) (ascii: {}) : {}",
-            *position,
-            length,
-            check < 0,
-            val
-        );
         Ok(val)
     }
 }
