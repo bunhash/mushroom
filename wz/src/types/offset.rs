@@ -2,8 +2,11 @@
 
 use crate::error::Result;
 use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
-use crate::types::macros;
-use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
+use crate::types::{macros, VerboseDebug};
+use std::{
+    io,
+    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
+};
 
 /// Defines a WZ offset structure and how to encode/decode it.
 ///
@@ -26,6 +29,7 @@ macros::impl_from!(WzOffset, u16, u32);
 macros::impl_from!(WzOffset, u32, u32);
 macros::impl_from!(WzOffset, u64, u32);
 macros::impl_from!(WzOffset, usize, u32);
+macros::impl_debug!(WzOffset);
 
 impl WzOffset {
     /// Creates a WZ-OFFSET given the relavent information

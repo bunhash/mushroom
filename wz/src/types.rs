@@ -1,5 +1,7 @@
 //! WZ types
 
+use std::io;
+
 mod canvas;
 mod header;
 mod int;
@@ -22,3 +24,7 @@ pub use property::Property;
 pub use sound::{Sound, SoundHeader, WavHeader};
 pub use uol::{UolObject, UolString};
 pub use vector::Vector;
+
+pub trait VerboseDebug {
+    fn debug(&self, f: &mut dyn io::Write) -> io::Result<()>;
+}

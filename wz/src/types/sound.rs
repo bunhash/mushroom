@@ -5,8 +5,8 @@
 
 use crate::error::{DecodeError, Result};
 use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
-use crate::types::WzInt;
-use std::{fmt, fs, io::Write, path::Path};
+use crate::types::{VerboseDebug, WzInt};
+use std::{io, fmt, fs, io::Write, path::Path};
 
 mod format;
 mod header;
@@ -36,18 +36,18 @@ impl Sound {
     /// Constructs a Sound object from a wav file. The duration is probably in the metadata but I
     /// do not want to parse it here.
     pub fn from_wav<S>(path: S, duration: WzInt) -> Result<Self>
-    where
+        where
         S: AsRef<Path>,
-    {
-        let data = fs::read(path)?;
-        let header = SoundHeader::from_slice(&data)?;
-        let data = data.as_slice()[HEADER.len() + 1 + header.as_bytes().len()..].to_vec();
-        Ok(Self {
-            duration,
-            header,
-            data,
-        })
-    }
+        {
+            let data = fs::read(path)?;
+            let header = SoundHeader::from_slice(&data)?;
+            let data = data.as_slice()[HEADER.len() + 1 + header.as_bytes().len()..].to_vec();
+            Ok(Self {
+                duration,
+                header,
+                data,
+            })
+        }
 
     pub fn duration(&self) -> WzInt {
         self.duration
@@ -62,16 +62,16 @@ impl Sound {
     }
 
     pub fn save_to_file<S>(&self, path: S) -> Result<()>
-    where
+        where
         S: AsRef<Path>,
-    {
-        let bytes = self.header.as_bytes();
-        let mut file = fs::File::create(path)?;
-        file.write_all(HEADER)?;
-        file.write_all(&[bytes.len() as u8])?;
-        file.write_all(bytes)?;
-        Ok(file.write_all(&self.data)?)
-    }
+        {
+            let bytes = self.header.as_bytes();
+            let mut file = fs::File::create(path)?;
+            file.write_all(HEADER)?;
+            file.write_all(&[bytes.len() as u8])?;
+            file.write_all(bytes)?;
+            Ok(file.write_all(&self.data)?)
+        }
 }
 
 impl fmt::Debug for Sound {
@@ -80,50 +80,58 @@ impl fmt::Debug for Sound {
             f,
             "Sound {{ duration: {:?}, header: {:?}, data: [..] }}",
             self.duration, self.header,
-        )
+            )
+    }
+}
+
+impl VerboseDebug for Sound {
+    fn debug(&self, f: &mut dyn io::Write) -> io::Result<()> {
+        f.write_fmt(
+            format_args!("Sound {{ duration: {:?}, header: {:?}, data: {:x?} }}",
+                         self.duration, self.header, self.data))
     }
 }
 
 impl Decode for Sound {
     fn decode<R>(reader: &mut R) -> Result<Self>
-    where
-        R: WzRead + ?Sized,
-    {
-        u8::decode(reader)?; // garbage byte?
-        let data_len = WzInt::decode(reader)?;
-        if data_len.is_negative() {
-            return Err(DecodeError::Length(*data_len).into());
+        where
+            R: WzRead + ?Sized,
+        {
+            u8::decode(reader)?; // garbage byte?
+            let data_len = WzInt::decode(reader)?;
+            if data_len.is_negative() {
+                return Err(DecodeError::Length(*data_len).into());
+            }
+            let data_len = *data_len as usize;
+            let duration = WzInt::decode(reader)?;
+
+            // Decode the wav_header. The len is probably a WzInt but the size should always be 16-34
+            // bytes.
+            let header = SoundHeader::decode(reader)?;
+
+            // Decode data
+            let mut data = vec![0u8; data_len];
+            reader.read_exact(&mut data)?;
+
+            Ok(Self {
+                duration,
+                header,
+                data,
+            })
         }
-        let data_len = *data_len as usize;
-        let duration = WzInt::decode(reader)?;
-
-        // Decode the wav_header. The len is probably a WzInt but the size should always be 16-34
-        // bytes.
-        let header = SoundHeader::decode(reader)?;
-
-        // Decode data
-        let mut data = vec![0u8; data_len];
-        reader.read_exact(&mut data)?;
-
-        Ok(Self {
-            duration,
-            header,
-            data,
-        })
-    }
 }
 
 impl Encode for Sound {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
-    where
-        W: WzWrite + ?Sized,
-    {
-        0u8.encode(writer)?;
-        WzInt::from(self.data.len() as i32).encode(writer)?;
-        self.duration.encode(writer)?;
-        self.header.encode(writer)?;
-        writer.write_all(&self.data)
-    }
+        where
+            W: WzWrite + ?Sized,
+        {
+            0u8.encode(writer)?;
+            WzInt::from(self.data.len() as i32).encode(writer)?;
+            self.duration.encode(writer)?;
+            self.header.encode(writer)?;
+            writer.write_all(&self.data)
+        }
 }
 
 impl SizeHint for Sound {

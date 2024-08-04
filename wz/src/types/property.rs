@@ -1,7 +1,8 @@
 //! Image Property
 
 use crate::io::xml::writer::ToXml;
-use crate::types::{Canvas, Sound, UolObject, UolString, Vector, WzInt, WzLong};
+use crate::types::{Canvas, Sound, UolObject, UolString, Vector, VerboseDebug, WzInt, WzLong};
+use std::io;
 
 /// Possible WZ image contents.
 ///
@@ -50,6 +51,26 @@ pub enum Property {
 
     /// Holds WAV sound data
     Sound(Sound),
+}
+
+impl VerboseDebug for Property {
+    fn debug(&self, f: &mut dyn io::Write) -> io::Result<()> {
+        match &self {
+            Property::Null => f.write_fmt(format_args!("Null")),
+            Property::Short(v) => v.debug(f),
+            Property::Int(v) => v.debug(f),
+            Property::Long(v) => v.debug(f),
+            Property::Float(v) => v.debug(f),
+            Property::Double(v) => v.debug(f),
+            Property::String(v) => v.debug(f),
+            Property::ImgDir => f.write_fmt(format_args!("ImgDir")),
+            Property::Canvas(v) => v.debug(f),
+            Property::Convex => f.write_fmt(format_args!("Extended")),
+            Property::Vector(v) => v.debug(f),
+            Property::Uol(v) => v.debug(f),
+            Property::Sound(v) => v.debug(f),
+        }
+    }
 }
 
 impl ToXml for Property {

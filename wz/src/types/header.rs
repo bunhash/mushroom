@@ -2,8 +2,9 @@
 
 use crate::error::{PackageError, Result};
 use crate::io::{Encode, WzWrite};
+use crate::types::{macros, VerboseDebug};
 use crypto::checksum;
-use std::io::Read;
+use std::{io, io::Read};
 
 /// Header of the WZ archive
 ///
@@ -33,6 +34,8 @@ pub struct WzHeader {
     /// non-cryptographic hash.
     pub version_hash: u16,
 }
+
+macros::impl_debug!(WzHeader);
 
 impl WzHeader {
     /// Creates new header with default values.

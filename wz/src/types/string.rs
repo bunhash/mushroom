@@ -2,6 +2,11 @@
 
 use crate::error::{DecodeError, Result};
 use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
+use crate::types::{macros, VerboseDebug};
+use std::io;
+
+macros::impl_debug!(&str);
+macros::impl_debug!(String);
 
 impl Encode for &str {
     fn encode<W>(&self, writer: &mut W) -> Result<()>
@@ -77,7 +82,6 @@ impl Decode for String {
     where
         R: WzRead + ?Sized,
     {
-        let position = reader.position()?;
         let check = i8::decode(reader)?;
         let length = match check {
             i8::MIN | i8::MAX => i32::decode(reader)?,

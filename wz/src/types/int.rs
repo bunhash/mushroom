@@ -2,8 +2,11 @@
 
 use crate::error::Result;
 use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
-use crate::types::macros;
-use std::ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub};
+use crate::types::{macros, VerboseDebug};
+use std::{
+    io,
+    ops::{Add, Deref, DerefMut, Div, Mul, Rem, Sub},
+};
 
 /// Defines a WZ int structure and how to encode/decode it.
 ///
@@ -22,6 +25,7 @@ macros::impl_from!(WzInt, u16, i32);
 macros::impl_from!(WzInt, u32, i32);
 macros::impl_from!(WzInt, u64, i32);
 macros::impl_from!(WzInt, usize, i32);
+macros::impl_debug!(WzInt);
 
 impl Decode for WzInt {
     fn decode<R>(reader: &mut R) -> Result<Self>
@@ -78,6 +82,7 @@ macros::impl_from!(WzLong, u16, i64);
 macros::impl_from!(WzLong, u32, i64);
 macros::impl_from!(WzLong, u64, i64);
 macros::impl_from!(WzLong, usize, i64);
+macros::impl_debug!(WzLong);
 
 impl Decode for WzLong {
     fn decode<R>(reader: &mut R) -> Result<Self>

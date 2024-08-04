@@ -69,7 +69,7 @@ fn main() -> Result<()> {
     } else if action.extract {
         image::do_extract(&args.file, args.verbose, args.key)?;
     } else if action.debug {
-        image::do_debug(&args.file, &args.path, args.key)?;
+        image::do_debug(&args.file, &args.path, args.verbose, args.key)?;
     }
     Ok(())
 }

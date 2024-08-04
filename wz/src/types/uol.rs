@@ -2,7 +2,11 @@
 
 use crate::error::Result;
 use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
-use std::ops::{Deref, DerefMut};
+use crate::types::{macros, VerboseDebug};
+use std::{
+    io,
+    ops::{Deref, DerefMut},
+};
 
 /// This is just a deduplicated string.
 ///
@@ -12,6 +16,8 @@ use std::ops::{Deref, DerefMut};
 /// string is >5 since that seems to match the behavior I've witnessed during decoding.
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct UolString(String);
+
+macros::impl_debug!(UolString);
 
 impl UolString {
     /// Consumes the UolString and returns the inner String
@@ -118,6 +124,8 @@ impl ToXml for UolString {
 pub struct UolObject {
     uri: UolString,
 }
+
+macros::impl_debug!(UolObject);
 
 impl UolObject {
     /// Consumes the UolObject and returns the inner String

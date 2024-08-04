@@ -2,6 +2,19 @@
 
 use crate::error::Result;
 use crate::io::{Decode, Encode, SizeHint, WzRead, WzWrite};
+use crate::types::{macros, VerboseDebug};
+use std::io;
+
+macros::impl_debug!(i8);
+macros::impl_debug!(i16);
+macros::impl_debug!(i32);
+macros::impl_debug!(i64);
+macros::impl_debug!(u8);
+macros::impl_debug!(u16);
+macros::impl_debug!(u32);
+macros::impl_debug!(u64);
+macros::impl_debug!(f32);
+macros::impl_debug!(f64);
 
 impl Decode for i8 {
     fn decode<R>(reader: &mut R) -> Result<Self>

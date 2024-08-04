@@ -2,11 +2,11 @@
 
 use crate::error::{CanvasError, Result};
 use crate::io::{xml::writer::ToXml, Decode, Encode, WzRead, WzWrite};
-use crate::types::WzInt;
+use crate::types::{VerboseDebug, WzInt};
 use deflate::deflate_bytes_zlib;
 use image::{ImageFormat, RgbaImage};
 use inflate::inflate_bytes_zlib;
-use std::{fmt, path::Path};
+use std::{fmt, io, path::Path};
 
 mod conversions;
 mod squish;
@@ -188,6 +188,15 @@ impl fmt::Debug for Canvas {
             "Canvas {{ width: {:?}, height: {:?}, format: {:?}, data: [..] }}",
             self.width, self.height, self.format,
         )
+    }
+}
+
+impl VerboseDebug for Canvas {
+    fn debug(&self, f: &mut dyn io::Write) -> io::Result<()> {
+        f.write_fmt(format_args!(
+            "Canvas {{ width: {:?}, height: {:?}, format: {:?}, data: {:x?} }}",
+            self.width, self.height, self.format, self.data
+        ))
     }
 }
 

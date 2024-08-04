@@ -2,7 +2,8 @@
 
 use crate::error::Result;
 use crate::io::{xml::writer::ToXml, Decode, Encode, SizeHint, WzRead, WzWrite};
-use crate::types::WzInt;
+use crate::types::{macros, VerboseDebug, WzInt};
+use std::io;
 
 /// Vector property found in WZ images.
 ///
@@ -12,6 +13,8 @@ pub struct Vector {
     pub x: WzInt,
     pub y: WzInt,
 }
+
+macros::impl_debug!(Vector);
 
 impl Vector {
     pub fn new(x: WzInt, y: WzInt) -> Self {
