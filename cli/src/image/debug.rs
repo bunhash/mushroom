@@ -2,7 +2,7 @@
 
 use crate::{utils, Key};
 use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
-use std::{fmt::Debug, io, io::Write, path::PathBuf};
+use std::{io, io::Write, path::PathBuf};
 use wz::{
     error::Result,
     image::Reader,
@@ -120,7 +120,7 @@ where
         None => map.cursor(),
     };
 
-    let mut num_children = cursor.children().count();
+    let num_children = cursor.children().count();
     if num_children > 0 {
         Ok(debug_recursive("|-- ", "|   ", &mut cursor, verbose)?)
     } else {

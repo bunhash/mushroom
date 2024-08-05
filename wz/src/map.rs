@@ -7,7 +7,6 @@ use std::path::Path;
 mod children;
 mod cursor;
 mod cursor_mut;
-mod metadata;
 mod node;
 
 pub use children::{ChildNames, Children};

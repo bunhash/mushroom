@@ -1,5 +1,6 @@
 //! XML Writer
 
+#[allow(hidden_glob_reexports)]
 use crate::error::Result;
 use crate::io::xml::{attribute::Attribute, namespace::Namespace};
 use crate::map::Cursor;
