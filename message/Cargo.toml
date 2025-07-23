@@ -1,12 +1,12 @@
 [package]
-name = "crypto"
+name = "message"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "crypto"
+name = "message"
 path = "src/lib.rs"
 crate-type = ["lib"]
 
 [dependencies]
-aes = { version = "0.8.4" }
+crypto = { version = "0.1.0", path = "../crypto" }
