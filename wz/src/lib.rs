@@ -1,4 +1,3 @@
-#![no_std]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
@@ -22,10 +21,25 @@
 
 //mod decode;
 //mod encode;
-mod reader;
 //mod writer;
+//mod int;
+//mod primitives;
+//mod string;
+//mod uol;
+mod error;
+mod header;
+mod offset;
+mod reader;
+
+#[macro_use]
+mod macros;
 
 //pub use decode::Decode;
 //pub use encode::Encode;
-pub use reader::Reader;
 //pub use writer::Writer;
+//pub use int::{Integer, Long};
+//pub use uol::{UolObject, UolString};
+pub use error::{DecodeError, Error};
+pub use header::Header;
+pub use offset::Offset;
+pub use reader::Reader;
