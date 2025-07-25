@@ -65,6 +65,9 @@ pub enum DecodeError {
     /// The offset is invalid (likely negative)
     Offset(i32),
 
+    /// Invalid tag
+    Tag(u8),
+
     /// Unable to decode UTF-8
     Utf8(string::FromUtf8Error),
 
@@ -87,6 +90,11 @@ impl DecodeError {
     pub fn offset(offset: i32) -> Self {
         DecodeError::Offset(offset)
     }
+
+    /// New invalid tag error
+    pub fn tag(tag: u8) -> Self {
+        DecodeError::Tag(tag)
+    }
 }
 
 impl fmt::Display for DecodeError {
@@ -95,6 +103,7 @@ impl fmt::Display for DecodeError {
             Self::Header => write!(f, "invalid header"),
             Self::Length(l) => write!(f, "invalid length: {}", l),
             Self::Offset(o) => write!(f, "invalid offset: {}", o),
+            Self::Tag(t) => write!(f, "invalid tag: 0x{:02x}", t),
             Self::Utf8(e) => write!(f, "{}", e),
             Self::Unicode(e) => write!(f, "{}", e),
         }

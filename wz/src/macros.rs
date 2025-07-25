@@ -102,15 +102,3 @@ macro_rules! impl_from {
 }
 
 pub(crate) use impl_from;
-
-//macro_rules! impl_debug {
-//    ($lhs:ty) => {
-//        impl VerboseDebug for $lhs {
-//            fn debug(&self, f: &mut dyn io::Write) -> io::Result<()> {
-//                f.write_fmt(format_args!("{:?}", self))
-//            }
-//        }
-//    };
-//}
-//
-//pub(crate) use impl_debug;

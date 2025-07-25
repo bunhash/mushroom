@@ -32,8 +32,6 @@ pub struct Header {
     pub version_hash: u16,
 }
 
-//macros::impl_debug!(Header);
-
 impl Header {
     /// Creates new header with default values.
     pub fn new(version: u16) -> Self {

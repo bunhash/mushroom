@@ -19,27 +19,28 @@
     unused_qualifications
 )]
 
-//mod decode;
 //mod encode;
 //mod writer;
-//mod int;
-//mod primitives;
-//mod string;
-//mod uol;
+mod decode;
 mod error;
 mod header;
+mod int;
 mod offset;
+mod primitives;
 mod reader;
+mod string;
+//mod uol;
 
 #[macro_use]
 mod macros;
 
-//pub use decode::Decode;
 //pub use encode::Encode;
 //pub use writer::Writer;
-//pub use int::{Integer, Long};
-//pub use uol::{UolObject, UolString};
+pub use decode::Decode;
 pub use error::{DecodeError, Error};
 pub use header::Header;
+pub use int::{Integer, Long};
 pub use offset::Offset;
 pub use reader::Reader;
+pub use string::WzString;
+//pub use uol::{UolObject, UolString};

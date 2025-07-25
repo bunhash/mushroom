@@ -1,12 +1,14 @@
 //! WZ Int and Long Formats
 
-use crate::{Decode, Reader};
+use crate::{macros, Decode, Error, Reader};
+use std::io::{Read, Seek};
 
 /// Defines a WZ int structure and how to encode/decode it.
 ///
 /// This is a compressed `i32`. WZ archives use both `i32` and `Integer` so a separate structure was
 /// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[repr(transparent)]
 pub struct Integer(i32);
 
 macros::impl_num!(Integer, i32);
@@ -19,12 +21,11 @@ macros::impl_from!(Integer, u16, i32);
 macros::impl_from!(Integer, u32, i32);
 macros::impl_from!(Integer, u64, i32);
 macros::impl_from!(Integer, usize, i32);
-//macros::impl_debug!(Integer);
 
 impl Decode for Integer {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R>(reader: &mut Reader<R>) -> Result<Self, Error>
     where
-        R: WzRead + ?Sized,
+        R: Read + Seek,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -64,6 +65,7 @@ impl Decode for Integer {
 /// This is a compressed `i64`. WZ archives use both `i64` and `Long` so a separate structure was
 /// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[repr(transparent)]
 pub struct Long(i64);
 
 macros::impl_num!(Long, i64);
@@ -76,12 +78,11 @@ macros::impl_from!(Long, u16, i64);
 macros::impl_from!(Long, u32, i64);
 macros::impl_from!(Long, u64, i64);
 macros::impl_from!(Long, usize, i64);
-//macros::impl_debug!(Long);
 
 impl Decode for Long {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R>(reader: &mut Reader<R>) -> Result<Self, Error>
     where
-        R: WzRead + ?Sized,
+        R: Read + Seek,
     {
         let check = i8::decode(reader)?;
         Ok(Self(match check {
@@ -119,10 +120,7 @@ impl Decode for Long {
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        io::{Decode, WzReader},
-        types::{Integer, Long},
-    };
+    use crate::{Decode, Integer, Long, Reader};
     use std::io::Cursor;
 
     #[test]
@@ -164,17 +162,17 @@ mod tests {
     #[test]
     fn decode_wz_int() {
         let short_notation = vec![0x72];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(short_notation));
+        let mut reader = Reader::new(0, 0, Cursor::new(short_notation));
         let wz_int = Integer::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 0x72);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(long_notation));
+        let mut reader = Reader::new(0, 0, Cursor::new(long_notation));
         let wz_int = Integer::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_int, 257);
 
         let failure = vec![(i8::MIN as u8), 1, 1];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(failure));
+        let mut reader = Reader::new(0, 0, Cursor::new(failure));
         match Integer::decode(&mut reader) {
             Ok(val) => panic!("Integer got {}", *val),
             Err(_) => {}
@@ -220,17 +218,17 @@ mod tests {
     #[test]
     fn decode_wz_long() {
         let short_notation = vec![0x72];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(short_notation));
+        let mut reader = Reader::new(0, 0, Cursor::new(short_notation));
         let wz_long = Long::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, Long::from(0x72));
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(long_notation));
+        let mut reader = Reader::new(0, 0, Cursor::new(long_notation));
         let wz_long = Long::decode(&mut reader).expect("error reading from cursor");
         assert_eq!(wz_long, Long::from(257));
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
-        let mut reader = WzReader::unencrypted(0, 0, Cursor::new(failure));
+        let mut reader = Reader::new(0, 0, Cursor::new(failure));
         match Long::decode(&mut reader) {
             Ok(val) => panic!("Long got {}", *val),
             Err(_) => {}

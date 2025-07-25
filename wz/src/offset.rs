@@ -1,6 +1,5 @@
 //! WZ Offset Structure
 
-//use crate::{Decode, Reader};
 use crate::macros;
 
 /// Defines a WZ offset structure and how to encode/decode it.
@@ -12,6 +11,7 @@ use crate::macros;
 /// must be known when reading or writing WZ archives. The `archive::Reader` structure offers a
 /// method to bruteforce the version but it should not be relied on to work 100% of the time.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[repr(transparent)]
 pub struct Offset(u32);
 
 macros::impl_num!(Offset, u32);
@@ -24,7 +24,6 @@ macros::impl_from!(Offset, u16, u32);
 macros::impl_from!(Offset, u32, u32);
 macros::impl_from!(Offset, u64, u32);
 macros::impl_from!(Offset, usize, u32);
-//macros::impl_debug!(Offset);
 
 impl Offset {
     /// Creates a WZ-OFFSET given the relavent information

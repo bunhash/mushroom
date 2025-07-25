@@ -1,6 +1,7 @@
 //! WZ Image UOLs
 
-use crate::{Decode, Offset, Reader};
+use crate::{Decode, DecodeError, Error, Offset, Reader, WzString};
+use std::io::{Read, Seek};
 
 /// This is just a deduplicated string.
 ///
@@ -10,20 +11,23 @@ use crate::{Decode, Offset, Reader};
 /// string is >5 since that seems to match the behavior I've witnessed during decoding.
 #[derive(Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub enum UolString {
-    Placed(String),
+    /// Placed string
+    Placed(WzString),
+
+    /// Referenced string
     Referenced(Offset),
 }
 
 impl Decode for UolString {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R>(reader: &mut Reader<R>) -> Result<Self, Error>
     where
-        R: WzRead + ?Sized,
+        R: Read + Seek,
     {
-        let check = u8::decode(self)?;
+        let check = u8::decode(reader)?;
         Ok(match check {
-            0 => UolString::Placed(String::decode(self)?),
-            1 => => UolString::Referenced(Offset::from(u32::decode(self)?)),
-            u => Err(ImageError::UolType(u).into()),
+            0 => UolString::Placed(WzString::decode(reader)?),
+            1 => UolString::Referenced(Offset::from(u32::decode(reader)?)),
+            u => Err(DecodeError::Tag(u))?,
         })
     }
 }
@@ -67,12 +71,10 @@ pub struct UolObject {
     uri: UolString,
 }
 
-//macros::impl_debug!(UolObject);
-
 impl Decode for UolObject {
-    fn decode<R>(reader: &mut R) -> Result<Self>
+    fn decode<R>(reader: &mut Reader<R>) -> Result<Self, Error>
     where
-        R: WzRead + ?Sized,
+        R: Read + Seek,
     {
         u8::decode(reader)?;
         Ok(Self {
