@@ -12,7 +12,7 @@
 mod keystream;
 mod utils;
 
-pub use keystream::KeyStream;
+pub use keystream::{DummyKeyStream, KeyStream};
 pub use utils::checksum;
 
 /// Default key used in Mushroom
@@ -42,11 +42,11 @@ pub const KMS_IV: [u8; 4] = [0xb9, 0x7d, 0x63, 0xe9];
 /// Trait representing Encryptors
 pub trait Encryptor {
     /// Encrypts an array of bytes
-    fn encrypt(&mut self, bytes: &mut Vec<u8>);
+    fn encrypt(&mut self, bytes: &mut [u8]);
 }
 
 /// Trait representing Decryptors
 pub trait Decryptor {
     /// Decrypts an array of bytes
-    fn decrypt(&mut self, bytes: &mut Vec<u8>);
+    fn decrypt(&mut self, bytes: &mut [u8]);
 }

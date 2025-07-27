@@ -62,7 +62,7 @@ impl KeyStream {
     }
 
     /// Computes a bitwise XOR on the input
-    pub fn xor(&mut self, input: &mut Vec<u8>) {
+    pub fn xor(&mut self, input: &mut [u8]) {
         let input_len = input.len();
         self.grow(input_len);
         for (i, val) in input.iter_mut().enumerate() {
@@ -72,15 +72,33 @@ impl KeyStream {
 }
 
 impl Encryptor for KeyStream {
-    fn encrypt(&mut self, input: &mut Vec<u8>) {
+    fn encrypt(&mut self, input: &mut [u8]) {
         self.xor(input);
     }
 }
 
 impl Decryptor for KeyStream {
-    fn decrypt(&mut self, input: &mut Vec<u8>) {
+    fn decrypt(&mut self, input: &mut [u8]) {
         self.xor(input);
     }
+}
+
+/// Dummy KeyStream (no crypto)
+pub struct DummyKeyStream;
+
+impl DummyKeyStream {
+    /// Builds a `DummyKeyStream`
+    pub fn new() -> Self {
+        DummyKeyStream
+    }
+}
+
+impl Encryptor for DummyKeyStream {
+    fn encrypt(&mut self, _: &mut [u8]) {}
+}
+
+impl Decryptor for DummyKeyStream {
+    fn decrypt(&mut self, _: &mut [u8]) {}
 }
 
 #[cfg(test)]
