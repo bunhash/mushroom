@@ -5,13 +5,17 @@ use crate::{
     macros,
 };
 use crypto::Decryptor;
-use std::io::{Read, Seek};
+use std::{
+    fmt,
+    io::{Read, Seek},
+};
 
 /// Defines a WZ int structure and how to encode/decode it.
 ///
 /// This is a compressed `i32`. WZ archives use both `i32` and `Int32` so a separate structure was
 /// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[repr(transparent)]
 pub struct Int32(i32);
 
 macros::impl_num!(Int32, i32);
@@ -25,10 +29,16 @@ macros::impl_from!(Int32, u32, i32);
 macros::impl_from!(Int32, u64, i32);
 macros::impl_from!(Int32, usize, i32);
 
+impl fmt::Display for Int32 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Decode for Int32 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -46,6 +56,7 @@ impl Decode for Int32 {
 /// This is a compressed `i64`. WZ archives use both `i64` and `Int64` so a separate structure was
 /// created to differentiate them.
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[repr(transparent)]
 pub struct Int64(i64);
 
 macros::impl_num!(Int64, i64);
@@ -59,10 +70,16 @@ macros::impl_from!(Int64, u32, i64);
 macros::impl_from!(Int64, u64, i64);
 macros::impl_from!(Int64, usize, i64);
 
+impl fmt::Display for Int64 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Decode for Int64 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -78,7 +95,10 @@ impl Decode for Int64 {
 #[cfg(test)]
 mod tests {
 
-    use crate::{Decode, Int32, Int64, Reader};
+    use crate::{
+        decode::{Decode, Reader},
+        Int32, Int64,
+    };
     use std::io::Cursor;
 
     #[test]

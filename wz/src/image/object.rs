@@ -18,7 +18,7 @@ pub enum UolObjectTag {
 }
 
 impl Decode for UolObjectTag {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -62,7 +62,7 @@ pub enum ObjectTag {
 }
 
 impl Decode for ObjectTag {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,

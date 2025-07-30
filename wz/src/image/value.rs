@@ -32,7 +32,7 @@ pub enum Value {
 }
 
 impl Decode for Value {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,

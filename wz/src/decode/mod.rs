@@ -25,7 +25,7 @@ pub trait Decode: Sized {
 impl Decode for i8 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -37,7 +37,7 @@ impl Decode for i8 {
 impl Decode for i16 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -51,7 +51,7 @@ impl Decode for i16 {
 impl Decode for i32 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -65,7 +65,7 @@ impl Decode for i32 {
 impl Decode for i64 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -79,7 +79,7 @@ impl Decode for i64 {
 impl Decode for u8 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -91,7 +91,7 @@ impl Decode for u8 {
 impl Decode for u16 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -105,7 +105,7 @@ impl Decode for u16 {
 impl Decode for u32 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -119,7 +119,7 @@ impl Decode for u32 {
 impl Decode for u64 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -133,7 +133,7 @@ impl Decode for u64 {
 impl Decode for f32 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -152,7 +152,7 @@ impl Decode for f32 {
 impl Decode for f64 {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
@@ -166,7 +166,7 @@ impl Decode for f64 {
 impl Decode for String {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,

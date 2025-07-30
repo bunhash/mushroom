@@ -3,10 +3,10 @@
 
 use clap::{Args, Parser, ValueEnum};
 use std::path::PathBuf;
-use wz::error::Result;
+use wz::archive::Error;
 
-pub(crate) mod archive;
-pub(crate) mod utils;
+mod archive;
+mod utils;
 
 #[derive(Parser)]
 struct Cli {
@@ -70,27 +70,8 @@ enum Key {
     None,
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let args = Cli::parse();
-    let action = &args.action;
-    if action.create {
-        archive::do_create(
-            &args.file,
-            &args.directory.unwrap(),
-            args.verbose,
-            args.key,
-            args.version.unwrap(),
-        )?;
-    } else if action.list {
-        archive::do_list(&args.file, args.key, args.version)?;
-    } else if action.extract {
-        archive::do_extract(&args.file, args.verbose, args.key, args.version)?;
-    } else if action.debug {
-        archive::do_debug(&args.file, &args.directory, args.key, args.version)?;
-    } else if action.list_file {
-        archive::do_list_file(&args.file, args.key)?;
-    } else if action.server {
-        archive::do_server(&args.file, args.verbose, args.key, args.version)?;
-    }
+    archive::do_debug(&args.file, &args.directory, args.key, args.version)?;
     Ok(())
 }

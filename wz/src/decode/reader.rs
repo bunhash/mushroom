@@ -1,33 +1,42 @@
 //! WZ Readers
 
-use crate::decode::Error;
+use crate::decode::{Decode, Error};
 use crypto::{Decryptor, DummyKeyStream};
-use std::io::{Read, Seek, SeekFrom};
+use std::{
+    collections::HashMap,
+    io::{self, Read, Seek, SeekFrom},
+};
 
 /// WZ structure reader
+#[derive(Debug)]
 pub struct Reader<R, D>
 where
     R: Read + Seek,
     D: Decryptor,
 {
-    content_start: u64,
-    version_checksum: u32,
+    /// Start of the content (before root package checksum)
+    pub content_start: u32,
+
+    /// Archive checksum
+    pub version_checksum: u32,
+
+    /// Underlying `Read + Seek`
     read: R,
+
+    /// Decryptor
     decryptor: D,
+
+    /// String map
+    pub(crate) string_map: HashMap<u32, String>,
 }
 
 impl<R> Reader<R, DummyKeyStream>
 where
     R: Read + Seek,
 {
-    /// Builds an unencrypted `Decoder`
-    pub fn unencrypted(content_start: u64, version_checksum: u32, read: R) -> Self {
-        Self {
-            content_start,
-            version_checksum,
-            read,
-            decryptor: DummyKeyStream,
-        }
+    /// Builds an unencrypted `Reader`
+    pub fn unencrypted(content_start: u32, version_checksum: u32, read: R) -> Self {
+        Reader::new(content_start, version_checksum, read, DummyKeyStream)
     }
 }
 
@@ -36,24 +45,20 @@ where
     R: Read + Seek,
     D: Decryptor,
 {
-    /// Wraps an underlying `Read` + `Seek`
-    pub fn encrypted(content_start: u64, version_checksum: u32, read: R, decryptor: D) -> Self {
+    /// Builds an new `Reader`
+    pub fn new(content_start: u32, version_checksum: u32, read: R, decryptor: D) -> Self {
         Self {
             content_start,
             version_checksum,
             read,
             decryptor,
+            string_map: HashMap::new(),
         }
     }
 
-    /// Returns the content start of the reader
-    pub fn content_start(&self) -> u64 {
-        self.content_start
-    }
-
-    /// Returns the version checksum of the WZ archive
-    pub fn version_checksum(&self) -> u32 {
-        self.version_checksum
+    /// Dereferences a UolString
+    pub fn deref_string(&self, position: u32) -> Option<&str> {
+        Some(self.string_map.get(&position)?.as_str())
     }
 
     /// Decrypts a slice of bytes
@@ -62,21 +67,26 @@ where
     }
 
     /// Wrap `Seek::stream_position` to ignore the header
-    pub fn position(&mut self) -> Result<u64, Error> {
-        let pos = self.read.stream_position()?;
-        pos.checked_sub(self.content_start())
-            .ok_or(Error::position(self.content_start, pos))
+    pub fn position(&mut self) -> Result<u32, Error> {
+        let position = self.read.stream_position()?;
+        position
+            .try_into()
+            .map_err(|_| Error::position(self.content_start, position))
     }
 
-    /// Wrap `Seek::seek` so it ignores the header
-    pub fn seek(&mut self, pos: u64) -> Result<(), Error> {
-        let pos = self.content_start() + pos;
-        let new_pos = self.read.seek(SeekFrom::Start(pos))?;
-        if pos == new_pos {
+    /// Wrap `Seek::seek` so it works with `u32`
+    pub fn seek(&mut self, position: u32) -> Result<(), Error> {
+        let new_position = self.read.seek(SeekFrom::Start(position as u64))?;
+        if position as u64 == new_position {
             Ok(())
         } else {
-            Ok(())
+            Err(io::Error::from(io::ErrorKind::UnexpectedEof).into())
         }
+    }
+
+    /// Rewind to the start of the content
+    pub fn rewind(&mut self) -> Result<(), Error> {
+        self.seek(self.content_start + 2)
     }
 
     /// Raises underlying `Read::read_exact`
@@ -98,6 +108,19 @@ where
         Ok(buf)
     }
 
+    /// Decode at position while saving the current stream position
+    pub fn decode_at<T>(&mut self, position: u32) -> Result<T, <T as Decode>::Error>
+    where
+        T: Decode,
+        <T as Decode>::Error: From<Error>,
+    {
+        let current_position = self.position()?;
+        self.seek(position)?;
+        let ret = <T as Decode>::decode(self)?;
+        self.seek(current_position)?;
+        Ok(ret)
+    }
+
     /// Get a reference to the underlying `Read`
     pub fn get(&self) -> &R {
         &self.read
@@ -106,5 +129,10 @@ where
     /// Get a mutable reference to the underlying `Read`
     pub fn get_mut(&mut self) -> &mut R {
         &mut self.read
+    }
+
+    /// Consumes the `Reader` and returns the string map
+    pub fn into_string_map(self) -> HashMap<u32, String> {
+        self.string_map
     }
 }

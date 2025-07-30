@@ -3,10 +3,7 @@
 
 use clap::{Args, Parser, ValueEnum};
 use std::path::PathBuf;
-use wz::error::Result;
-
-pub(crate) mod image;
-pub(crate) mod utils;
+use wz::decode::Error;
 
 #[derive(Parser)]
 struct Cli {
@@ -58,18 +55,7 @@ enum Key {
     None,
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let args = Cli::parse();
-
-    let action = &args.action;
-    if action.create {
-        image::do_create(&args.file, &args.path.unwrap(), args.verbose, args.key)?;
-    } else if action.list {
-        image::do_list(&args.file, args.key)?;
-    } else if action.extract {
-        image::do_extract(&args.file, args.verbose, args.key)?;
-    } else if action.debug {
-        image::do_debug(&args.file, &args.path, args.verbose, args.key)?;
-    }
     Ok(())
 }

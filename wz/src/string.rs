@@ -2,7 +2,10 @@
 
 use crate::decode::{Decode, Error, Reader};
 use crypto::Decryptor;
-use std::io::{Read, Seek};
+use std::{
+    fmt,
+    io::{Read, Seek},
+};
 
 /// Defines a WZ string structure and how to encode/decode it.
 ///
@@ -15,21 +18,41 @@ pub enum UolString {
     Placed(String),
 
     /// Reference to cached string
-    Referenced(u64),
+    Referenced(u32),
+}
+
+impl fmt::Display for UolString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Self::Placed(s) => f.write_str(s),
+            Self::Referenced(pos) => write!(f, "Ref({:08x})", pos),
+        }
+    }
 }
 
 impl Decode for UolString {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
     {
         let tag = u8::decode(reader)?;
         Ok(match tag {
-            0 => UolString::Placed(String::decode(reader)?),
-            1 => UolString::Referenced(u32::decode(reader)? as u64),
+            0 => {
+                let position = reader.position()?;
+                let value = String::decode(reader)?;
+                reader.string_map.insert(position, value.clone());
+                UolString::Placed(value)
+            }
+            1 => {
+                let position = u32::decode(reader)?;
+                match reader.deref_string(position) {
+                    Some(v) => UolString::Placed(v.to_string()),
+                    None => UolString::Referenced(position),
+                }
+            }
             u => Err(Error::Tag(u))?,
         })
     }

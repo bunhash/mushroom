@@ -1,19 +1,25 @@
 //! WZ Offset Structure
 
-use crate::{macros, Decode, Error, Reader};
+use crate::{
+    archive::Error,
+    decode::{Decode, Reader},
+    macros,
+};
 use crypto::Decryptor;
-use std::io::{Read, Seek};
+use std::{
+    fmt,
+    io::{Read, Seek},
+};
 
 /// Defines a WZ offset structure and how to encode/decode it.
 ///
-/// WZ offsets are annoying encoded offsets used in WZ archives. They do not exist within WZ images
-/// unlike the other types. WZ offsets are an obfuscated position within the WZ archive. This
-/// position is calculated based on the version checksum and content start position. This makes it
-/// impossible to drop older WZ archives into the latest MS game data. This also means the version
-/// must be known when reading or writing WZ archives. The `archive::Reader` structure offers a
-/// method to bruteforce the version but it should not be relied on to work 100% of the time.
-#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Ord, Eq)]
-#[repr(transparent)]
+/// WZ offsets are annoying encoded offsets used in WZ archives. WZ offsets are an obfuscated
+/// position within the WZ archive. This position is calculated based on the version checksum and
+/// content start position. This makes it impossible to drop older WZ archives into the latest MS
+/// game data. This also means the version must be known when reading or writing WZ archives. The
+/// `archive::Reader` structure offers a method to bruteforce the version but it should not be
+/// relied on to work 100% of the time.
+#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
 pub struct Offset(u32);
 
 macros::impl_num!(Offset, u32);
@@ -27,19 +33,23 @@ macros::impl_from!(Offset, u32, u32);
 macros::impl_from!(Offset, u64, u32);
 macros::impl_from!(Offset, usize, u32);
 
+impl fmt::Display for Offset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{:08X}", self.0)
+    }
+}
+
 impl Offset {
     pub(crate) fn decode_with(
         value: u32,
-        position: u64,
+        position: u32,
         content_start: u32,
         version_checksum: u32,
     ) -> Self {
-        let enc_offset = position as u32;
-        let content_start = content_start as u32;
         let magic = 0x581C3F6D;
 
         // Make decoding key (?)
-        let enc_offset = enc_offset.wrapping_sub(content_start);
+        let enc_offset = position.wrapping_sub(content_start);
         let enc_offset = enc_offset ^ u32::MAX;
         let enc_offset = enc_offset.wrapping_mul(version_checksum);
         let enc_offset = enc_offset.wrapping_sub(magic);
@@ -53,16 +63,14 @@ impl Offset {
 
     pub(crate) fn encode_with(
         self,
-        position: u64,
+        position: u32,
         content_start: u32,
         version_checksum: u32,
     ) -> u32 {
-        let enc_offset = position as u32;
-        let content_start = content_start as u32;
         let magic = 0x581C3F6D;
 
         // Make decoding key (?)
-        let enc_offset = enc_offset.wrapping_sub(content_start);
+        let enc_offset = position.wrapping_sub(content_start);
         let enc_offset = enc_offset ^ u32::MAX;
         let enc_offset = enc_offset.wrapping_mul(version_checksum);
         let enc_offset = enc_offset.wrapping_sub(magic);
@@ -76,17 +84,19 @@ impl Offset {
 }
 
 impl Decode for Offset {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Error>
+    type Error = Error;
+
+    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
     where
         R: Read + Seek,
         D: Decryptor,
     {
-        let value = u32::decode(reader)?;
+        let position = reader.position()?;
         Ok(Offset::decode_with(
-            value,
-            reader.get_mut().stream_position()?,
-            reader.content_start(),
-            reader.version_checksum(),
+            u32::decode(reader)?,
+            position,
+            reader.content_start,
+            reader.version_checksum,
         ))
     }
 }
@@ -94,7 +104,7 @@ impl Decode for Offset {
 #[cfg(test)]
 mod tests {
 
-    use crate::offset::Offset;
+    use crate::archive::Offset;
 
     #[test]
     fn wz_offset() {

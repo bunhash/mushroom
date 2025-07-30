@@ -14,7 +14,7 @@ pub enum Error {
     /// Invalid position (stream is before content)
     Position {
         /// Content start
-        start: u64,
+        start: u32,
 
         /// Current position
         position: u64,
@@ -37,7 +37,7 @@ impl Error {
     }
 
     /// Builds new `Error::Position`
-    pub fn position(start: u64, position: u64) -> Self {
+    pub fn position(start: u32, position: u64) -> Self {
         Self::Position { start, position }
     }
 

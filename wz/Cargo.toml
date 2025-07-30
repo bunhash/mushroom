@@ -10,3 +10,4 @@ crate-type = ["lib"]
 
 [dependencies]
 crypto = { version = "0.1.0", path = "../crypto" }
+ego-tree = { version = "0.10.0" }

@@ -25,7 +25,7 @@ mod string;
 #[macro_use]
 mod macros;
 
-//pub mod archive;
+pub mod archive;
 pub mod decode;
 //pub mod image;
 
