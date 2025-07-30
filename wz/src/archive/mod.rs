@@ -82,28 +82,22 @@ impl Archive {
         if root.is_empty() {
             let _ = parts.pop();
         }
-        let mut content = self.tree.root();
-        loop {
-            match parts.pop() {
-                Some(name) => {
-                    let mut child = content.first_child();
-                    loop {
-                        match child {
-                            Some(c) => {
-                                if name == c.value().name() {
-                                    content = c;
-                                    break;
-                                }
-                                child = c.next_sibling();
-                            }
-                            None => return None,
+        let mut content = Some(self.tree.root());
+        while let Some(name) = parts.pop() {
+            let search = content.take();
+            match search {
+                Some(s) => {
+                    for child in s.children() {
+                        if name == child.value().name() {
+                            content = Some(child);
+                            break;
                         }
                     }
                 }
                 None => break,
             }
         }
-        Some(content)
+        content
     }
 
     /// Returns a mutable node reference at the specified path
@@ -116,17 +110,12 @@ impl Archive {
         let node = self.get_node(path)?;
         let mut tree = Tree::new(node.value().clone());
         let mut queue = VecDeque::from([(node.id(), tree.root().id())]);
-        loop {
-            match queue.pop_front() {
-                Some((src_id, dst_id)) => {
-                    let src_node = self.tree.get(src_id).expect("panic! node should exist");
-                    let mut dst_node = tree.get_mut(dst_id).expect("panic! node should exist");
-                    for src_child in src_node.children() {
-                        let dst_child = dst_node.append(src_child.value().clone());
-                        queue.push_back((src_child.id(), dst_child.id()));
-                    }
-                }
-                None => break,
+        while let Some((src_id, dst_id)) = queue.pop_front() {
+            let src_node = self.tree.get(src_id).expect("panic! node should exist");
+            let mut dst_node = tree.get_mut(dst_id).expect("panic! node should exist");
+            for src_child in src_node.children() {
+                let dst_child = dst_node.append(src_child.value().clone());
+                queue.push_back((src_child.id(), dst_child.id()));
             }
         }
         Some(tree)
@@ -154,26 +143,21 @@ impl Archive {
         };
         let mut tree = Tree::new(root);
         let mut queue = VecDeque::from([tree.root().id()]);
-        loop {
-            match queue.pop_front() {
-                Some(id) => {
-                    let mut node = tree.get_mut(id).expect("panic! node should exist");
-                    let offset = node.value().offset;
-                    reader.seek(*offset)?;
-                    let package = Package::decode(reader)?;
-                    for c in package.contents.into_iter() {
-                        match &c.content_type {
-                            ContentType::Package(_) => {
-                                let child = node.append(c);
-                                queue.push_back(child.id());
-                            }
-                            ContentType::Image(_) => {
-                                node.append(c);
-                            }
-                        }
+        while let Some(id) = queue.pop_front() {
+            let mut node = tree.get_mut(id).expect("panic! node should exist");
+            let offset = node.value().offset;
+            reader.seek(*offset)?;
+            let package = Package::decode(reader)?;
+            for c in package.contents.into_iter() {
+                match &c.content_type {
+                    ContentType::Package(_) => {
+                        let child = node.append(c);
+                        queue.push_back(child.id());
+                    }
+                    ContentType::Image(_) => {
+                        node.append(c);
                     }
                 }
-                None => break,
             }
         }
         Ok(tree)

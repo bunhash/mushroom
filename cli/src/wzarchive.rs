@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use wz::archive::Error;
 
 mod archive;
-mod utils;
+//mod utils;
 
 #[derive(Parser)]
 struct Cli {

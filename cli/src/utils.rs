@@ -15,18 +15,6 @@ use std::{
 //}
 //pub use verbose;
 
-pub fn file_name<S>(path: &S) -> Result<&str, Error>
-where
-    S: AsRef<Path>,
-{
-    Ok(path
-        .as_ref()
-        .file_name()
-        .ok_or(ErrorKind::NotFound)?
-        .to_str()
-        .ok_or(ErrorKind::NotFound)?)
-}
-
 pub fn parent<S>(path: &S) -> Result<&Path, Error>
 where
     S: AsRef<Path>,
