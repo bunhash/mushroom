@@ -1,49 +1,36 @@
 //! Parsing of WZ archives
 
-use crate::{utils, Key};
+use crate::Key;
 use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::path::PathBuf;
-use wz::{
-    archive,
-    error::{Error, Result},
-    io::DummyDecryptor,
-    list,
-};
+use wz::archive::{Archive, ContentType, Error};
 
-pub(crate) fn do_list(path: &PathBuf, key: Key, version: Option<u16>) -> Result<()> {
-    let name = utils::file_name(path)?;
-
-    // Map the WZ archive
-    let map = match key {
+pub fn do_list(path: &PathBuf, key: Key, version: Option<u16>) -> Result<(), Error> {
+    let archive = match key {
         Key::Gms => match version {
-            Some(v) => {
-                archive::Reader::open_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?
-                    .map(name)?
-            }
-            None => {
-                archive::Reader::open(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?.map(name)?
-            }
+            Some(v) => Archive::parse_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+            None => Archive::parse(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
         },
         Key::Kms => match version {
-            Some(v) => {
-                archive::Reader::open_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?
-                    .map(name)?
-            }
-            None => {
-                archive::Reader::open(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?.map(name)?
-            }
+            Some(v) => Archive::parse_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
+            None => Archive::parse(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
         },
         Key::None => match version {
-            Some(v) => archive::Reader::open_as_version(path, v, DummyDecryptor)?.map(name)?,
-            None => archive::Reader::open(path, DummyDecryptor)?.map(name)?,
+            Some(v) => Archive::parse_unencrypted_as_version(path, v)?,
+            None => Archive::parse_unencrypted(path)?,
         },
     };
-
-    // Walk the map
-    map.walk::<Error>(|cursor| Ok(println!("{}", &cursor.pwd())))
+    for (path, content) in archive.map.iter() {
+        match &content.content_type {
+            ContentType::Image(name) => println!("{}/{}", path, name),
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
-pub(crate) fn do_list_file(path: &PathBuf, key: Key) -> Result<()> {
+/*
+pub fn do_list_file(path: &PathBuf, key: Key) -> Result<()> {
     let reader = match key {
         Key::Gms => list::Reader::parse(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
         Key::Kms => list::Reader::parse(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
@@ -54,3 +41,4 @@ pub(crate) fn do_list_file(path: &PathBuf, key: Key) -> Result<()> {
     }
     Ok(())
 }
+*/

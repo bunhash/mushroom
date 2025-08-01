@@ -1,20 +1,18 @@
 //! WZ Archive Structures
 
-use crate::{
-    decode::{Decode, Reader},
-    Int32,
-};
+use crate::decode::{Decode, Reader};
 use crypto::{checksum, Decryptor, DummyKeyStream};
-use ego_tree::{NodeMut, NodeRef, Tree};
-use std::{collections::VecDeque, fs::File, io::BufReader, path::Path};
+use std::{fs::File, io::BufReader, path::Path};
 
 mod error;
 mod header;
+mod map;
 mod offset;
 mod package;
 
 pub use error::Error;
 pub use header::Header;
+pub use map::{ContentMap, ContentPathIter};
 pub use offset::Offset;
 pub use package::{Content, ContentType, Package};
 
@@ -25,7 +23,7 @@ pub struct Archive {
     pub header: Header,
 
     /// Tree
-    pub tree: Tree<Content>,
+    pub map: ContentMap,
 }
 
 impl Archive {
@@ -38,8 +36,8 @@ impl Archive {
         let mut read = BufReader::new(File::open(path)?);
         let header = Header::from_read(&mut read)?;
         let mut reader = bruteforce_version(&header, read, decryptor)?;
-        let tree = Self::build("".into(), header.size.into(), &mut reader)?;
-        Ok(Archive { header, tree })
+        let map = ContentMap::parse(&header, &mut reader)?;
+        Ok(Archive { header, map })
     }
 
     /// Opens a WZ Archive as a specific version
@@ -55,8 +53,8 @@ impl Archive {
             return Err(Error::Version);
         }
         let mut reader = Reader::new(header.content_start, version_checksum, read, decryptor);
-        let tree = Self::build("".into(), header.size.into(), &mut reader)?;
-        Ok(Archive { header, tree })
+        let map = ContentMap::parse(&header, &mut reader)?;
+        Ok(Archive { header, map })
     }
 
     /// Opens an unencrypted WZ Archive
@@ -73,94 +71,6 @@ impl Archive {
         P: AsRef<Path>,
     {
         Archive::parse_as_version(path, version, DummyKeyStream)
-    }
-
-    /// Returns a mutable node reference at the specified path
-    pub fn get_node(&self, path: &str) -> Option<NodeRef<'_, Content>> {
-        let mut parts = path.rsplit("/").collect::<Vec<_>>();
-        let root = parts.last()?;
-        if root.is_empty() {
-            let _ = parts.pop();
-        }
-        let mut content = Some(self.tree.root());
-        while let Some(name) = parts.pop() {
-            let search = content.take();
-            match search {
-                Some(s) => {
-                    for child in s.children() {
-                        if name == child.value().name() {
-                            content = Some(child);
-                            break;
-                        }
-                    }
-                }
-                None => break,
-            }
-        }
-        content
-    }
-
-    /// Returns a mutable node reference at the specified path
-    pub fn get_mut_node(&mut self, path: &str) -> Option<NodeMut<'_, Content>> {
-        self.tree.get_mut(self.get_node(path)?.id())
-    }
-
-    /// Clones a subtree to a new `Tree`. This is a bad ego-tree workaround.
-    pub fn clone_subtree(&self, path: &str) -> Option<Tree<Content>> {
-        let node = self.get_node(path)?;
-        let mut tree = Tree::new(node.value().clone());
-        let mut queue = VecDeque::from([(node.id(), tree.root().id())]);
-        while let Some((src_id, dst_id)) = queue.pop_front() {
-            let src_node = self.tree.get(src_id).expect("panic! node should exist");
-            let mut dst_node = tree.get_mut(dst_id).expect("panic! node should exist");
-            for src_child in src_node.children() {
-                let dst_child = dst_node.append(src_child.value().clone());
-                queue.push_back((src_child.id(), dst_child.id()));
-            }
-        }
-        Some(tree)
-    }
-
-    /// Returns a reference to the content at the specified path
-    pub fn get(&self, path: &str) -> Option<&Content> {
-        Some(self.get_node(path)?.value())
-    }
-
-    fn build<D>(
-        name: String,
-        size: Int32,
-        reader: &mut Reader<BufReader<File>, D>,
-    ) -> Result<Tree<Content>, Error>
-    where
-        D: Decryptor,
-    {
-        reader.rewind()?;
-        let root = Content {
-            content_type: ContentType::Package(name),
-            size,
-            checksum: 0.into(),
-            offset: Offset::from(reader.position()?),
-        };
-        let mut tree = Tree::new(root);
-        let mut queue = VecDeque::from([tree.root().id()]);
-        while let Some(id) = queue.pop_front() {
-            let mut node = tree.get_mut(id).expect("panic! node should exist");
-            let offset = node.value().offset;
-            reader.seek(*offset)?;
-            let package = Package::decode(reader)?;
-            for c in package.contents.into_iter() {
-                match &c.content_type {
-                    ContentType::Package(_) => {
-                        let child = node.append(c);
-                        queue.push_back(child.id());
-                    }
-                    ContentType::Image(_) => {
-                        node.append(c);
-                    }
-                }
-            }
-        }
-        Ok(tree)
     }
 }
 

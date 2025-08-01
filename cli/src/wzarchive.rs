@@ -72,6 +72,11 @@ enum Key {
 
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
-    archive::do_debug(&args.file, &args.directory, args.key, args.version)?;
-    Ok(())
+    if args.action.list {
+        archive::do_list(&args.file, args.key, args.version)
+    } else if args.action.debug {
+        archive::do_debug(&args.file, &args.directory, args.key, args.version)
+    } else {
+        Ok(println!("unimplemented"))
+    }
 }
