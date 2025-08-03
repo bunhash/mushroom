@@ -1,14 +1,11 @@
 //! WZ Int32 and Int64 Formats
 
 use crate::{
-    decode::{Decode, Error, Reader},
+    decode::{self, Decode, Decoder},
+    encode::{self, Encode, Encoder, SizeHint},
     macros,
 };
-use crypto::Decryptor;
-use std::{
-    fmt,
-    io::{Read, Seek},
-};
+use std::fmt;
 
 /// Defines a WZ int structure and how to encode/decode it.
 ///
@@ -36,18 +33,35 @@ impl fmt::Display for Int32 {
 }
 
 impl Decode for Int32 {
-    type Error = Error;
+    type Error = decode::Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let check = i8::decode(reader)?;
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        let check = i8::decode(decoder)?;
         Ok(Self(match check {
-            i8::MIN => i32::decode(reader)?,
+            i8::MIN => i32::decode(decoder)?,
             v => v as i32,
         }))
+    }
+}
+
+impl Encode for Int32 {
+    type Error = encode::Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        let val: i32 = **self;
+        if val > i8::MAX as i32 {
+            i8::MIN.encode(encoder)?;
+            Ok(val.encode(encoder)?)
+        } else {
+            Ok((val as i8).encode(encoder)?)
+        }
+    }
+}
+
+impl SizeHint for Int32 {
+    fn size_hint(&self) -> u64 {
+        let val: i32 = **self;
+        if val > i8::MAX as i32 { 5 } else { 1 }
     }
 }
 
@@ -77,28 +91,42 @@ impl fmt::Display for Int64 {
 }
 
 impl Decode for Int64 {
-    type Error = Error;
+    type Error = decode::Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let check = i8::decode(reader)?;
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        let check = i8::decode(decoder)?;
         Ok(Self(match check {
-            i8::MIN => i64::decode(reader)?,
+            i8::MIN => i64::decode(decoder)?,
             v => v as i64,
         }))
+    }
+}
+
+impl Encode for Int64 {
+    type Error = encode::Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        let val: i64 = **self;
+        if val > i8::MAX as i64 {
+            i8::MIN.encode(encoder)?;
+            Ok(val.encode(encoder)?)
+        } else {
+            Ok((val as i8).encode(encoder)?)
+        }
+    }
+}
+
+impl SizeHint for Int64 {
+    fn size_hint(&self) -> u64 {
+        let val: i64 = **self;
+        if val > i8::MAX as i64 { 9 } else { 1 }
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        decode::{Decode, Reader},
-        Int32, Int64,
-    };
+    use crate::{Int32, Int64, Reader, decode::Decode};
     use std::io::Cursor;
 
     #[test]

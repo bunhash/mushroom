@@ -1,6 +1,9 @@
 //! WZ Archive Header
 
-use crate::archive::Error;
+use crate::{
+    archive::Error,
+    encode::{Encode, Encoder, SizeHint},
+};
 use crypto::checksum;
 use std::io::Read;
 
@@ -111,20 +114,29 @@ impl Header {
     }
 }
 
-//impl Encode for Header {
-//    /// Encodes objects
-//    fn encode<W>(&self, writer: &mut W) -> Result<()>
-//    where
-//        W: WzWrite + ?Sized,
-//    {
-//        writer.write_all(&self.identifier)?;
-//        self.size.encode(writer)?;
-//        self.content_start.encode(writer)?;
-//        writer.write_all(self.description.as_bytes())?;
-//        writer.write_byte(0)?;
-//        self.version_hash.encode(writer)
-//    }
-//}
+impl Encode for Header {
+    type Error = Error;
+
+    /// Encodes objects
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        encoder.encode_bytes(&self.identifier)?;
+        self.size.encode(encoder)?;
+        self.content_start.encode(encoder)?;
+        encoder.encode_bytes(self.description.as_bytes())?;
+        0u8.encode(encoder)?;
+        Ok(self.version_hash.encode(encoder)?)
+    }
+}
+
+impl SizeHint for Header {
+    fn size_hint(&self) -> u64 {
+        1 + self.identifier.len() as u64
+            + self.size.size_hint()
+            + self.content_start.size_hint()
+            + self.description.as_bytes().len() as u64
+            + self.version_hash.size_hint()
+    }
+}
 
 #[cfg(test)]
 mod tests {

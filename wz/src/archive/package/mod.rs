@@ -1,12 +1,11 @@
 //! WZ Archive Package types
 
 use crate::{
-    archive::Error,
-    decode::{self, Decode, Reader},
     Int32,
+    archive::Error,
+    decode::{self, Decode, Decoder},
+    encode::{Encode, Encoder, SizeHint},
 };
-use crypto::Decryptor;
-use std::io::{Read, Seek};
 
 mod content;
 
@@ -35,34 +34,36 @@ pub struct Package {
 impl Decode for Package {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let num_contents = Int32::decode(reader)?;
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        let num_contents = Int32::decode(decoder)?;
         if num_contents.is_negative() {
             return Err(decode::Error::length(*num_contents).into());
         }
         let num_contents = *num_contents as usize;
         let mut contents = Vec::with_capacity(num_contents);
         for _ in 0..num_contents {
-            contents.push(Content::decode(reader)?);
+            contents.push(Content::decode(decoder)?);
         }
         Ok(Self { contents })
     }
 }
 
-//impl Encode for Package {
-//    fn encode<W>(&self, writer: &mut W) -> Result<()>
-//    where
-//        W: WzWrite + ?Sized,
-//    {
-//        let num_contents = Int32::from(self.contents.len() as i32);
-//        num_contents.encode(writer)?;
-//        for content in &self.contents {
-//            content.encode(writer)?;
-//        }
-//        Ok(())
-//    }
-//}
+impl Encode for Package {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        let num_contents = Int32::from(self.contents.len() as i32);
+        num_contents.encode(encoder)?;
+        for content in &self.contents {
+            content.encode(encoder)?;
+        }
+        Ok(())
+    }
+}
+
+impl SizeHint for Package {
+    fn size_hint(&self) -> u64 {
+        Int32::from(self.contents.len() as i32).size_hint()
+            + self.contents.iter().map(|c| c.size_hint()).sum::<u64>()
+    }
+}

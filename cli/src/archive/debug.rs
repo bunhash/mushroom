@@ -1,36 +1,31 @@
 //! Parsing of WZ archives
 
-use crate::Key;
-use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
+use crypto::KeyStream;
 use std::path::PathBuf;
-use wz::archive::{Archive, Error};
+use wz::archive::{Error, Reader};
 
 pub fn do_debug(
     path: &PathBuf,
-    directory: &Option<String>,
-    key: Key,
+    key: Option<KeyStream>,
     version: Option<u16>,
+    directory: &Option<String>,
 ) -> Result<(), Error> {
     let archive = match key {
-        Key::Gms => match version {
-            Some(v) => Archive::parse_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-            None => Archive::parse(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
+        Some(k) => match version {
+            Some(v) => Reader::as_version(path, v, k)?.parse()?,
+            None => Reader::new(path, k)?.parse()?,
         },
-        Key::Kms => match version {
-            Some(v) => Archive::parse_as_version(path, v, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-            None => Archive::parse(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-        },
-        Key::None => match version {
-            Some(v) => Archive::parse_unencrypted_as_version(path, v)?,
-            None => Archive::parse_unencrypted(path)?,
+        None => match version {
+            Some(v) => Reader::unencrypted_as_version(path, v)?.parse()?,
+            None => Reader::unencrypted(path)?.parse()?,
         },
     };
     match directory {
-        Some(path) => match archive.map.get_subtree(path) {
+        Some(path) => match archive.get_subtree(path) {
             Some(tree) => println!("{}", tree),
             None => println!("{} not found", path),
         },
-        None => println!("{}", archive.map),
+        None => println!("{}", archive),
     }
     Ok(())
 }

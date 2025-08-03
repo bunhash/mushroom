@@ -6,21 +6,21 @@ use std::{
     path::Path,
 };
 
-//macro_rules! verbose {
-//    ($verbose:expr, $($args:tt)*) => {
-//        if $verbose {
-//            println!($($args)*)
-//        }
-//    }
-//}
-//pub use verbose;
-
-pub fn parent<S>(path: &S) -> Result<&Path, Error>
-where
-    S: AsRef<Path>,
-{
-    Ok(path.as_ref().parent().ok_or(ErrorKind::NotFound)?)
+macro_rules! verbose {
+    ($verbose:expr, $($args:tt)*) => {
+        if $verbose {
+            println!($($args)*)
+        }
+    }
 }
+pub(crate) use verbose;
+
+//pub fn parent<S>(path: &S) -> Result<&Path, Error>
+//where
+//    S: AsRef<Path>,
+//{
+//    Ok(path.as_ref().parent().ok_or(ErrorKind::NotFound)?)
+//}
 
 pub fn create_dir<S>(path: S) -> Result<(), Error>
 where

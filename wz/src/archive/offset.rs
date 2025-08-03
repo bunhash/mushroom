@@ -2,14 +2,11 @@
 
 use crate::{
     archive::Error,
-    decode::{Decode, Reader},
+    decode::{Decode, Decoder},
+    encode::{Encode, Encoder, SizeHint},
     macros,
 };
-use crypto::Decryptor;
-use std::{
-    fmt,
-    io::{Read, Seek},
-};
+use std::fmt;
 
 /// Defines a WZ offset structure and how to encode/decode it.
 ///
@@ -86,18 +83,22 @@ impl Offset {
 impl Decode for Offset {
     type Error = Error;
 
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let position = reader.position()?;
-        Ok(Offset::decode_with(
-            u32::decode(reader)?,
-            position,
-            reader.content_start,
-            reader.version_checksum,
-        ))
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        Ok(decoder.decode_offset()?)
+    }
+}
+
+impl Encode for Offset {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        Ok(encoder.encode_offset(*self)?)
+    }
+}
+
+impl SizeHint for Offset {
+    fn size_hint(&self) -> u64 {
+        4
     }
 }
 

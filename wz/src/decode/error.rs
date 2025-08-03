@@ -11,17 +11,8 @@ pub enum Error {
     /// Invalid lengths
     Length(i32),
 
-    /// Invalid position (stream is before content)
-    Position {
-        /// Content start
-        start: u32,
-
-        /// Current position
-        position: u64,
-    },
-
-    /// Invalid tag
-    Tag(u8),
+    /// Invalid position
+    Position(u64),
 
     /// Unable to decode UTF-8
     Utf8(string::FromUtf8Error),
@@ -37,13 +28,8 @@ impl Error {
     }
 
     /// Builds new `Error::Position`
-    pub fn position(start: u32, position: u64) -> Self {
-        Self::Position { start, position }
-    }
-
-    /// Builds new `Error::Tag`
-    pub fn tag(tag: u8) -> Self {
-        Self::Tag(tag)
+    pub fn position(position: u64) -> Self {
+        Self::Position(position)
     }
 }
 
@@ -52,12 +38,7 @@ impl fmt::Display for Error {
         match self {
             Self::Io(e) => write!(f, "io: {}", e),
             Self::Length(l) => write!(f, "invalid length: {}", l),
-            Self::Position { start, position } => write!(
-                f,
-                "stream before content (start={:08x}, position={:08x})",
-                start, position
-            ),
-            Self::Tag(t) => write!(f, "invalid tag: 0x{:02x}", t),
+            Self::Position(p) => write!(f, "invalid position: {}", p),
             Self::Utf8(e) => write!(f, "utf-8: {}", e),
             Self::Unicode(e) => write!(f, "unicode: {}", e),
         }

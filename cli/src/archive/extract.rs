@@ -1,76 +1,55 @@
 //! Parsing of WZ archives
 
-use crate::{utils, Key};
-use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
-use std::{fs, path::PathBuf};
-use wz::{
-    archive::{self, reader},
-    error::{Error, Result},
-    io::{DummyDecryptor, WzRead},
-};
+use crate::utils;
+use crypto::{Decryptor, KeyStream};
+use std::{fs, io, path::PathBuf};
+use wz::archive::{ContentType, Error, Reader};
 
 pub(crate) fn do_extract(
     path: &PathBuf,
-    verbose: bool,
-    key: Key,
+    key: Option<KeyStream>,
     version: Option<u16>,
-) -> Result<()> {
-    let filename = utils::file_name(path)?;
+    verbose: bool,
+) -> Result<(), Error> {
+    // Get the filename
+    let basename = path
+        .file_name()
+        .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?
+        .to_str()
+        .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+
+    // Map the archive
     match key {
-        Key::Gms => extract(
-            filename,
-            match version {
-                Some(v) => archive::Reader::open_as_version(
-                    path,
-                    v,
-                    KeyStream::new(&TRIMMED_KEY, &GMS_IV),
-                )?,
-                None => archive::Reader::open(path, KeyStream::new(&TRIMMED_KEY, &GMS_IV))?,
-            },
-            verbose,
-        ),
-        Key::Kms => extract(
-            filename,
-            match version {
-                Some(v) => archive::Reader::open_as_version(
-                    path,
-                    v,
-                    KeyStream::new(&TRIMMED_KEY, &KMS_IV),
-                )?,
-                None => archive::Reader::open(path, KeyStream::new(&TRIMMED_KEY, &KMS_IV))?,
-            },
-            verbose,
-        ),
-        Key::None => extract(
-            filename,
-            match version {
-                Some(v) => archive::Reader::open_as_version(path, v, DummyDecryptor)?,
-                None => archive::Reader::open(path, DummyDecryptor)?,
-            },
-            verbose,
-        ),
+        Some(k) => match version {
+            Some(v) => extract(basename, Reader::as_version(path, v, k)?, verbose),
+            None => extract(basename, Reader::new(path, k)?, verbose),
+        },
+        None => match version {
+            Some(v) => extract(basename, Reader::unencrypted_as_version(path, v)?, verbose),
+            None => extract(basename, Reader::unencrypted(path)?, verbose),
+        },
     }
 }
 
-fn extract<R>(name: &str, mut archive: archive::Reader<R>, verbose: bool) -> Result<()>
+fn extract<D>(name: &str, mut reader: Reader<D>, verbose: bool) -> Result<(), Error>
 where
-    R: WzRead,
+    D: Decryptor,
 {
-    let map = archive.map(&name.replace(".wz", ""))?;
-    let mut reader = archive.into_inner();
-    map.walk::<Error>(|cursor| {
-        let path = cursor.pwd();
-        match cursor.get() {
-            reader::Node::Package => {
+    let archive = reader.parse()?;
+    let base = name.trim_end_matches(".wz");
+    for (path, content) in archive.iter() {
+        let path = format!("{}{}/{}", base, path, content.name());
+        match &content.content_type {
+            ContentType::Package(_) => {
                 utils::create_dir(&path)?;
             }
-            reader::Node::Image { offset, size } => {
+            ContentType::Image(_) => {
                 utils::remove_file(&path)?;
                 let mut output = fs::File::create(&path)?;
-                reader.copy_to(&mut output, *offset, *size)?;
+                reader.copy_to(&mut output, content.offset, content.size)?;
             }
         }
         utils::verbose!(verbose, "{}", path);
-        Ok(())
-    })
+    }
+    Ok(())
 }

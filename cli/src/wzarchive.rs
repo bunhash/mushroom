@@ -2,11 +2,12 @@
 #![doc = include_str!("../README.md")]
 
 use clap::{Args, Parser, ValueEnum};
+use crypto::{KeyStream, GMS_IV, KMS_IV, TRIMMED_KEY};
 use std::path::PathBuf;
 use wz::archive::Error;
 
 mod archive;
-//mod utils;
+mod utils;
 
 #[derive(Parser)]
 struct Cli {
@@ -72,10 +73,25 @@ enum Key {
 
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
-    if args.action.list {
-        archive::do_list(&args.file, args.key, args.version)
+    let key = match args.key {
+        Key::Gms => Some(KeyStream::new(&TRIMMED_KEY, &GMS_IV)),
+        Key::Kms => Some(KeyStream::new(&TRIMMED_KEY, &KMS_IV)),
+        Key::None => None,
+    };
+    if args.action.create {
+        archive::do_create(
+            &args.file,
+            key,
+            args.version.unwrap(),
+            &args.directory.unwrap(),
+            args.verbose,
+        )
+    } else if args.action.list {
+        archive::do_list(&args.file, key, args.version)
+    } else if args.action.extract {
+        archive::do_extract(&args.file, key, args.version, args.verbose)
     } else if args.action.debug {
-        archive::do_debug(&args.file, &args.directory, args.key, args.version)
+        archive::do_debug(&args.file, key, args.version, &args.directory)
     } else {
         Ok(println!("unimplemented"))
     }

@@ -1,13 +1,19 @@
 //! Archive Errors
 
-use crate::decode;
+use crate::{decode, encode};
 use std::{fmt, io};
 
 /// Decode errors
 #[derive(Debug)]
 pub enum Error {
+    /// IO Errors
+    Io(io::Error),
+
     /// Decode Errors
     Decode(decode::Error),
+
+    /// Encode Errors
+    Encode(encode::Error),
 
     /// Invalid header
     Header,
@@ -34,7 +40,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Io(e) => write!(f, "io: {}", e),
             Self::Decode(e) => write!(f, "decode: {}", e),
+            Self::Encode(e) => write!(f, "encode: {}", e),
             Self::Header => f.write_str("invalid archive header"),
             Self::Bruteforce => f.write_str("failed to bruteforce version"),
             Self::Version => f.write_str("invalid WZ archive version"),
@@ -46,13 +54,20 @@ impl fmt::Display for Error {
     }
 }
 
+impl From<io::Error> for Error {
+    fn from(other: io::Error) -> Self {
+        Error::Io(other)
+    }
+}
+
 impl From<decode::Error> for Error {
     fn from(other: decode::Error) -> Self {
         Error::Decode(other)
     }
 }
-impl From<io::Error> for Error {
-    fn from(other: io::Error) -> Self {
-        Error::Decode(other.into())
+
+impl From<encode::Error> for Error {
+    fn from(other: encode::Error) -> Self {
+        Error::Encode(other)
     }
 }
