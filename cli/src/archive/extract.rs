@@ -14,9 +14,9 @@ pub(crate) fn do_extract(
     // Get the filename
     let basename = path
         .file_name()
-        .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?
+        .ok_or(Error::other("invalid filename"))?
         .to_str()
-        .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+        .ok_or(Error::other("invalid filename"))?;
 
     // Map the archive
     match key {

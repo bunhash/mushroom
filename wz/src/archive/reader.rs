@@ -1,18 +1,18 @@
-//! WZ Reader crate::Reader
+//! WZ Archive Reader
 
 use crate::{
-    Int32,
     archive::{Archive, Error, Header, Offset, Package},
     decode::{self, Decode, Decoder},
+    Int32,
 };
-use crypto::{Decryptor, DummyKeyStream, checksum};
+use crypto::{checksum, Decryptor, DummyKeyStream};
 use std::{
     fs::File,
     io::{self, BufReader, Read, Seek, SeekFrom, Write},
     path::Path,
 };
 
-/// WZ Reader structure
+/// WZ Archive Reader structure
 #[derive(Debug)]
 pub struct Reader<D>
 where

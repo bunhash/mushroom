@@ -35,6 +35,16 @@ pub enum Error {
 
     /// Invalid content tag
     Tag(u8),
+
+    /// Catch all
+    Other(Box<str>),
+}
+
+impl Error {
+    /// Custom error message
+    pub fn other(msg: &str) -> Self {
+        Self::Other(msg.into())
+    }
 }
 
 impl fmt::Display for Error {
@@ -50,6 +60,7 @@ impl fmt::Display for Error {
             Self::Size(s) => write!(f, "invalid content size: {}", s),
             Self::Offset(o) => write!(f, "invalid offset: {}", o),
             Self::Tag(t) => write!(f, "invalid content tag: 0x{:02x}", t),
+            Self::Other(s) => f.write_str(s),
         }
     }
 }

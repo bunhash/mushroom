@@ -1,10 +1,9 @@
 //! WZ Archive Package types
 
 use crate::{
-    Int32,
     archive::Error,
     decode::{self, Decode, Decoder},
-    encode::{Encode, Encoder, SizeHint},
+    Int32,
 };
 
 mod content;
@@ -45,25 +44,5 @@ impl Decode for Package {
             contents.push(Content::decode(decoder)?);
         }
         Ok(Self { contents })
-    }
-}
-
-impl Encode for Package {
-    type Error = Error;
-
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
-        let num_contents = Int32::from(self.contents.len() as i32);
-        num_contents.encode(encoder)?;
-        for content in &self.contents {
-            content.encode(encoder)?;
-        }
-        Ok(())
-    }
-}
-
-impl SizeHint for Package {
-    fn size_hint(&self) -> u64 {
-        Int32::from(self.contents.len() as i32).size_hint()
-            + self.contents.iter().map(|c| c.size_hint()).sum::<u64>()
     }
 }

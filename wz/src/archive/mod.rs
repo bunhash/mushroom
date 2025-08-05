@@ -11,6 +11,7 @@ mod header;
 mod offset;
 mod package;
 mod reader;
+mod writer;
 
 pub use builder::Builder;
 pub use error::Error;
@@ -18,6 +19,7 @@ pub use header::Header;
 pub use offset::Offset;
 pub use package::{Content, ContentType, Package};
 pub use reader::Reader;
+pub use writer::Writer;
 
 /// This a mapping of the WZ archive contents
 #[derive(Debug)]
@@ -35,8 +37,8 @@ impl fmt::Display for Archive {
 
 impl Archive {
     /// Constructs an empty `Archive`
-    pub fn builder<I: builder::Image>(version: u16) -> Builder<I> {
-        Builder::new(version)
+    pub fn builder<I: builder::Image>() -> Builder<I> {
+        Builder::new()
     }
 
     /// Parses a WZ Archive and maps all the content

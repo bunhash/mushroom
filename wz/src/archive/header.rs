@@ -1,11 +1,8 @@
 //! WZ Archive Header
 
-use crate::{
-    archive::Error,
-    encode::{Encode, Encoder, SizeHint},
-};
+use crate::archive::Error;
 use crypto::checksum;
-use std::io::Read;
+use std::io::{Read, Write};
 
 /// Header of the WZ archive
 ///
@@ -101,6 +98,19 @@ impl Header {
         })
     }
 
+    pub fn to_write<W>(&self, write: &mut W) -> Result<(), Error>
+    where
+        W: Write,
+    {
+        write.write_all(&self.identifier)?;
+        write.write_all(&self.size.to_le_bytes())?;
+        write.write_all(&self.content_start.to_le_bytes())?;
+        write.write_all(self.description.as_bytes())?;
+        write.write_all(&[0u8])?;
+        write.write_all(&self.version_hash.to_le_bytes())?;
+        Ok(())
+    }
+
     /// Gathers a list of possible versions that match the `version_hash`
     pub(crate) fn possible_versions(version_hash: u16) -> Vec<u32> {
         let mut versions = Vec::new();
@@ -111,30 +121,6 @@ impl Header {
             }
         }
         versions
-    }
-}
-
-impl Encode for Header {
-    type Error = Error;
-
-    /// Encodes objects
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
-        encoder.encode_bytes(&self.identifier)?;
-        self.size.encode(encoder)?;
-        self.content_start.encode(encoder)?;
-        encoder.encode_bytes(self.description.as_bytes())?;
-        0u8.encode(encoder)?;
-        Ok(self.version_hash.encode(encoder)?)
-    }
-}
-
-impl SizeHint for Header {
-    fn size_hint(&self) -> u64 {
-        1 + self.identifier.len() as u64
-            + self.size.size_hint()
-            + self.content_start.size_hint()
-            + self.description.as_bytes().len() as u64
-            + self.version_hash.size_hint()
     }
 }
 

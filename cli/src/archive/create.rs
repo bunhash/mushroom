@@ -1,7 +1,7 @@
 //! Parsing of WZ archives
 
 use crate::utils;
-use crypto::KeyStream;
+use crypto::{Encryptor, KeyStream};
 use std::{
     fs::{read_dir, File},
     io::{self, BufReader, Read},
@@ -10,7 +10,7 @@ use std::{
 };
 use wz::archive::{
     builder::{Image, Package},
-    Builder, Error,
+    Builder, Error, Writer,
 };
 
 struct ImageRef {
@@ -64,15 +64,24 @@ pub fn do_create(
     directory: &str,
     verbose: bool,
 ) -> Result<(), Error> {
-    let mut builder = Builder::new(version);
+    match key {
+        Some(k) => create(&mut Writer::new(path, k, version)?, directory, verbose),
+        None => create(&mut Writer::unencrypted(path, version)?, directory, verbose),
+    }
+}
+
+fn create<E>(writer: &mut Writer<E>, directory: &str, verbose: bool) -> Result<(), Error>
+where
+    E: Encryptor,
+{
+    let mut builder = Builder::new();
     recursive_do_create(
         &Path::new(directory),
         builder.root(),
         &Path::new(directory),
         verbose,
     )?;
-    let archive = builder.build()?;
-    println!("{}", archive);
+    let archive = builder.write(writer)?;
     Ok(())
 }
 
@@ -99,9 +108,9 @@ fn recursive_do_create<'a>(
     for path in images {
         let name = path
             .file_name()
-            .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?
+            .ok_or(Error::other("invalid filename"))?
             .to_str()
-            .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+            .ok_or(Error::other("invalid filename"))?;
         utils::verbose!(
             verbose,
             "{}",
@@ -130,9 +139,9 @@ fn recursive_do_create<'a>(
     for path in packages {
         let name = path
             .file_name()
-            .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?
+            .ok_or(Error::other("invalid filename"))?
             .to_str()
-            .ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+            .ok_or(Error::other("invalid filename"))?;
         utils::verbose!(
             verbose,
             "{}",
@@ -140,7 +149,7 @@ fn recursive_do_create<'a>(
                 .expect("panic! prefix should exist")
                 .display()
         );
-        recursive_do_create(&path, package.add_package(name), root, verbose)?;
+        recursive_do_create(&path, package.add_package(name)?, root, verbose)?;
     }
     Ok(())
 }
