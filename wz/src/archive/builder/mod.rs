@@ -2,17 +2,16 @@
 
 use crate::{
     archive::{Archive, Content, ContentType, Error, Header, Offset, Writer},
-    encode::{self, Encode, Encoder, SizeHint},
+    encode::{Encode, Encoder, SizeHint},
     Int32,
 };
 use crypto::Encryptor;
 use ego_tree::{NodeMut, NodeRef, Tree};
-use std::path::Path;
 
 mod image;
 mod node;
 
-use node::{Node, MAX_SIZE};
+use node::Node;
 
 pub use image::Image;
 pub use node::Package;

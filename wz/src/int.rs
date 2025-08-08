@@ -61,7 +61,11 @@ impl Encode for Int32 {
 impl SizeHint for Int32 {
     fn size_hint(&self) -> u64 {
         let val: i32 = **self;
-        if val > i8::MAX as i32 { 5 } else { 1 }
+        if val > i8::MAX as i32 {
+            5
+        } else {
+            1
+        }
     }
 }
 
@@ -119,15 +123,22 @@ impl Encode for Int64 {
 impl SizeHint for Int64 {
     fn size_hint(&self) -> u64 {
         let val: i64 = **self;
-        if val > i8::MAX as i64 { 9 } else { 1 }
+        if val > i8::MAX as i64 {
+            9
+        } else {
+            1
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{Int32, Int64, Reader, decode::Decode};
-    use std::io::Cursor;
+    use crate::{
+        decode::{Decode, Decoder, SliceDecoder},
+        encode::{Encode, Encoder, VecEncoder},
+        Int32, Int64,
+    };
 
     #[test]
     fn wz_int() {
@@ -168,21 +179,34 @@ mod tests {
     #[test]
     fn decode_wz_int() {
         let short_notation = vec![0x72];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(short_notation));
-        let wz_int = Int32::decode(&mut reader).expect("error reading from cursor");
+        let mut reader = SliceDecoder::unencrypted(0, 0, &short_notation[..]);
+        let wz_int = Int32::decode(&mut reader).expect("error reading");
         assert_eq!(wz_int, 0x72);
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(long_notation));
-        let wz_int = Int32::decode(&mut reader).expect("error reading from cursor");
+        let mut reader = SliceDecoder::unencrypted(0, 0, &long_notation[..]);
+        let wz_int = Int32::decode(&mut reader).expect("error reading");
         assert_eq!(wz_int, 257);
 
         let failure = vec![(i8::MIN as u8), 1, 1];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(failure));
+        let mut reader = SliceDecoder::unencrypted(0, 0, &failure[..]);
         match Int32::decode(&mut reader) {
             Ok(val) => panic!("Int32 got {}", *val),
             Err(_) => {}
         }
+    }
+
+    #[test]
+    fn encode_wz_int() {
+        let mut writer = VecEncoder::unencrypted(0, 0);
+        Int32::from(0x72)
+            .encode(&mut writer)
+            .expect("error writing");
+        assert_eq!(writer.as_slice(), &[0x72]);
+
+        let mut writer = VecEncoder::unencrypted(0, 0);
+        Int32::from(257).encode(&mut writer).expect("error writing");
+        assert_eq!(writer.as_slice(), &[(i8::MIN as u8), 1, 1, 0, 0]);
     }
 
     #[test]
@@ -224,20 +248,36 @@ mod tests {
     #[test]
     fn decode_wz_long() {
         let short_notation = vec![0x72];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(short_notation));
-        let wz_long = Int64::decode(&mut reader).expect("error reading from cursor");
+        let mut reader = SliceDecoder::unencrypted(0, 0, &short_notation[..]);
+        let wz_long = Int64::decode(&mut reader).expect("error reading");
         assert_eq!(wz_long, Int64::from(0x72));
 
         let long_notation = vec![(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(long_notation));
-        let wz_long = Int64::decode(&mut reader).expect("error reading from cursor");
+        let mut reader = SliceDecoder::unencrypted(0, 0, &long_notation[..]);
+        let wz_long = Int64::decode(&mut reader).expect("error reading");
         assert_eq!(wz_long, Int64::from(257));
 
         let failure = vec![(i8::MIN as u8), 1, 1, 1, 1];
-        let mut reader = Reader::unencrypted(0, 0, Cursor::new(failure));
+        let mut reader = SliceDecoder::unencrypted(0, 0, &failure[..]);
         match Int64::decode(&mut reader) {
             Ok(val) => panic!("Int64 got {}", *val),
             Err(_) => {}
         }
+    }
+
+    #[test]
+    fn encode_wz_long() {
+        let mut writer = VecEncoder::unencrypted(0, 0);
+        Int64::from(0x72)
+            .encode(&mut writer)
+            .expect("error writing");
+        assert_eq!(writer.as_slice(), &[0x72]);
+
+        let mut writer = VecEncoder::unencrypted(0, 0);
+        Int64::from(257).encode(&mut writer).expect("error writing");
+        assert_eq!(
+            writer.as_slice(),
+            &[(i8::MIN as u8), 1, 1, 0, 0, 0, 0, 0, 0]
+        );
     }
 }

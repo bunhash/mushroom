@@ -14,7 +14,7 @@ mod reader;
 mod writer;
 
 pub use builder::Builder;
-pub use error::Error;
+pub use error::{Error, ErrorCode};
 pub use header::Header;
 pub use offset::Offset;
 pub use package::{Content, ContentType, Package};

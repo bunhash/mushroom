@@ -2,63 +2,93 @@
 
 use std::{fmt, io, string};
 
+/// Decode error codes
+#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+pub enum ErrorCode {
+    /// IO Errors
+    Io,
+
+    /// Length Errors
+    Length,
+
+    /// Position Errors
+    Position,
+
+    /// String encoding Errors
+    StringEncoding,
+
+    /// Catch-all
+    Other,
+}
+
 /// Decode errors
 #[derive(Debug)]
-pub enum Error {
-    /// IO Errors
-    Io(io::Error),
-
-    /// Invalid lengths
-    Length(i32),
-
-    /// Invalid position
-    Position(u64),
-
-    /// Unable to decode UTF-8
-    Utf8(string::FromUtf8Error),
-
-    /// Unable to decode Unicode
-    Unicode(string::FromUtf16Error),
+pub struct Error {
+    code: ErrorCode,
+    msg: Box<str>,
 }
 
 impl Error {
-    /// Builds new `Error::Length`
-    pub fn length(length: i32) -> Self {
-        Self::Length(length)
+    /// Builds new `Error`
+    pub fn new(code: ErrorCode, msg: &str) -> Self {
+        Self {
+            code,
+            msg: msg.into(),
+        }
     }
 
-    /// Builds new `Error::Position`
-    pub fn position(position: u64) -> Self {
-        Self::Position(position)
+    /// Builds new IO `Error`
+    pub fn io(msg: &str) -> Self {
+        Self::new(ErrorCode::Io, msg)
+    }
+
+    /// Builds new length `Error`
+    pub fn length(msg: &str) -> Self {
+        Self::new(ErrorCode::Length, msg)
+    }
+
+    /// Builds new position `Error`
+    pub fn position(msg: &str) -> Self {
+        Self::new(ErrorCode::Position, msg)
+    }
+
+    /// Builds new string encoding `Error`
+    pub fn string_encoding(msg: &str) -> Self {
+        Self::new(ErrorCode::StringEncoding, msg)
+    }
+
+    /// Builds new other `Error`
+    pub fn other(msg: &str) -> Self {
+        Self::new(ErrorCode::Other, msg)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(e) => write!(f, "io: {}", e),
-            Self::Length(l) => write!(f, "invalid length: {}", l),
-            Self::Position(p) => write!(f, "invalid position: {}", p),
-            Self::Utf8(e) => write!(f, "utf-8: {}", e),
-            Self::Unicode(e) => write!(f, "unicode: {}", e),
+        match self.code {
+            ErrorCode::Io => write!(f, "io: {}", self.msg),
+            ErrorCode::Length => write!(f, "length: {}", self.msg),
+            ErrorCode::Position => write!(f, "position: {}", self.msg),
+            ErrorCode::StringEncoding => write!(f, "string encoding: {}", self.msg),
+            ErrorCode::Other => write!(f, "other: {}", self.msg),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(other: io::Error) -> Self {
-        Error::Io(other)
+        Error::io(&format!("{}", other))
     }
 }
 
 impl From<string::FromUtf8Error> for Error {
     fn from(other: string::FromUtf8Error) -> Self {
-        Error::Utf8(other)
+        Error::string_encoding(&format!("{}", other))
     }
 }
 
 impl From<string::FromUtf16Error> for Error {
     fn from(other: string::FromUtf16Error) -> Self {
-        Error::Unicode(other)
+        Error::string_encoding(&format!("{}", other))
     }
 }

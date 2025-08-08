@@ -1,10 +1,10 @@
 //! WZ Archive Package Content types
 
 use crate::{
-    Int32,
     archive::{Error, Offset},
     decode::{Decode, Decoder},
     encode::{Encode, Encoder, SizeHint},
+    Int32,
 };
 use std::fmt;
 
@@ -55,7 +55,7 @@ impl Decode for Content {
         let content_type = ContentType::decode(decoder)?;
         let size = Int32::decode(decoder)?;
         if size.is_negative() {
-            return Err(Error::Size(*size));
+            return Err(Error::size("Content size is negative"));
         }
         let checksum = Int32::decode(decoder)?;
         let offset = Offset::decode(decoder)?;
@@ -125,13 +125,13 @@ impl Decode for ContentType {
                 let offset = i32::decode(decoder)?;
                 if offset.is_negative() {
                     // sanity check
-                    return Err(Error::Offset(offset));
+                    return Err(Error::offset("ContentType offset is negative"));
                 }
                 decoder.decode_at::<ContentType>(offset as u32)?
             }
             3 => ContentType::Package(String::decode(decoder)?),
             4 => ContentType::Image(String::decode(decoder)?),
-            t => Err(Error::Tag(t))?,
+            t => Err(Error::tag(&format!("invalid ContentType tag: {}", t)))?,
         })
     }
 }

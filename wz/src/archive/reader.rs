@@ -40,13 +40,16 @@ where
         let position = self.file.stream_position()?;
         Ok(position
             .try_into()
-            .map_err(|_| decode::Error::position(position))?)
+            .map_err(|_| decode::Error::position(&format!("position is greater than u32::MAX")))?)
     }
 
     fn seek(&mut self, position: u32) -> Result<(), decode::Error> {
         let new_position = self.file.seek(SeekFrom::Start(position as u64))?;
         if new_position != position as u64 {
-            Err(decode::Error::position(position as u64))
+            Err(decode::Error::position(&format!(
+                "tried to seek to {:08x} but currently at {:08x}",
+                position, new_position
+            )))
         } else {
             Ok(())
         }
@@ -113,7 +116,9 @@ where
         let header = Header::from_read(&mut file)?;
         let (version_hash, version_checksum) = checksum(&version.to_string());
         if header.version_hash != version_hash {
-            return Err(Error::Version);
+            return Err(Error::version(
+                "WZ archive does not match expected version hash",
+            ));
         }
         Ok(Self {
             header,
@@ -172,6 +177,6 @@ where
                 return Ok(());
             }
         }
-        Err(Error::Bruteforce)
+        Err(Error::bruteforce("bruteforce failed"))
     }
 }

@@ -3,17 +3,17 @@
 use crate::{decode, encode};
 use std::{fmt, io};
 
-/// Decode errors
-#[derive(Debug)]
-pub enum Error {
+/// Archive error codes
+#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+pub enum ErrorCode {
     /// IO Errors
-    Io(io::Error),
+    Io,
 
     /// Decode Errors
-    Decode(decode::Error),
+    Decode,
 
     /// Encode Errors
-    Encode(encode::Error),
+    Encode,
 
     /// Invalid header
     Header,
@@ -25,60 +25,125 @@ pub enum Error {
     Version,
 
     /// Invalid length
-    Length(i32),
+    Length,
 
     /// Invalid size
-    Size(i32),
+    Size,
 
     /// Invalid offset
-    Offset(i32),
+    Offset,
 
     /// Invalid content tag
-    Tag(u8),
+    Tag,
 
     /// Catch all
-    Other(Box<str>),
+    Other,
+}
+
+/// Archive errors
+#[derive(Debug)]
+pub struct Error {
+    code: ErrorCode,
+    msg: Box<str>,
 }
 
 impl Error {
+    /// Builds new `Error`
+    pub fn new(code: ErrorCode, msg: &str) -> Self {
+        Self {
+            code,
+            msg: msg.into(),
+        }
+    }
+
+    /// IO `Error`
+    pub fn io(msg: &str) -> Self {
+        Self::new(ErrorCode::Io, msg)
+    }
+
+    /// Decode `Error`
+    pub fn decode(msg: &str) -> Self {
+        Self::new(ErrorCode::Decode, msg)
+    }
+
+    /// Encode `Error`
+    pub fn encode(msg: &str) -> Self {
+        Self::new(ErrorCode::Encode, msg)
+    }
+
+    /// Header `Error`
+    pub fn header(msg: &str) -> Self {
+        Self::new(ErrorCode::Header, msg)
+    }
+
+    /// Bruteforce `Error`
+    pub fn bruteforce(msg: &str) -> Self {
+        Self::new(ErrorCode::Bruteforce, msg)
+    }
+
+    /// Version `Error`
+    pub fn version(msg: &str) -> Self {
+        Self::new(ErrorCode::Version, msg)
+    }
+
+    /// Length `Error`
+    pub fn length(msg: &str) -> Self {
+        Self::new(ErrorCode::Length, msg)
+    }
+
+    /// Size `Error`
+    pub fn size(msg: &str) -> Self {
+        Self::new(ErrorCode::Size, msg)
+    }
+
+    /// Offset `Error`
+    pub fn offset(msg: &str) -> Self {
+        Self::new(ErrorCode::Offset, msg)
+    }
+
+    /// Tag `Error`
+    pub fn tag(msg: &str) -> Self {
+        Self::new(ErrorCode::Tag, msg)
+    }
+
     /// Custom error message
     pub fn other(msg: &str) -> Self {
-        Self::Other(msg.into())
+        Self::new(ErrorCode::Other, msg)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(e) => write!(f, "io: {}", e),
-            Self::Decode(e) => write!(f, "decode: {}", e),
-            Self::Encode(e) => write!(f, "encode: {}", e),
-            Self::Header => f.write_str("invalid archive header"),
-            Self::Bruteforce => f.write_str("failed to bruteforce version"),
-            Self::Version => f.write_str("invalid WZ archive version"),
-            Self::Length(l) => write!(f, "invalid package length: {}", l),
-            Self::Size(s) => write!(f, "invalid content size: {}", s),
-            Self::Offset(o) => write!(f, "invalid offset: {}", o),
-            Self::Tag(t) => write!(f, "invalid content tag: 0x{:02x}", t),
-            Self::Other(s) => f.write_str(s),
+        match self.code {
+            ErrorCode::Io => write!(f, "io: {}", self.msg),
+            ErrorCode::Decode => write!(f, "decode: {}", self.msg),
+            ErrorCode::Encode => write!(f, "encode: {}", self.msg),
+            ErrorCode::Header => write!(f, "header: {}", self.msg),
+            ErrorCode::Bruteforce => write!(f, "bruteforce: {}", self.msg),
+            ErrorCode::Version => write!(f, "version: {}", self.msg),
+            ErrorCode::Length => write!(f, "length: {}", self.msg),
+            ErrorCode::Size => write!(f, "size: {}", self.msg),
+            ErrorCode::Offset => write!(f, "offset: {}", self.msg),
+            ErrorCode::Tag => write!(f, "tag: {}", self.msg),
+            ErrorCode::Other => write!(f, "other: {}", self.msg),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(other: io::Error) -> Self {
-        Error::Io(other)
+        Self::io(&format!("{}", other))
     }
 }
 
 impl From<decode::Error> for Error {
     fn from(other: decode::Error) -> Self {
-        Error::Decode(other)
+        Self::decode(&format!("{}", other))
     }
 }
 
 impl From<encode::Error> for Error {
     fn from(other: encode::Error) -> Self {
-        Error::Encode(other)
+        Self::encode(&format!("{}", other))
     }
 }

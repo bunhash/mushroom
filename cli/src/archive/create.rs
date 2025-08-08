@@ -81,7 +81,8 @@ where
         &Path::new(directory),
         verbose,
     )?;
-    let archive = builder.write(writer)?;
+    builder.write(writer)?;
+    //println!("{}", builder.build(writer.version())?);
     Ok(())
 }
 

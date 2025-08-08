@@ -145,23 +145,7 @@ where
     }
 
     fn add_node<'b>(&'b mut self, node: Node<I>) -> Result<NodeMut<'b, Node<I>>, Error> {
-        let old_content_size = self.inner.value().content_size();
-
-        // Update length
-        let old_length = self.inner.value().len();
-        let new_length = old_length + 1;
-        if new_length > MAX_LEN {
-            return Err(encode::Error::TooLarge(new_length as u64))?;
-        }
-        self.inner.value().set_len(new_length);
-
-        // If the number of children becomes greater than i8::MAX, the content_size() will change.
-        let new_content_size = self.inner.value().content_size();
-        let delta_content_size = new_content_size - old_content_size;
-
-        // Update size
-        self.update_size(node.meta_size() + node.content_size() + delta_content_size)?;
-
+        self.update_size(node.meta_size() + node.content_size(), true)?;
         Ok(self.inner.append(node))
     }
 
@@ -170,15 +154,30 @@ where
         size + self.inner.value().content_size()
     }
 
-    fn update_size(&mut self, delta_size: u64) -> Result<(), Error> {
-        // Save old real size
+    fn update_size(&mut self, delta_size: u64, append_child: bool) -> Result<(), Error> {
         let old_real_size = self.real_size();
+
+        // Update length
+        if append_child {
+            let old_length = self.inner.value().len();
+            let new_length = old_length + 1;
+            if new_length > MAX_LEN {
+                return Err(encode::Error::too_large(&format!(
+                    "{} is too large",
+                    self.inner.value().name()
+                )))?;
+            }
+            self.inner.value().set_len(new_length);
+        }
 
         // Update size
         let old_size = self.inner.value().size();
         let new_size = old_size + delta_size;
         if new_size > MAX_SIZE {
-            return Err(encode::Error::TooLarge(new_size))?;
+            return Err(encode::Error::too_large(&format!(
+                "{} is too large",
+                self.inner.value().name()
+            )))?;
         }
         self.inner.value().set_size(new_size);
 
@@ -187,7 +186,7 @@ where
 
         // Update parent
         if let Some(parent) = self.inner.parent() {
-            Package { inner: parent }.update_size(new_real_size - old_real_size)?;
+            Package { inner: parent }.update_size(new_real_size - old_real_size, false)?;
         }
         Ok(())
     }

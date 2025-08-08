@@ -58,7 +58,7 @@ impl Header {
         let mut identifier = [0u8; 4];
         identifier.copy_from_slice(&data[0..4]);
         if identifier != [0x50, 0x4b, 0x47, 0x31] {
-            return Err(Error::Header);
+            return Err(Error::header("invalid header identifier"));
         }
 
         // Read the size
@@ -71,14 +71,15 @@ impl Header {
         content_start.copy_from_slice(&data[12..16]);
         let content_start = i32::from_le_bytes(content_start);
         if content_start.is_negative() {
-            return Err(Error::Header);
+            return Err(Error::header("content_start is negative"));
         }
         let content_start = content_start as u32;
 
         // Read the description
         let mut description = vec![0u8; (content_start as usize) - 17];
         read.read_exact(&mut description)?;
-        let description = String::from_utf8(description).map_err(|_| Error::Header)?;
+        let description = String::from_utf8(description)
+            .map_err(|_| Error::header("failed to decode description string"))?;
 
         // Skip the null
         let mut skip = [0];
@@ -98,16 +99,18 @@ impl Header {
         })
     }
 
+    /// Writes the header
     pub fn to_write<W>(&self, write: &mut W) -> Result<(), Error>
     where
         W: Write,
     {
-        write.write_all(&self.identifier)?;
-        write.write_all(&self.size.to_le_bytes())?;
-        write.write_all(&self.content_start.to_le_bytes())?;
-        write.write_all(self.description.as_bytes())?;
-        write.write_all(&[0u8])?;
-        write.write_all(&self.version_hash.to_le_bytes())?;
+        write.write(&self.identifier)?;
+        write.write(&self.size.to_le_bytes())?;
+        write.write(&self.content_start.to_le_bytes())?;
+        write.write(self.description.as_bytes())?;
+        write.write(&[0u8])?;
+        write.write(&self.version_hash.to_le_bytes())?;
+        write.flush()?;
         Ok(())
     }
 
@@ -128,12 +131,24 @@ impl Header {
 mod tests {
 
     use crate::archive::Header;
-    use std::fs::File;
+    use std::io::Cursor;
+
+    static V83_HEADER: &[u8] = &[
+        80, 75, 71, 49, 80, 25, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 80, 97, 99, 107, 97, 103, 101, 32,
+        102, 105, 108, 101, 32, 118, 49, 46, 48, 32, 67, 111, 112, 121, 114, 105, 103, 104, 116,
+        32, 50, 48, 48, 50, 32, 87, 105, 122, 101, 116, 44, 32, 90, 77, 83, 0, 172, 0,
+    ];
+
+    static V172_HEADER: &[u8] = &[
+        80, 75, 71, 49, 49, 26, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 80, 97, 99, 107, 97, 103, 101, 32,
+        102, 105, 108, 101, 32, 118, 49, 46, 48, 32, 67, 111, 112, 121, 114, 105, 103, 104, 116,
+        32, 50, 48, 48, 50, 32, 87, 105, 122, 101, 116, 44, 32, 90, 77, 83, 0, 7, 0,
+    ];
 
     #[test]
     fn v83_header() {
-        let mut file = File::open("testdata/v83-base.wz").expect("error opening file");
-        let header = Header::from_read(&mut file).expect("error reading header");
+        let mut cursor = Cursor::new(V83_HEADER);
+        let header = Header::from_read(&mut cursor).expect("error reading header");
         assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(header.size, 6480);
         assert_eq!(header.content_start, 60);
@@ -142,12 +157,16 @@ mod tests {
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
         assert_eq!(header.version_hash, 172);
+
+        let mut cursor = Cursor::new(Vec::new());
+        header.to_write(&mut cursor).expect("error writing header");
+        assert_eq!(&cursor.get_ref()[..], V83_HEADER);
     }
 
     #[test]
     fn v172_header() {
-        let mut file = File::open("testdata/v172-base.wz").expect("error opening file");
-        let header = Header::from_read(&mut file).expect("error reading header");
+        let mut cursor = Cursor::new(V172_HEADER);
+        let header = Header::from_read(&mut cursor).expect("error reading header");
         assert_eq!(&header.identifier, &[0x50, 0x4b, 0x47, 0x31]);
         assert_eq!(header.size, 6705);
         assert_eq!(header.content_start, 60);
@@ -156,5 +175,9 @@ mod tests {
             "Package file v1.0 Copyright 2002 Wizet, ZMS"
         );
         assert_eq!(header.version_hash, 7);
+
+        let mut cursor = Cursor::new(Vec::new());
+        header.to_write(&mut cursor).expect("error writing header");
+        assert_eq!(&cursor.get_ref()[..], V172_HEADER);
     }
 }

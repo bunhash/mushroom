@@ -4,8 +4,8 @@ mod encoder;
 mod error;
 mod size;
 
-pub use encoder::Encoder;
-pub use error::Error;
+pub use encoder::{Encoder, VecEncoder};
+pub use error::{Error, ErrorCode};
 pub use size::SizeHint;
 
 /// Trait for encoding objects

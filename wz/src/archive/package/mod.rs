@@ -36,7 +36,7 @@ impl Decode for Package {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
         let num_contents = Int32::decode(decoder)?;
         if num_contents.is_negative() {
-            return Err(decode::Error::length(*num_contents).into());
+            return Err(decode::Error::length("negative length decoding package").into());
         }
         let num_contents = *num_contents as usize;
         let mut contents = Vec::with_capacity(num_contents);

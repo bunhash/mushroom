@@ -3,8 +3,8 @@
 mod decoder;
 mod error;
 
-pub use decoder::Decoder;
-pub use error::Error;
+pub use decoder::{Decoder, SliceDecoder};
+pub use error::{Error, ErrorCode};
 
 /// Trait for decoding objects
 pub trait Decode: Sized {
@@ -134,7 +134,9 @@ impl Decode for String {
         };
         // Sanity check
         if length <= 0 {
-            return Err(Error::length(length));
+            return Err(Error::length(&format!(
+                "negative length while decoding string"
+            )));
         }
         Ok(if check < 0 {
             // UTF-8

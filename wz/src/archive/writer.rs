@@ -17,6 +17,7 @@ pub struct Writer<E>
 where
     E: Encryptor,
 {
+    version: u16,
     /// The WZ archive header
     pub header: Header,
     file: BufWriter<File>,
@@ -41,7 +42,7 @@ where
         let position = self.file.stream_position()?;
         Ok(position
             .try_into()
-            .map_err(|_| encode::Error::position(position))?)
+            .map_err(|_| encode::Error::position(&format!("position is greater than u32::MAX")))?)
     }
 
     fn encode_offset(&mut self, offset: Offset) -> Result<(), encode::Error> {
@@ -77,11 +78,17 @@ where
         let file = BufWriter::new(File::create(path)?);
         let (_, version_checksum) = checksum(&version.to_string());
         Ok(Self {
+            version,
             header,
             file,
             encryptor,
             version_checksum,
         })
+    }
+
+    /// Return the version
+    pub fn version(&self) -> u16 {
+        self.version
     }
 
     /// Write the header
