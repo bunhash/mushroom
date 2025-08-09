@@ -1,40 +1,91 @@
 //! WZ Property Object
 
-use crate::{macros, offset::Offset, string::UolString, Decode, Error, Reader};
-use crypto::Decryptor;
-use std::io::{Read, Seek};
+use crate::{
+    decode::{Decode, Decoder},
+    encode::{Encode, Encoder, SizeHint},
+    image::{Error, UolString},
+};
 
 /// Object types
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Object {
-    pub tag: ObjectTag,
+    /// Tag specifying the type of object
+    pub tag: UolObjectTag,
+
+    /// The offset of the object in the WZ image
     pub offset: u32,
 }
 
+impl Decode for Object {
+    type Error = Error;
+
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        Self {
+            tag: UolObjectTag::decode(decoder)?,
+            offset: u32::decode(decoder)?,
+        }
+    }
+}
+
+impl Encode for Object {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        self.tag.encode(encoder)?;
+        self.offset.encode(encoder)?;
+        Ok(())
+    }
+}
+
+impl SizeHint for Object {
+    fn size_hint(&self) -> u64 {
+        self.tag.size_hint() + self.offset.size_hint()
+    }
+}
+
 /// Uol Object Tags
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum UolObjectTag {
     Placed(ObjectTag),
     Referenced(u32),
 }
 
 impl Decode for UolObjectTag {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let check = u8::decode(self)?;
+    type Error = Error;
+
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        let check = u8::decode(decoder)?;
         match check {
-            0x73 => ObjectTag::decode(self),
-            0x1b => {
-                let offset = WzOffset::from(u32::decode(self)?);
-                let pos = self.position()?;
-                self.seek(offset)?;
-                let string = String::decode(self)?;
-                self.seek(pos)?;
-                Ok(string)
+            0x73 => ObjectTag::decode(decoder),
+            0x1b => decoder.decode_at(u32::decode(decoder)?),
+            u => Err(Error::tag(&format!("invalid UolObjectTag {:02x}", u))),
+        }
+    }
+}
+
+impl Encode for UolObjectTag {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        match self {
+            Self::Placed(value) => {
+                0x73u8.encode(encoder)?;
+                value.encode(encoder)?;
             }
-            u => Err(ImageError::UolType(u).into()),
+            Self::Referenced(value) => {
+                0x1bu8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl SizeHint for UolObjectTag {
+    fn size_hint(&self) -> u64 {
+        match self {
+            Self::Placed(value) => 1 + value.size_hint(),
+            Self::Referenced(value) => 1 + value.size_hint(),
         }
     }
 }
@@ -62,12 +113,10 @@ pub enum ObjectTag {
 }
 
 impl Decode for ObjectTag {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        let tag = String::decode(reader)?;
+    type Error = Error;
+
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        let tag = String::decode(decoder)?;
         Ok(match tag.as_ref() {
             "Property" => Self::Property,
             "Canvas" => Self::Canvas,
@@ -75,7 +124,36 @@ impl Decode for ObjectTag {
             "Shape2D#Vector2D" => Self::Vector,
             "UOL" => Self::Uol,
             "Sound_DX8" => Self::Sound,
-            t => Err(ImageError::ObjectType(String::from(t)).into())?,
+            t => Err(Error::tag(&format!("invalid ObjectTag {}", t)))?,
         })
+    }
+}
+
+impl Encode for ObjectTag {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        match self {
+            ObjectTag::PropertyList => "Property".encode(encoder)?,
+            ObjectTag::Canvas => "Canvas".encode(encoder)?,
+            ObjectTag::Convex => "Shape2D#Convex2D".encode(encoder)?,
+            ObjectTag::Vector => "Shape2D#Vector2D".encode(encoder)?,
+            ObjectTag::Uol => "UOL".encode(encoder)?,
+            ObjectTag::Sound => "Sound_DX8".encode(encoder)?,
+        }
+        Ok(())
+    }
+}
+
+impl SizeHint for ObjectTag {
+    fn size_hint(&self) -> u64 {
+        match self {
+            ObjectTag::PropertyList => "Property".size_hint(),
+            ObjectTag::Canvas => "Canvas".size_hint(),
+            ObjectTag::Convex => "Shape2D#Convex2D".size_hint(),
+            ObjectTag::Vector => "Shape2D#Vector2D".size_hint(),
+            ObjectTag::Uol => "UOL".size_hint(),
+            ObjectTag::Sound => "Sound_DX8".size_hint(),
+        }
     }
 }
