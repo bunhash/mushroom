@@ -4,16 +4,18 @@ use crate::decode::{Decode, Decoder};
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
 use std::fmt;
 
+mod content;
 mod error;
 mod object;
-mod property;
+mod package;
 mod reader;
 mod string;
 mod value;
 
+pub use content::Content;
 pub use error::Error;
 pub use object::{Object, ObjectTag, UolObjectTag};
-pub use property::{Property, PropertyList};
+pub use package::Package;
 pub use reader::Reader;
 pub use string::UolString;
 pub use value::Value;
@@ -21,7 +23,7 @@ pub use value::Value;
 /// This a mapping of the WZ image contents
 #[derive(Debug)]
 pub struct Image {
-    tree: Tree<Property>,
+    tree: Tree<Content>,
 }
 
 impl fmt::Display for Image {
@@ -34,36 +36,18 @@ impl Image {
     /// Parses a WZ Image and maps all the content
     pub(crate) fn parse<D: Decoder>(decoder: &mut D) -> Result<Self, Error> {
         decoder.seek(0)?;
-        let root = Property {
-            content_type: ContentType::Package("".into()),
-            size: header.size.into(),
-            checksum: 0.into(),
-            offset: Offset::from(decoder.position()?),
-        };
-        let mut tree = Tree::new(root);
+        let mut tree = Tree::new(Content {
+            name: UolString::placed(""),
+            value: Value::Object(Object::decode(decoder)?),
+        });
         Self::parse_recur(tree.root_mut(), decoder)?;
-        Ok(Self { header, tree })
+        Ok(Self { tree })
     }
 
     fn parse_recur<'a, D: Decoder>(
         mut node: NodeMut<'a, Content>,
         decoder: &mut D,
     ) -> Result<(), Error> {
-        let offset = node.value().offset;
-        decoder.seek(*offset)?;
-        let package = Package::decode(decoder)?;
-        for c in package.contents.into_iter() {
-            match &c.content_type {
-                ContentType::Package(_) => {
-                    let child = node.append(c);
-                    Self::parse_recur(child, decoder)?;
-                }
-                ContentType::Image(_) => {
-                    node.append(c);
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Iterator over the archive content
@@ -143,16 +127,14 @@ impl Image {
     pub fn get_subtree(&self, path: &str) -> Option<Tree<&Content>> {
         let node = self.get_node(path)?;
         let mut tree = Tree::new(node.value());
-        let mut queue = VecDeque::from([(node.id(), tree.root().id())]);
-        while let Some((src_id, dst_id)) = queue.pop_front() {
-            let src_node = self.tree.get(src_id).expect("panic! node should exist");
-            let mut dst_node = tree.get_mut(dst_id).expect("panic! node should exist");
-            for src_child in src_node.children() {
-                let dst_child = dst_node.append(src_child.value());
-                queue.push_back((src_child.id(), dst_child.id()));
-            }
-        }
+        Self::build_subtree_recur(tree.root_mut(), node);
         Some(tree)
+    }
+
+    fn build_subtree_recur<'a, 'b>(mut dst: NodeMut<'a, &'b Content>, src: NodeRef<'b, Content>) {
+        for child in src.children() {
+            Self::build_subtree_recur(dst.append(child.value()), child);
+        }
     }
 }
 

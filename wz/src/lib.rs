@@ -27,6 +27,6 @@ mod macros;
 pub mod archive;
 pub mod decode;
 pub mod encode;
-pub mod image;
+//pub mod image;
 
 pub use int::{Int32, Int64};

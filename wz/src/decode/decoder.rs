@@ -38,6 +38,11 @@ pub trait Decoder: Sized {
         self.seek(current)?;
         Ok(ret)
     }
+
+    /// Allow the decoder to perform a function on a decoded value
+    fn visit<T>(&mut self, value: T) -> T {
+        value
+    }
 }
 
 /// Decoder for slices

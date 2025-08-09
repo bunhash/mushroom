@@ -1,12 +1,13 @@
 //! WZ Archive Reader
 
 use crate::{
-    archive::{Archive, Error, Header, Offset, Package},
+    archive::{Archive, ContentType, Error, Header, Offset, Package},
     decode::{self, Decode, Decoder},
     Int32,
 };
 use crypto::{checksum, Decryptor, DummyKeyStream};
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, BufReader, Read, Seek, SeekFrom, Write},
     path::Path,
@@ -22,6 +23,7 @@ where
     file: BufReader<File>,
     decryptor: D,
     version_checksum: u32,
+    content_map: HashMap<u32, ContentType>,
 }
 
 impl<D> Decoder for Reader<D>
@@ -101,6 +103,7 @@ where
             file,
             decryptor,
             version_checksum: 0,
+            content_map: HashMap::new(),
         };
         ret.bruteforce_version()?;
         Ok(ret)
@@ -125,6 +128,7 @@ where
             file,
             decryptor,
             version_checksum,
+            content_map: HashMap::new(),
         })
     }
 

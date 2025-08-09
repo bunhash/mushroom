@@ -101,14 +101,15 @@ impl Decode for f32 {
     type Error = Error;
 
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
-        Ok(match u8::decode(decoder)? {
+        let value = match u8::decode(decoder)? {
             0x80 => {
                 let mut buf = [0u8; 4];
                 decoder.decode_bytes(&mut buf)?;
                 f32::from_le_bytes(buf)
             }
             _ => 0f32,
-        })
+        };
+        Ok(value)
     }
 }
 
@@ -138,13 +139,14 @@ impl Decode for String {
                 "negative length while decoding string"
             )));
         }
-        Ok(if check < 0 {
+        let value = if check < 0 {
             // UTF-8
             String::from_utf8(decode_utf8(decoder, length as usize)?)?
         } else {
             // Unicode
             String::from_utf16(&decode_unicode(decoder, length as usize)?)?
-        })
+        };
+        Ok(value)
     }
 }
 

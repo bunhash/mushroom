@@ -1,4 +1,4 @@
-//! WZ "Any" type
+//! WZ Image "Any" type
 
 use crate::{
     decode::{Decode, Decoder},
@@ -31,8 +31,8 @@ pub enum Value {
     /// String
     String(UolString),
 
-    /// Nested `Object` at offset
-    Object(u32),
+    /// `Object`
+    Object(Object),
 }
 
 impl Decode for Value {

@@ -1,4 +1,4 @@
-//! WZ Property Object
+//! WZ Image Object
 
 use crate::{
     decode::{Decode, Decoder},
@@ -6,7 +6,7 @@ use crate::{
     image::Error,
 };
 
-/// Object types
+/// Object tag and offset
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Object {
     /// Tag specifying the type of object
@@ -22,7 +22,7 @@ impl Decode for Object {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
         Ok(Self {
             tag: UolObjectTag::decode(decoder)?,
-            offset: u32::decode(decoder)?,
+            offset: decoder.position()?,
         })
     }
 }
@@ -32,14 +32,13 @@ impl Encode for Object {
 
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
         self.tag.encode(encoder)?;
-        self.offset.encode(encoder)?;
         Ok(())
     }
 }
 
 impl SizeHint for Object {
     fn size_hint(&self) -> u64 {
-        self.tag.size_hint() + self.offset.size_hint()
+        self.tag.size_hint()
     }
 }
 
@@ -93,11 +92,17 @@ impl SizeHint for UolObjectTag {
     }
 }
 
+impl From<ObjectTag> for UolObjectTag {
+    fn from(other: ObjectTag) -> Self {
+        UolObjectTag::Placed(ObjectTag)
+    }
+}
+
 /// Object Tags
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ObjectTag {
-    /// List of properties
-    PropertyList,
+    /// List of `Content`
+    Package,
 
     /// Canvas
     Canvas,

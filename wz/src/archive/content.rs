@@ -34,6 +34,11 @@ impl Content {
 impl fmt::Display for Content {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match &self.content_type {
+            ContentType::Referenced(offset) => write!(
+                f,
+                "Ref({:08x}, size={}, checksum={}, offset={})",
+                offset, self.size, self.checksum, self.offset
+            ),
             ContentType::Package(name) => write!(
                 f,
                 "Package({}, size={}, checksum={}, offset={})",
@@ -92,6 +97,9 @@ impl SizeHint for Content {
 /// Content Types
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq)]
 pub enum ContentType {
+    /// Referenced tag=2
+    Referenced(u32),
+
     /// Package tag=3
     Package(String),
 
@@ -105,6 +113,7 @@ impl ContentType {
         match self {
             ContentType::Package(name) => name.as_str(),
             ContentType::Image(name) => name.as_str(),
+            _ => "",
         }
     }
 }
@@ -114,21 +123,7 @@ impl Decode for ContentType {
 
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
         Ok(match u8::decode(decoder)? {
-            2 => {
-                // A tag of 2 indicates a reference elsewhere. This is probably used as a form of
-                // compression so duplicate strings are only written once to the WZ archive. This
-                // just de-references the strings. Writing duplicate strings to in a WZ pacakge
-                // should not be invalid when parsing. Maybe in the future, I can implement this
-                // form of compression but I'd rather not waste the time now.
-
-                // Read the offset of where the name and "real" tag are located
-                let offset = i32::decode(decoder)?;
-                if offset.is_negative() {
-                    // sanity check
-                    return Err(Error::offset("ContentType offset is negative"));
-                }
-                decoder.decode_at::<ContentType>(offset as u32)?
-            }
+            2 => ContentType::Referenced(u32::decode(decoder)?),
             3 => ContentType::Package(String::decode(decoder)?),
             4 => ContentType::Image(String::decode(decoder)?),
             t => Err(Error::tag(&format!("invalid ContentType tag: {}", t)))?,
@@ -141,6 +136,10 @@ impl Encode for ContentType {
 
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
         match self {
+            Self::Referenced(offset) => {
+                2u8.encode(encoder)?;
+                offset.encode(encoder)?;
+            }
             Self::Package(name) => {
                 3u8.encode(encoder)?;
                 name.encode(encoder)?;
@@ -156,6 +155,10 @@ impl Encode for ContentType {
 
 impl SizeHint for ContentType {
     fn size_hint(&self) -> u64 {
-        1 + self.name().size_hint()
+        match self {
+            Self::Referenced(offset) => 1 + offset.size_hint(),
+            Self::Package(name) => 1 + name.size_hint(),
+            Self::Image(name) => 1 + name.size_hint(),
+        }
     }
 }

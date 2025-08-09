@@ -21,6 +21,19 @@ pub enum UolString {
     Referenced(u32),
 }
 
+impl UolString {
+    pub fn placed<S>(val: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Placed(val.into())
+    }
+
+    pub fn referenced(val: u32) -> Self {
+        Self::Referenced(val)
+    }
+}
+
 impl fmt::Display for UolString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {

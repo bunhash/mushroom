@@ -66,6 +66,7 @@ impl Archive {
         let package = Package::decode(decoder)?;
         for c in package.contents.into_iter() {
             match &c.content_type {
+                ContentType::Referenced(off) => unimplemented!(),
                 ContentType::Package(_) => {
                     let child = node.append(c);
                     Self::parse_recur(child, decoder)?;
@@ -155,16 +156,14 @@ impl Archive {
     pub fn get_subtree(&self, path: &str) -> Option<Tree<&Content>> {
         let node = self.get_node(path)?;
         let mut tree = Tree::new(node.value());
-        let mut queue = VecDeque::from([(node.id(), tree.root().id())]);
-        while let Some((src_id, dst_id)) = queue.pop_front() {
-            let src_node = self.tree.get(src_id).expect("panic! node should exist");
-            let mut dst_node = tree.get_mut(dst_id).expect("panic! node should exist");
-            for src_child in src_node.children() {
-                let dst_child = dst_node.append(src_child.value());
-                queue.push_back((src_child.id(), dst_child.id()));
-            }
-        }
+        Self::build_subtree_recur(tree.root_mut(), node);
         Some(tree)
+    }
+
+    fn build_subtree_recur<'a, 'b>(mut dst: NodeMut<'a, &'b Content>, src: NodeRef<'b, Content>) {
+        for child in src.children() {
+            Self::build_subtree_recur(dst.append(child.value()), child);
+        }
     }
 }
 
