@@ -12,7 +12,7 @@ use std::{
     path::Path,
 };
 
-/// WZ Archive Reader structure
+/// WZ Archive Reader
 #[derive(Debug)]
 pub struct Reader<D>
 where

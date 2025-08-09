@@ -2,10 +2,11 @@
 
 use crate::decode::{Decode, Decoder};
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
-use std::{collections::VecDeque, fmt};
+use std::fmt;
 
 pub mod builder;
 
+mod content;
 mod error;
 mod header;
 mod offset;
@@ -14,10 +15,11 @@ mod reader;
 mod writer;
 
 pub use builder::Builder;
+pub use content::{Content, ContentType};
 pub use error::{Error, ErrorCode};
 pub use header::Header;
 pub use offset::Offset;
-pub use package::{Content, ContentType, Package};
+pub use package::Package;
 pub use reader::Reader;
 pub use writer::Writer;
 
@@ -51,25 +53,29 @@ impl Archive {
             offset: Offset::from(decoder.position()?),
         };
         let mut tree = Tree::new(root);
-        let mut queue = VecDeque::from([tree.root().id()]);
-        while let Some(id) = queue.pop_front() {
-            let mut node = tree.get_mut(id).expect("panic! node should exist");
-            let offset = node.value().offset;
-            decoder.seek(*offset)?;
-            let package = Package::decode(decoder)?;
-            for c in package.contents.into_iter() {
-                match &c.content_type {
-                    ContentType::Package(_) => {
-                        let child = node.append(c);
-                        queue.push_back(child.id());
-                    }
-                    ContentType::Image(_) => {
-                        node.append(c);
-                    }
+        Self::parse_recur(tree.root_mut(), decoder)?;
+        Ok(Self { header, tree })
+    }
+
+    fn parse_recur<'a, D: Decoder>(
+        mut node: NodeMut<'a, Content>,
+        decoder: &mut D,
+    ) -> Result<(), Error> {
+        let offset = node.value().offset;
+        decoder.seek(*offset)?;
+        let package = Package::decode(decoder)?;
+        for c in package.contents.into_iter() {
+            match &c.content_type {
+                ContentType::Package(_) => {
+                    let child = node.append(c);
+                    Self::parse_recur(child, decoder)?;
+                }
+                ContentType::Image(_) => {
+                    node.append(c);
                 }
             }
         }
-        Ok(Self { header, tree })
+        Ok(())
     }
 
     /// Iterator over the archive content

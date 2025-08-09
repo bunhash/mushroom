@@ -24,12 +24,6 @@ pub enum ErrorCode {
     /// Invalid version
     Version,
 
-    /// Invalid length
-    Length,
-
-    /// Invalid size
-    Size,
-
     /// Invalid offset
     Offset,
 
@@ -86,16 +80,6 @@ impl Error {
         Self::new(ErrorCode::Version, msg)
     }
 
-    /// Length `Error`
-    pub fn length(msg: &str) -> Self {
-        Self::new(ErrorCode::Length, msg)
-    }
-
-    /// Size `Error`
-    pub fn size(msg: &str) -> Self {
-        Self::new(ErrorCode::Size, msg)
-    }
-
     /// Offset `Error`
     pub fn offset(msg: &str) -> Self {
         Self::new(ErrorCode::Offset, msg)
@@ -115,17 +99,15 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.code {
-            ErrorCode::Io => write!(f, "io: {}", self.msg),
-            ErrorCode::Decode => write!(f, "decode: {}", self.msg),
-            ErrorCode::Encode => write!(f, "encode: {}", self.msg),
-            ErrorCode::Header => write!(f, "header: {}", self.msg),
-            ErrorCode::Bruteforce => write!(f, "bruteforce: {}", self.msg),
-            ErrorCode::Version => write!(f, "version: {}", self.msg),
-            ErrorCode::Length => write!(f, "length: {}", self.msg),
-            ErrorCode::Size => write!(f, "size: {}", self.msg),
-            ErrorCode::Offset => write!(f, "offset: {}", self.msg),
-            ErrorCode::Tag => write!(f, "tag: {}", self.msg),
-            ErrorCode::Other => write!(f, "other: {}", self.msg),
+            ErrorCode::Io => write!(f, "{}", self.msg),
+            ErrorCode::Decode => write!(f, "{}", self.msg),
+            ErrorCode::Encode => write!(f, "{}", self.msg),
+            ErrorCode::Header => write!(f, "{}", self.msg),
+            ErrorCode::Bruteforce => write!(f, "{}", self.msg),
+            ErrorCode::Version => write!(f, "{}", self.msg),
+            ErrorCode::Offset => write!(f, "{}", self.msg),
+            ErrorCode::Tag => write!(f, "{}", self.msg),
+            ErrorCode::Other => write!(f, "{}", self.msg),
         }
     }
 }

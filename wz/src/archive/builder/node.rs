@@ -50,13 +50,6 @@ where
         }
     }
 
-    pub fn checksum(&self) -> i32 {
-        match self {
-            Node::Package { .. } => 0,
-            Node::Image { inner, .. } => inner.checksum(),
-        }
-    }
-
     pub fn len(&self) -> usize {
         match self {
             Node::Package { length, .. } => *length,
@@ -162,7 +155,7 @@ where
             let old_length = self.inner.value().len();
             let new_length = old_length + 1;
             if new_length > MAX_LEN {
-                return Err(encode::Error::too_large(&format!(
+                return Err(encode::Error::size(&format!(
                     "{} is too large",
                     self.inner.value().name()
                 )))?;
@@ -174,7 +167,7 @@ where
         let old_size = self.inner.value().size();
         let new_size = old_size + delta_size;
         if new_size > MAX_SIZE {
-            return Err(encode::Error::too_large(&format!(
+            return Err(encode::Error::size(&format!(
                 "{} is too large",
                 self.inner.value().name()
             )))?;

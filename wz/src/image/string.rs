@@ -50,13 +50,14 @@ impl Encode for UolString {
         match self {
             Self::Placed(value) => {
                 0u8.encode(encoder)?;
-                value.encode(encoder)
+                value.encode(encoder)?;
             }
             Self::Referenced(value) => {
                 1u8.encode(encoder)?;
-                value.encode(encoder)
+                value.encode(encoder)?;
             }
         }
+        Ok(())
     }
 }
 

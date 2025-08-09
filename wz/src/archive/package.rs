@@ -1,14 +1,10 @@
 //! WZ Archive Package types
 
 use crate::{
-    archive::Error,
+    archive::{Content, Error},
     decode::{self, Decode, Decoder},
     Int32,
 };
-
-mod content;
-
-pub use content::{Content, ContentType};
 
 /// Packages can hold other packages or images. The structure is as follows:
 ///

@@ -3,7 +3,7 @@
 use crate::{
     decode::{Decode, Decoder},
     encode::{Encode, Encoder, SizeHint},
-    image::{Error, UolString},
+    image::Error,
 };
 
 /// Object types
@@ -20,10 +20,10 @@ impl Decode for Object {
     type Error = Error;
 
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
-        Self {
+        Ok(Self {
             tag: UolObjectTag::decode(decoder)?,
             offset: u32::decode(decoder)?,
-        }
+        })
     }
 }
 
@@ -46,7 +46,10 @@ impl SizeHint for Object {
 /// Uol Object Tags
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum UolObjectTag {
+    /// Object tag
     Placed(ObjectTag),
+
+    /// Reference to an object tag
     Referenced(u32),
 }
 
@@ -55,11 +58,11 @@ impl Decode for UolObjectTag {
 
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
         let check = u8::decode(decoder)?;
-        match check {
-            0x73 => ObjectTag::decode(decoder),
-            0x1b => decoder.decode_at(u32::decode(decoder)?),
-            u => Err(Error::tag(&format!("invalid UolObjectTag {:02x}", u))),
-        }
+        Ok(match check {
+            0x73 => Self::Placed(ObjectTag::decode(decoder)?),
+            0x1b => Self::Referenced(u32::decode(decoder)?),
+            u => Err(Error::tag(&format!("invalid UolObjectTag {:02x}", u)))?,
+        })
     }
 }
 
@@ -118,7 +121,7 @@ impl Decode for ObjectTag {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
         let tag = String::decode(decoder)?;
         Ok(match tag.as_ref() {
-            "Property" => Self::Property,
+            "Property" => Self::PropertyList,
             "Canvas" => Self::Canvas,
             "Shape2D#Convex2D" => Self::Convex,
             "Shape2D#Vector2D" => Self::Vector,

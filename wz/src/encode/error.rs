@@ -15,7 +15,7 @@ pub enum ErrorCode {
     Position,
 
     /// Content is too large
-    TooLarge,
+    Size,
 
     /// Catch-all other
     Other,
@@ -52,9 +52,9 @@ impl Error {
         Self::new(ErrorCode::Position, msg)
     }
 
-    /// Builds new TooLarge `Error`
-    pub fn too_large(msg: &str) -> Self {
-        Self::new(ErrorCode::TooLarge, msg)
+    /// Builds new Size `Error`
+    pub fn size(msg: &str) -> Self {
+        Self::new(ErrorCode::Size, msg)
     }
 
     /// Builds new other `Error`
@@ -66,11 +66,11 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.code {
-            ErrorCode::Io => write!(f, "io: {}", self.msg),
-            ErrorCode::UolString => write!(f, "UOL string: {}", self.msg),
-            ErrorCode::Position => write!(f, "position: {}", self.msg),
-            ErrorCode::TooLarge => write!(f, "too large: {}", self.msg),
-            ErrorCode::Other => write!(f, "other: {}", self.msg),
+            ErrorCode::Io => write!(f, "{}", self.msg),
+            ErrorCode::UolString => write!(f, "{}", self.msg),
+            ErrorCode::Position => write!(f, "{}", self.msg),
+            ErrorCode::Size => write!(f, "{}", self.msg),
+            ErrorCode::Other => write!(f, "{}", self.msg),
         }
     }
 }

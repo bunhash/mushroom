@@ -91,14 +91,14 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.code {
-            ErrorCode::Io => write!(f, "io: {}", self.msg),
-            ErrorCode::Decode => write!(f, "decode: {}", self.msg),
-            ErrorCode::Encode => write!(f, "encode: {}", self.msg),
-            ErrorCode::Length => write!(f, "length: {}", self.msg),
-            ErrorCode::Size => write!(f, "size: {}", self.msg),
-            ErrorCode::Offset => write!(f, "offset: {}", self.msg),
-            ErrorCode::Tag => write!(f, "tag: {}", self.msg),
-            ErrorCode::Other => write!(f, "other: {}", self.msg),
+            ErrorCode::Io => write!(f, "{}", self.msg),
+            ErrorCode::Decode => write!(f, "{}", self.msg),
+            ErrorCode::Encode => write!(f, "{}", self.msg),
+            ErrorCode::Length => write!(f, "{}", self.msg),
+            ErrorCode::Size => write!(f, "{}", self.msg),
+            ErrorCode::Offset => write!(f, "{}", self.msg),
+            ErrorCode::Tag => write!(f, "{}", self.msg),
+            ErrorCode::Other => write!(f, "{}", self.msg),
         }
     }
 }

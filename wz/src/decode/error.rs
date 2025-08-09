@@ -11,6 +11,9 @@ pub enum ErrorCode {
     /// Length Errors
     Length,
 
+    /// Size Errors
+    Size,
+
     /// Position Errors
     Position,
 
@@ -47,6 +50,11 @@ impl Error {
         Self::new(ErrorCode::Length, msg)
     }
 
+    /// Builds new size `Error`
+    pub fn size(msg: &str) -> Self {
+        Self::new(ErrorCode::Size, msg)
+    }
+
     /// Builds new position `Error`
     pub fn position(msg: &str) -> Self {
         Self::new(ErrorCode::Position, msg)
@@ -66,11 +74,12 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.code {
-            ErrorCode::Io => write!(f, "io: {}", self.msg),
-            ErrorCode::Length => write!(f, "length: {}", self.msg),
-            ErrorCode::Position => write!(f, "position: {}", self.msg),
-            ErrorCode::StringEncoding => write!(f, "string encoding: {}", self.msg),
-            ErrorCode::Other => write!(f, "other: {}", self.msg),
+            ErrorCode::Io => write!(f, "{}", self.msg),
+            ErrorCode::Length => write!(f, "{}", self.msg),
+            ErrorCode::Size => write!(f, "{}", self.msg),
+            ErrorCode::Position => write!(f, "{}", self.msg),
+            ErrorCode::StringEncoding => write!(f, "{}", self.msg),
+            ErrorCode::Other => write!(f, "{}", self.msg),
         }
     }
 }

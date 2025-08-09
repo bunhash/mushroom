@@ -2,7 +2,7 @@
 
 use crate::{
     archive::{Error, Offset},
-    decode::{Decode, Decoder},
+    decode::{self, Decode, Decoder},
     encode::{Encode, Encoder, SizeHint},
     Int32,
 };
@@ -55,7 +55,7 @@ impl Decode for Content {
         let content_type = ContentType::decode(decoder)?;
         let size = Int32::decode(decoder)?;
         if size.is_negative() {
-            return Err(Error::size("Content size is negative"));
+            return Err(decode::Error::size("Content size is negative"))?;
         }
         let checksum = Int32::decode(decoder)?;
         let offset = Offset::decode(decoder)?;

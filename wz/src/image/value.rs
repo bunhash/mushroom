@@ -1,10 +1,14 @@
 //! WZ "Any" type
 
-use crate::{image::Object, macros, string::UolString, Decode, Error, Reader};
-use crypto::Decryptor;
-use std::io::{Read, Seek};
+use crate::{
+    decode::{Decode, Decoder},
+    encode::{Encode, Encoder, SizeHint},
+    image::{Error, Object, UolString},
+    Int32, Int64,
+};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+/// The value of a property
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     /// Null
     Null,
@@ -27,26 +31,78 @@ pub enum Value {
     /// String
     String(UolString),
 
-    /// Nested Object
-    Object(Object),
+    /// Nested `Object` at offset
+    Object(u32),
 }
 
 impl Decode for Value {
-    fn decode<R, D>(reader: &mut Reader<R, D>) -> Result<Self, Self::Error>
-    where
-        R: Read + Seek,
-        D: Decryptor,
-    {
-        Ok(match u8::decode(reader)? {
+    type Error = Error;
+
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Self, Self::Error> {
+        Ok(match u8::decode(decoder)? {
             0 => Self::Null,
-            2 | 11 => Self::Short(i16::decode(reader)?),
-            3 | 19 => Self::Int(Int32::decode(reader)?),
-            20 => Self::Long(Int64::decode(reader)?),
-            4 => Self::Float(f32::decode(reader)?),
-            5 => Self::Double(f64::decode(reader)?),
-            8 => Self::String(UolString::decode(reader)?),
-            9 => Self::Object(Object::decode(reader)?),
-            t => Err(ImageError::PropertyType(t).into()),
+            2 | 11 => Self::Short(i16::decode(decoder)?),
+            3 | 19 => Self::Int(Int32::decode(decoder)?),
+            20 => Self::Long(Int64::decode(decoder)?),
+            4 => Self::Float(f32::decode(decoder)?),
+            5 => Self::Double(f64::decode(decoder)?),
+            8 => Self::String(UolString::decode(decoder)?),
+            9 => Self::Object(Object::decode(decoder)?),
+            t => Err(Error::tag(&format!("invalid Value tag {:02x}", t)))?,
         })
+    }
+}
+
+impl Encode for Value {
+    type Error = Error;
+
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), Self::Error> {
+        match self {
+            Self::Null => 0u8.encode(encoder)?,
+            Self::Short(value) => {
+                2u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::Int(value) => {
+                3u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::Long(value) => {
+                20u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::Float(value) => {
+                4u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::Double(value) => {
+                5u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::String(value) => {
+                8u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+            Self::Object(value) => {
+                9u8.encode(encoder)?;
+                value.encode(encoder)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl SizeHint for Value {
+    fn size_hint(&self) -> u64 {
+        match self {
+            Self::Null => 1,
+            Self::Short(value) => 1 + value.size_hint(),
+            Self::Int(value) => 1 + value.size_hint(),
+            Self::Long(value) => 1 + value.size_hint(),
+            Self::Float(value) => 1 + value.size_hint(),
+            Self::Double(value) => 1 + value.size_hint(),
+            Self::String(value) => 1 + value.size_hint(),
+            Self::Object(value) => 1 + value.size_hint(),
+        }
     }
 }
