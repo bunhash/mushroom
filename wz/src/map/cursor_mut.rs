@@ -184,16 +184,16 @@ impl<'a, T> CursorMut<'a, T> {
             .data
     }
 
-    /// Creates a new child at the current position. Errors when a child with the provided name
-    /// already exists.
+    /// Creates a new child at the current position. Overwrites the data when a child with the same
+    /// name already exists.
     pub fn create(&mut self, name: String, data: T) -> Result<&mut Self, MapError> {
         if self.has_child(name.as_str()) {
-            Err(MapError::Duplicate(name))
-        } else {
-            let node = self.arena.new_node(MapNode::new(name, data));
-            self.position.append(node, self.arena);
-            Ok(self)
+            self.delete(name.as_str())?;
         }
+
+        let node = self.arena.new_node(MapNode::new(name, data));
+        self.position.append(node, self.arena);
+        Ok(self)
     }
 
     /// Detaches the child with the given name at the current position. This function adds that
@@ -210,8 +210,8 @@ impl<'a, T> CursorMut<'a, T> {
         Ok(self)
     }
 
-    /// Pastes the contents of the clipboard at the current position. Errors when the clipboard is
-    /// empty or another node with the same name exists.
+    /// Pastes the contents of the clipboard at the current position. Overwrites the data when
+    /// another node with the same name exists. Errors when the clipboard is empty.
     pub fn paste(&mut self) -> Result<&mut Self, MapError> {
         let id = self.clipboard.ok_or(MapError::ClipboardEmpty)?;
         let name = self
@@ -221,8 +221,8 @@ impl<'a, T> CursorMut<'a, T> {
             .get()
             .name
             .as_str();
-        if self.get_id(self.position, name).is_ok() {
-            return Err(MapError::Duplicate(name.to_string()));
+        if let Ok(id) = self.get_id(self.position, name) {
+            id.remove_subtree(self.arena);
         }
         self.position.append(id, self.arena);
         self.clipboard = None;
@@ -269,10 +269,9 @@ mod tests {
             .expect("error creating n1_1")
             .create(String::from("n1_2"), 3500)
             .expect("error creating n1_2");
-        match cursor.create(String::from("n1_2"), 0) {
-            Err(MapError::Duplicate(_)) => {}
-            _ => panic!("should have failed with MapError::Duplicate"),
-        }
+        cursor
+            .create(String::from("n1_2"), 0)
+            .expect("error overwriting n1_2");
         assert_eq!(&cursor.list().collect::<Vec<&str>>(), &["n1_1", "n1_2"]);
     }
 
@@ -349,10 +348,7 @@ mod tests {
             .expect("error cutting new n1_1")
             .move_to("n1_2")
             .expect("error moving to n1_2");
-        match cursor.paste() {
-            Err(MapError::Duplicate(_)) => {}
-            r => panic!("expected MapError::Duplicate, found {:?}", r),
-        }
+        cursor.paste().expect("error overwriting n1_2");
     }
 
     #[test]
