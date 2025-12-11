@@ -159,19 +159,18 @@ impl<'a, T> CursorMut<'a, T> {
 
     // *** Mutable Functions *** //
 
-    /// Renames the node at the current position. Errors when a child with the new name already
-    /// exists.
+    /// Renames the node at the current position. Overwrites the data when a child with the new
+    /// name already exists.
     pub fn rename(&mut self, name: String) -> Result<&mut Self, MapError> {
         if self.has_child(name.as_str()) {
-            Err(MapError::Duplicate(name))
-        } else {
-            self.arena
-                .get_mut(self.position)
-                .expect("current position should exist")
-                .get_mut()
-                .name = name;
-            Ok(self)
+            self.delete(name.as_str())?;
         }
+        self.arena
+            .get_mut(self.position)
+            .expect("current position should exist")
+            .get_mut()
+            .name = name;
+        Ok(self)
     }
 
     /// Returns the mutable data at the current position
